@@ -1,0 +1,48 @@
+# Default configuration for movie-generator
+
+project:
+  name: "My YouTube Channel"
+  output_dir: "./output"
+
+style:
+  resolution: [1920, 1080]
+  fps: 30
+  font_family: "Noto Sans JP"
+  primary_color: "#FFFFFF"
+  background_color: "#1a1a2e"
+
+audio:
+  engine: "voicevox"
+  speaker_id: 3  # Zundamon
+  speed_scale: 1.0
+
+narration:
+  character: "ずんだもん"
+  style: "casual"  # casual, formal, educational
+
+content:
+  llm_provider: "openrouter"
+  model: "gemini-3-pro"
+
+slides:
+  provider: "openrouter"
+  model: "nonobananapro"
+  style: "presentation"  # presentation, illustration, minimal
+
+video:
+  renderer: "remotion"
+  template: "default"
+  output_format: "mp4"
+
+pronunciation:
+  custom:
+    "Bubble Tea":
+      reading: "バブルティー"
+      accent: 5
+      word_type: "PROPER_NOUN"
+      priority: 10
+    "Ratatui":
+      reading: "ラタトゥイ"
+      accent: 4
+      word_type: "PROPER_NOUN"
+      priority: 10
