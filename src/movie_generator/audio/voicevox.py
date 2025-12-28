@@ -124,15 +124,28 @@ class VoicevoxSynthesizer:
         if not self._initialized:
             raise RuntimeError("Synthesizer not initialized. Call initialize() first.")
 
+        # Skip empty or whitespace-only text
+        if not phrase.text or not phrase.text.strip():
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"")
+            return AudioMetadata(duration=0.0)
+
         if VOICEVOX_AVAILABLE and self._synthesizer is not None:
-            # Real VOICEVOX synthesis
-            duration = voicevox_impl.synthesize_to_file(  # type: ignore
-                synthesizer=self._synthesizer,
-                text=phrase.text,
-                speaker_id=self.speaker_id,
-                output_path=output_path,
-                speed_scale=self.speed_scale,
-            )
+            # Real VOICEVOX synthesis with error handling
+            try:
+                duration = voicevox_impl.synthesize_to_file(  # type: ignore
+                    synthesizer=self._synthesizer,
+                    text=phrase.text,
+                    speaker_id=self.speaker_id,
+                    output_path=output_path,
+                    speed_scale=self.speed_scale,
+                )
+            except Exception as e:
+                # Log error and create placeholder for failed synthesis
+                print(f"Warning: Failed to synthesize phrase '{phrase.text[:50]}...': {e}")
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_bytes(b"")
+                duration = len(phrase.text) * 0.15  # Fallback estimate
         else:
             # Placeholder mode
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -160,10 +173,20 @@ class VoicevoxSynthesizer:
 
         for i, phrase in enumerate(phrases):
             output_path = output_dir / f"phrase_{i:04d}.wav"
-            metadata = self.synthesize_phrase(phrase, output_path)
 
-            # Update phrase duration
-            phrase.duration = metadata.duration
+            # Skip if audio file already exists
+            if output_path.exists():
+                # Read existing metadata
+                with wave.open(str(output_path), "rb") as wf:
+                    frames = wf.getnframes()
+                    rate = wf.getframerate()
+                    duration = frames / float(rate)
+                metadata = AudioMetadata(duration=duration, sample_rate=rate)
+                phrase.duration = duration
+            else:
+                metadata = self.synthesize_phrase(phrase, output_path)
+                # Update phrase duration
+                phrase.duration = metadata.duration
 
             audio_paths.append(output_path)
             metadata_list.append(metadata)

@@ -112,7 +112,7 @@ def synthesize_to_file(
         Duration of generated audio in seconds.
     """
     # Generate audio
-    wav_bytes = synthesizer.tts(text, speaker_id, style_id=speaker_id)
+    wav_bytes = synthesizer.tts(text, speaker_id)
 
     # Save to file
     output_path.parent.mkdir(parents=True, exist_ok=True)

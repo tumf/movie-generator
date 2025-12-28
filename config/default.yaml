@@ -15,6 +15,10 @@ audio:
   engine: "voicevox"
   speaker_id: 3  # Zundamon
   speed_scale: 1.0
+  # VOICEVOX paths (can also be set via environment variables)
+  # dict_dir: "~/.local/share/voicevox/dict/open_jtalk_dic_utf_8-1.11"
+  # model_path: "~/.local/share/voicevox/models/vvms/0.vvm"
+  # onnxruntime_path: "~/.local/share/voicevox/onnxruntime/lib/libvoicevox_onnxruntime.1.17.3.dylib"
 
 narration:
   character: "ずんだもん"
@@ -28,7 +32,7 @@ content:
 slides:
   llm:
     provider: "openrouter"
-    model: "nonobananapro"
+    model: "google/gemini-3-pro-image-preview"  # Image generation model
   style: "presentation"  # presentation, illustration, minimal
 
 video:

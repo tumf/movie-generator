@@ -7,6 +7,7 @@ import asyncio
 from pathlib import Path
 
 import click
+import yaml
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
@@ -88,21 +89,58 @@ def generate(
         console.print(f"✓ Fetched: {parsed.metadata.title}")
 
         # Step 2: Generate script
-        task = progress.add_task("Generating script...", total=None)
-        script = asyncio.run(
-            generate_script(
-                content=parsed.markdown,
-                title=parsed.metadata.title,
-                description=parsed.metadata.description,
-                character=cfg.narration.character,
-                style=cfg.narration.style,
-                api_key=api_key,
-                model=cfg.content.model,
+        script_path = output_dir / "script.yaml"
+        if script_path.exists():
+            console.print(f"[yellow]⊙ Script already exists, loading: {script_path}[/yellow]")
+            with open(script_path, encoding="utf-8") as f:
+                script_dict = yaml.safe_load(f)
+            from .script.generator import ScriptSection, VideoScript
+
+            script = VideoScript(
+                title=script_dict["title"],
+                description=script_dict["description"],
+                sections=[
+                    ScriptSection(
+                        title=section["title"],
+                        narration=section["narration"],
+                        slide_prompt=section.get("slide_prompt"),
+                    )
+                    for section in script_dict["sections"]
+                ],
             )
-        )
-        progress.update(task, completed=True)
-        console.print(f"✓ Generated script: {script.title}")
-        console.print(f"  Sections: {len(script.sections)}")
+        else:
+            task = progress.add_task("Generating script...", total=None)
+            script = asyncio.run(
+                generate_script(
+                    content=parsed.markdown,
+                    title=parsed.metadata.title,
+                    description=parsed.metadata.description,
+                    character=cfg.narration.character,
+                    style=cfg.narration.style,
+                    api_key=api_key,
+                    model=cfg.content.llm.model,
+                )
+            )
+            progress.update(task, completed=True)
+            console.print(f"✓ Generated script: {script.title}")
+            console.print(f"  Sections: {len(script.sections)}")
+
+            # Save script to YAML
+            script_dict = {
+                "title": script.title,
+                "description": script.description,
+                "sections": [
+                    {
+                        "title": section.title,
+                        "narration": section.narration,
+                        "slide_prompt": section.slide_prompt,
+                    }
+                    for section in script.sections
+                ],
+            }
+            with open(script_path, "w", encoding="utf-8") as f:
+                yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
+            console.print(f"✓ Script saved: {script_path}")
 
         # Step 3: Split into phrases
         task = progress.add_task("Splitting into phrases...", total=None)
@@ -116,13 +154,35 @@ def generate(
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
         synthesizer = create_synthesizer_from_config(cfg, allow_placeholder=allow_placeholder)
-        # Note: Placeholder - real implementation would initialize VOICEVOX
-        # synthesizer.initialize(dict_dir, model_path)
+
+        # Initialize VOICEVOX if not in placeholder mode
+        if not allow_placeholder:
+            import os
+
+            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+
+            if dict_dir_str and model_path_str:
+                synthesizer.initialize(
+                    dict_dir=Path(dict_dir_str),
+                    model_path=Path(model_path_str),
+                    onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
+                )
+
         audio_dir = output_dir / "audio"
+        # Count existing audio files before generation
+        existing_audio_count = sum(
+            1 for i in range(len(all_phrases)) if (audio_dir / f"phrase_{i:04d}.wav").exists()
+        )
         audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
         calculate_phrase_timings(all_phrases)
         progress.update(task, completed=True)
-        console.print(f"✓ Generated {len(audio_paths)} audio files")
+        new_audio_count = len(audio_paths) - existing_audio_count
+        if existing_audio_count > 0:
+            console.print(f"✓ Audio: {new_audio_count} generated, {existing_audio_count} reused")
+        else:
+            console.print(f"✓ Generated {len(audio_paths)} audio files")
 
         # Step 5: Generate slides
         if api_key:
@@ -132,36 +192,59 @@ def generate(
                 for section in script.sections
             ]
             slide_dir = output_dir / "slides"
+            # Count existing slides before generation
+            existing_slide_count = sum(
+                1
+                for i in range(len(slide_prompts))
+                if (slide_dir / f"slide_{i:04d}.png").exists()
+                and (slide_dir / f"slide_{i:04d}.png").stat().st_size > 0
+            )
             slide_paths = asyncio.run(
-                generate_slides_for_sections(slide_prompts, slide_dir, api_key, cfg.slides.model)
+                generate_slides_for_sections(
+                    slide_prompts, slide_dir, api_key, cfg.slides.llm.model
+                )
             )
             progress.update(task, completed=True)
-            console.print(f"✓ Generated {len(slide_paths)} slides")
+            new_slide_count = len(slide_paths) - existing_slide_count
+            if existing_slide_count > 0:
+                console.print(
+                    f"✓ Slides: {new_slide_count} generated, {existing_slide_count} reused"
+                )
+            else:
+                console.print(f"✓ Generated {len(slide_paths)} slides")
         else:
             console.print("[yellow]⚠ Skipping slides (no API key provided)[/yellow]")
             slide_paths = []
 
         # Step 6: Create composition
-        task = progress.add_task("Creating composition...", total=None)
-        composition = create_composition(
-            title=script.title,
-            phrases=all_phrases,
-            slide_paths=slide_paths,
-            audio_paths=audio_paths,
-            fps=cfg.style.fps,
-            resolution=cfg.style.resolution,
-        )
         composition_path = output_dir / "composition.json"
-        save_composition(composition, composition_path)
-        progress.update(task, completed=True)
-        console.print(f"✓ Created composition: {composition_path}")
+        if composition_path.exists():
+            console.print(
+                f"[yellow]⊙ Composition already exists, skipping: {composition_path}[/yellow]"
+            )
+        else:
+            task = progress.add_task("Creating composition...", total=None)
+            composition = create_composition(
+                title=script.title,
+                phrases=all_phrases,
+                slide_paths=slide_paths,
+                audio_paths=audio_paths,
+                fps=cfg.style.fps,
+                resolution=cfg.style.resolution,
+            )
+            save_composition(composition, composition_path)
+            progress.update(task, completed=True)
+            console.print(f"✓ Created composition: {composition_path}")
 
-        # Step 7: Render video (placeholder)
-        task = progress.add_task("Rendering video...", total=None)
+        # Step 7: Render video
         video_path = output_dir / "output.mp4"
-        render_video(composition_path, video_path)
-        progress.update(task, completed=True)
-        console.print(f"✓ Video ready: {video_path}")
+        if video_path.exists():
+            console.print(f"[yellow]⊙ Video already exists, skipping: {video_path}[/yellow]")
+        else:
+            task = progress.add_task("Rendering video...", total=None)
+            render_video(composition_path, video_path)
+            progress.update(task, completed=True)
+            console.print(f"✓ Video ready: {video_path}")
 
     console.print("\n[bold green]✓ Video generation complete![/bold green]")
 

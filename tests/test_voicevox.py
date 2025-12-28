@@ -110,18 +110,20 @@ def test_synthesizer_real_init(tmp_path: Path):
     # Get paths from environment variables
     dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
     model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+    onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
 
     if not dict_dir_str or not model_path_str:
         pytest.skip("VOICEVOX environment variables not set")
 
     dict_dir = Path(dict_dir_str)
     model_path = Path(model_path_str)
+    onnxruntime_path = Path(onnxruntime_path_str) if onnxruntime_path_str else None
 
     if not dict_dir.exists() or not model_path.exists():
         pytest.skip("VOICEVOX files not available")
 
     synth = VoicevoxSynthesizer(allow_placeholder=True)
-    synth.initialize(dict_dir=dict_dir, model_path=model_path)
+    synth.initialize(dict_dir=dict_dir, model_path=model_path, onnxruntime_path=onnxruntime_path)
 
     assert synth._initialized is True
 
