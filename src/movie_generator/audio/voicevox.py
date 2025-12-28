@@ -41,6 +41,7 @@ class VoicevoxSynthesizer:
         speaker_id: int = 3,
         speed_scale: float = 1.0,
         dictionary: PronunciationDictionary | None = None,
+        allow_placeholder: bool = False,
     ) -> None:
         """Initialize synthesizer.
 
@@ -48,10 +49,24 @@ class VoicevoxSynthesizer:
             speaker_id: VOICEVOX speaker ID (3=Zundamon).
             speed_scale: Speech speed scale.
             dictionary: Pronunciation dictionary.
+            allow_placeholder: Allow placeholder mode when voicevox_core is not installed.
+                              If False (default), raises ImportError when voicevox_core is unavailable.
+
+        Raises:
+            ImportError: If voicevox_core is not installed and allow_placeholder is False.
         """
+        if not VOICEVOX_AVAILABLE and not allow_placeholder:
+            raise ImportError(
+                "VOICEVOX Core is not installed and is required for audio synthesis.\n"
+                "Please install voicevox_core or see docs/VOICEVOX_SETUP.md for instructions.\n"
+                "To run without VOICEVOX (placeholder mode for testing), "
+                "set allow_placeholder=True."
+            )
+
         self.speaker_id = speaker_id
         self.speed_scale = speed_scale
         self.dictionary = dictionary or PronunciationDictionary()
+        self.allow_placeholder = allow_placeholder
 
         self._synthesizer: Any = None
         self._initialized = False
@@ -156,14 +171,20 @@ class VoicevoxSynthesizer:
         return audio_paths, metadata_list
 
 
-def create_synthesizer_from_config(config: Any) -> VoicevoxSynthesizer:
+def create_synthesizer_from_config(
+    config: Any, allow_placeholder: bool = False
+) -> VoicevoxSynthesizer:
     """Create synthesizer from configuration.
 
     Args:
         config: Configuration object.
+        allow_placeholder: Allow placeholder mode when voicevox_core is not installed.
 
     Returns:
         Initialized synthesizer.
+
+    Raises:
+        ImportError: If voicevox_core is not installed and allow_placeholder is False.
     """
     dictionary = PronunciationDictionary()
     if hasattr(config, "pronunciation") and config.pronunciation.custom:
@@ -173,4 +194,5 @@ def create_synthesizer_from_config(config: Any) -> VoicevoxSynthesizer:
         speaker_id=config.audio.speaker_id,
         speed_scale=config.audio.speed_scale,
         dictionary=dictionary,
+        allow_placeholder=allow_placeholder,
     )

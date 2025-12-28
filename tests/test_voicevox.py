@@ -71,7 +71,7 @@ def test_dictionary_save_load(tmp_path: Path):
 
 
 def test_synthesizer_initialization():
-    """Test synthesizer initialization."""
+    """Test synthesizer initialization with placeholder mode."""
     dictionary = PronunciationDictionary()
     dictionary.add_entry(
         DictionaryEntry(
@@ -80,15 +80,25 @@ def test_synthesizer_initialization():
         )
     )
 
+    # Should succeed with allow_placeholder=True
     synth = VoicevoxSynthesizer(
         speaker_id=3,
         speed_scale=1.0,
         dictionary=dictionary,
+        allow_placeholder=True,
     )
 
     assert synth.speaker_id == 3
     assert synth.speed_scale == 1.0
     assert len(synth.dictionary.entries) == 1
+    assert synth.allow_placeholder is True
+
+
+@pytest.mark.skipif(VOICEVOX_AVAILABLE, reason="Test requires voicevox_core to be unavailable")
+def test_synthesizer_requires_voicevox():
+    """Test that synthesizer raises error when voicevox_core is not available."""
+    with pytest.raises(ImportError, match="VOICEVOX Core is not installed"):
+        VoicevoxSynthesizer()  # Should fail without allow_placeholder
 
 
 @pytest.mark.skipif(not VOICEVOX_AVAILABLE, reason="voicevox_core not installed")
@@ -102,7 +112,7 @@ def test_synthesizer_real_init(tmp_path: Path):
     if not dict_dir.exists() or not model_path.exists():
         pytest.skip("VOICEVOX files not available")
 
-    synth = VoicevoxSynthesizer()
+    synth = VoicevoxSynthesizer(allow_placeholder=True)
     synth.initialize(dict_dir=dict_dir, model_path=model_path)
 
     assert synth._initialized is True
@@ -110,7 +120,7 @@ def test_synthesizer_real_init(tmp_path: Path):
 
 def test_synthesizer_placeholder_mode(tmp_path: Path):
     """Test synthesizer in placeholder mode."""
-    synth = VoicevoxSynthesizer()
+    synth = VoicevoxSynthesizer(allow_placeholder=True)
     # Don't initialize - test placeholder synthesis
 
     phrase = Phrase(text="これはテストです")

@@ -170,10 +170,40 @@ xattr -d com.apple.quarantine ~/.local/share/voicevox/libonnxruntime.dylib
 
 ## Running Without VOICEVOX
 
-The project will run in "placeholder mode" without VOICEVOX installed:
-- Audio files will be empty placeholders
-- Duration estimates based on text length
-- Useful for testing pipeline without audio
+### Default Behavior (Recommended)
+
+By default, the synthesizer **requires VOICEVOX Core** to be installed:
+
+```python
+from movie_generator.audio.voicevox import VoicevoxSynthesizer
+
+# This will raise ImportError if voicevox_core is not installed
+synth = VoicevoxSynthesizer()  # ❌ Fails without VOICEVOX
+```
+
+**Error message:**
+```
+ImportError: VOICEVOX Core is not installed and is required for audio synthesis.
+Please install voicevox_core or see docs/VOICEVOX_SETUP.md for instructions.
+To run without VOICEVOX (placeholder mode for testing), set allow_placeholder=True.
+```
+
+### Placeholder Mode (Testing Only)
+
+For development/testing without VOICEVOX, explicitly enable placeholder mode:
+
+```python
+# Allow running without VOICEVOX
+synth = VoicevoxSynthesizer(allow_placeholder=True)  # ✅ OK
+```
+
+**Placeholder mode behavior:**
+- Audio files will be empty placeholders (0 bytes)
+- Duration estimates based on text length (~150ms per character)
+- **No actual audio is generated**
+- Useful for testing pipeline structure without VOICEVOX
+
+**⚠️ Warning:** Placeholder mode is only for development/testing. Production use requires real VOICEVOX installation.
 
 ## References
 

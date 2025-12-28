@@ -29,16 +29,37 @@ uv sync
 uv sync --extra dev
 ```
 
-### VOICEVOX Setup
+### VOICEVOX Setup (Required)
 
-VOICEVOX Core is required for voice synthesis but not available via pip.
-Please install manually:
+**⚠️ VOICEVOX Core is required for voice synthesis.**
+
+The project will raise an `ImportError` if VOICEVOX Core is not installed:
+
+```
+ImportError: VOICEVOX Core is not installed and is required for audio synthesis.
+See docs/VOICEVOX_SETUP.md for installation instructions.
+```
+
+Manual installation required (not available via pip):
 
 1. Download VOICEVOX Core from the official repository
 2. Set environment variables for dylib paths (macOS)
 3. Update configuration with dictionary and model paths
 
-See `docs/` for detailed setup instructions.
+**See `docs/VOICEVOX_SETUP.md` for detailed setup instructions.**
+
+#### Testing Without VOICEVOX
+
+For development/testing only, you can run in placeholder mode:
+
+```python
+from movie_generator.audio.voicevox import VoicevoxSynthesizer
+
+# Enable placeholder mode (no actual audio generated)
+synth = VoicevoxSynthesizer(allow_placeholder=True)
+```
+
+**Note:** Placeholder mode generates empty audio files and is only for testing pipeline structure.
 
 ## Usage
 
