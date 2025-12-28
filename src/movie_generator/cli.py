@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from .audio.voicevox import create_synthesizer_from_config
-from .config import Config, load_config
+from .config import Config, load_config, print_default_config, write_config_to_file
 from .content.fetcher import fetch_url_sync
 from .content.parser import parse_html
 from .script.generator import generate_script
@@ -43,7 +43,19 @@ def cli() -> None:
     help="Output directory",
 )
 @click.option("--api-key", envvar="OPENROUTER_API_KEY", help="OpenRouter API key")
-def generate(url: str, config: Path | None, output: Path | None, api_key: str | None) -> None:
+@click.option(
+    "--allow-placeholder",
+    is_flag=True,
+    default=False,
+    help="Allow running without VOICEVOX (generates placeholder audio for testing)",
+)
+def generate(
+    url: str,
+    config: Path | None,
+    output: Path | None,
+    api_key: str | None,
+    allow_placeholder: bool,
+) -> None:
     """Generate video from URL.
 
     Args:
@@ -51,6 +63,7 @@ def generate(url: str, config: Path | None, output: Path | None, api_key: str | 
         config: Path to config file.
         output: Output directory.
         api_key: OpenRouter API key.
+        allow_placeholder: Allow running without VOICEVOX (testing only).
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -102,7 +115,7 @@ def generate(url: str, config: Path | None, output: Path | None, api_key: str | 
 
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
-        synthesizer = create_synthesizer_from_config(cfg)
+        synthesizer = create_synthesizer_from_config(cfg, allow_placeholder=allow_placeholder)
         # Note: Placeholder - real implementation would initialize VOICEVOX
         # synthesizer.initialize(dict_dir, model_path)
         audio_dir = output_dir / "audio"
@@ -151,6 +164,61 @@ def generate(url: str, config: Path | None, output: Path | None, api_key: str | 
         console.print(f"✓ Video ready: {video_path}")
 
     console.print("\n[bold green]✓ Video generation complete![/bold green]")
+
+
+@cli.group()
+def config() -> None:
+    """Configuration management commands."""
+    pass
+
+
+@config.command()
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Output file path (default: stdout)",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Overwrite existing file without confirmation",
+)
+def init(output: Path | None, force: bool) -> None:
+    """Generate default configuration file.
+
+    By default, outputs to stdout. Use --output to write to a file.
+
+    Examples:
+        movie-generator config init
+        movie-generator config init --output config.yaml
+        movie-generator config init -o my-config.yaml --force
+    """
+    if output is None:
+        # Output to stdout
+        print_default_config()
+    else:
+        # Output to file
+        try:
+            # Check if file exists and handle confirmation
+            if output.exists() and not force:
+                if click.confirm(
+                    f"File '{output}' already exists. Overwrite?",
+                    default=False,
+                ):
+                    write_config_to_file(output, overwrite=True)
+                    console.print(f"[green]✓ Configuration written to {output}[/green]")
+                else:
+                    console.print("[yellow]Operation cancelled.[/yellow]")
+                    return
+            else:
+                write_config_to_file(output, overwrite=force)
+                console.print(f"[green]✓ Configuration written to {output}[/green]")
+        except OSError as e:
+            console.print(f"[red]Error: Unable to write to {output}[/red]")
+            console.print(f"[red]{e}[/red]")
+            raise click.Abort()
 
 
 def main() -> None:

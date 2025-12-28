@@ -66,7 +66,7 @@ async def generate_script(
     character: str = "ずんだもん",
     style: str = "casual",
     api_key: str | None = None,
-    model: str = "anthropic/claude-3.5-sonnet",
+    model: str = "openai/gpt-5.2",
     base_url: str = "https://openrouter.ai/api/v1",
 ) -> VideoScript:
     """Generate video script from content using LLM.

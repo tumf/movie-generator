@@ -81,6 +81,23 @@ uv run movie-generator generate https://example.com/blog-post -o ./my-videos
 
 ### Configuration
 
+#### Initialize Configuration File
+
+Generate a default configuration file with helpful comments:
+
+```bash
+# Output to stdout
+uv run movie-generator config init
+
+# Save to a file
+uv run movie-generator config init --output config.yaml
+
+# Force overwrite existing file
+uv run movie-generator config init -o config.yaml --force
+```
+
+#### Configuration Options
+
 Create a YAML configuration file (see `config/default.yaml` for reference):
 
 ```yaml

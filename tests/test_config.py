@@ -1,8 +1,12 @@
 """Test configuration loading."""
 
+import sys
 from pathlib import Path
 
 import pytest
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from movie_generator.config import Config, load_config, merge_configs
 

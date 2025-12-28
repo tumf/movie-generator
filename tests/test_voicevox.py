@@ -104,10 +104,18 @@ def test_synthesizer_requires_voicevox():
 @pytest.mark.skipif(not VOICEVOX_AVAILABLE, reason="voicevox_core not installed")
 def test_synthesizer_real_init(tmp_path: Path):
     """Test real VOICEVOX initialization (if available)."""
+    import os
+
     # This test requires actual VOICEVOX files to be present
-    # Skip if files don't exist
-    dict_dir = Path("/path/to/open_jtalk_dict")
-    model_path = Path("/path/to/model.vvm")
+    # Get paths from environment variables
+    dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+    model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+
+    if not dict_dir_str or not model_path_str:
+        pytest.skip("VOICEVOX environment variables not set")
+
+    dict_dir = Path(dict_dir_str)
+    model_path = Path(model_path_str)
 
     if not dict_dir.exists() or not model_path.exists():
         pytest.skip("VOICEVOX files not available")

@@ -36,18 +36,23 @@ class NarrationConfig(BaseModel):
     style: str = Field(default="casual")
 
 
+class LLMConfig(BaseModel):
+    """LLM provider configuration."""
+
+    provider: str = Field(default="openrouter")
+    model: str = Field(default="openai/gpt-5.2")
+
+
 class ContentConfig(BaseModel):
     """Content generation configuration."""
 
-    llm_provider: str = Field(default="openrouter")
-    model: str = Field(default="gemini-3-pro")
+    llm: LLMConfig = Field(default_factory=LLMConfig)
 
 
 class SlidesConfig(BaseModel):
     """Slide generation configuration."""
 
-    provider: str = Field(default="openrouter")
-    model: str = Field(default="nonobananapro")
+    llm: LLMConfig = Field(default_factory=lambda: LLMConfig(model="nonobananapro"))
     style: str = Field(default="presentation")
 
 
@@ -145,3 +150,99 @@ def merge_configs(base: Config, override: Config) -> Config:
 
     merged = deep_merge(base_dict, override_dict)
     return Config(**merged)
+
+
+def generate_default_config_yaml() -> str:
+    """Generate default configuration as YAML with helpful comments.
+
+    Returns:
+        YAML string with inline comments explaining each field.
+    """
+    yaml_lines = [
+        "# Default configuration for movie-generator",
+        "",
+        "# Project settings",
+        "project:",
+        '  name: "My YouTube Channel"  # Your channel name',
+        '  output_dir: "./output"  # Directory for generated files',
+        "",
+        "# Video style settings",
+        "style:",
+        "  resolution: [1920, 1080]  # Video resolution (width, height)",
+        "  fps: 30  # Frames per second",
+        '  font_family: "Noto Sans JP"  # Font for text overlays',
+        '  primary_color: "#FFFFFF"  # Primary text color (hex)',
+        '  background_color: "#1a1a2e"  # Background color (hex)',
+        "",
+        "# Audio generation settings",
+        "audio:",
+        '  engine: "voicevox"  # Audio synthesis engine',
+        "  speaker_id: 3  # VOICEVOX speaker ID (3 = Zundamon)",
+        "  speed_scale: 1.0  # Speech speed multiplier (1.0 = normal)",
+        "",
+        "# Narration style settings",
+        "narration:",
+        '  character: "ずんだもん"  # Narrator character name',
+        '  style: "casual"  # Narration style: casual, formal, educational',
+        "",
+        "# Content generation settings",
+        "content:",
+        "  llm:",
+        '    provider: "openrouter"  # LLM provider for script generation',
+        '    model: "openai/gpt-5.2"  # Model to use for content generation',
+        "",
+        "# Slide generation settings",
+        "slides:",
+        "  llm:",
+        '    provider: "openrouter"  # LLM provider for slide generation',
+        '    model: "nonobananapro"  # Model for slide images',
+        '  style: "presentation"  # Slide style: presentation, illustration, minimal',
+        "",
+        "# Video rendering settings",
+        "video:",
+        '  renderer: "remotion"  # Video rendering engine',
+        '  template: "default"  # Video template to use',
+        '  output_format: "mp4"  # Output video format',
+        "",
+        "# Pronunciation dictionary for proper nouns and technical terms",
+        "pronunciation:",
+        "  custom:",
+        '    "Bubble Tea":',
+        '      reading: "バブルティー"  # Katakana reading',
+        "      accent: 5  # Accent position (0 = auto)",
+        '      word_type: "PROPER_NOUN"  # Word type',
+        "      priority: 10  # Priority (1-10, higher = more important)",
+        '    "Ratatui":',
+        '      reading: "ラタトゥイ"',
+        "      accent: 4",
+        '      word_type: "PROPER_NOUN"',
+        "      priority: 10",
+    ]
+    return "\n".join(yaml_lines)
+
+
+def write_config_to_file(output_path: Path, overwrite: bool = False) -> None:
+    """Write default configuration to a file.
+
+    Args:
+        output_path: Path where config file should be written.
+        overwrite: If True, overwrite existing file without confirmation.
+
+    Raises:
+        FileExistsError: If file exists and overwrite is False.
+        OSError: If unable to write to the specified path.
+    """
+    if output_path.exists() and not overwrite:
+        raise FileExistsError(f"File already exists: {output_path}")
+
+    # Ensure parent directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write config
+    config_yaml = generate_default_config_yaml()
+    output_path.write_text(config_yaml, encoding="utf-8")
+
+
+def print_default_config() -> None:
+    """Print default configuration to stdout."""
+    print(generate_default_config_yaml())

@@ -21,12 +21,14 @@ narration:
   style: "casual"  # casual, formal, educational
 
 content:
-  llm_provider: "openrouter"
-  model: "gemini-3-pro"
+  llm:
+    provider: "openrouter"
+    model: "gemini-3-pro"
 
 slides:
-  provider: "openrouter"
-  model: "nonobananapro"
+  llm:
+    provider: "openrouter"
+    model: "nonobananapro"
   style: "presentation"  # presentation, illustration, minimal
 
 video:

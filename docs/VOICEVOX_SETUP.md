@@ -7,9 +7,34 @@ This guide explains how to set up VOICEVOX Core for audio synthesis.
 1. **VOICEVOX Core**: Python bindings for VOICEVOX
 2. **OpenJTalk Dictionary**: Required for Japanese text processing
 3. **Voice Model Files**: VOICEVOX speaker models (.vvm files)
-4. **ONNX Runtime**: Required library for inference
 
-## Installation
+## Quick Start (macOS)
+
+For macOS users, use the automated installation script:
+
+```bash
+bash scripts/install_voicevox_macos.sh
+```
+
+This script will:
+1. Download and install VOICEVOX Core Python package (version 0.16.3)
+2. Download the VOICEVOX downloader tool
+3. Guide you through downloading the OpenJTalk dictionary and voice models
+
+**Note**: You will be asked to agree to the VOICEVOX license during installation. Please review the license terms and type 'y' to accept.
+
+After installation, set the environment variables:
+
+```bash
+# Add to your ~/.zshrc or ~/.bashrc
+source ~/.local/share/voicevox/env.sh
+
+# Or set manually for the current session
+export VOICEVOX_DICT_DIR="$HOME/.local/share/voicevox/dict"
+export VOICEVOX_MODEL_PATH="$HOME/.local/share/voicevox/models/0.vvm"
+```
+
+## Manual Installation
 
 ### 1. Install VOICEVOX Core
 
