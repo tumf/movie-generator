@@ -46,7 +46,7 @@ async def main():
         return 1
 
     print(f"📊 Found {len(sections)} sections to generate slides for")
-    print(f"   Model: google/gemini-2.5-flash-image-preview")
+    print(f"   Model: google/gemini-3-pro-image-preview")
     print(f"   Output: output/slides/")
     print()
 
@@ -58,7 +58,7 @@ async def main():
         sections=sections,
         output_dir=slides_dir,
         api_key=api_key,
-        model="google/gemini-2.5-flash-image-preview",
+        model="google/gemini-3-pro-image-preview",
         max_concurrent=2,  # Conservative to avoid rate limits
     )
 

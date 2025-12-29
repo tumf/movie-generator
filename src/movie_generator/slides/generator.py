@@ -14,7 +14,9 @@ async def generate_slide(
     prompt: str,
     output_path: Path,
     api_key: str,
-    model: str = "google/gemini-2.5-flash-image-preview",
+    # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
+    # Do NOT use gemini-2.5-flash-image-preview or any other model.
+    model: str = "google/gemini-3-pro-image-preview",
     base_url: str = "https://openrouter.ai/api/v1",
     width: int = 1920,
     height: int = 1080,
@@ -68,13 +70,12 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
                         "messages": [
                             {
                                 "role": "user",
-                                "content": [{"type": "text", "text": full_prompt}],
+                                "content": full_prompt,
                             }
                         ],
-                        "modalities": ["text", "image"],
+                        "modalities": ["image", "text"],
                         "image_config": {
                             "aspect_ratio": "16:9",
-                            "image_size": "2K",
                         },
                     },
                 )
@@ -153,7 +154,9 @@ async def generate_slides_for_sections(
     sections: list[tuple[str, str]],
     output_dir: Path,
     api_key: str,
-    model: str = "google/gemini-2.5-flash-image-preview",
+    # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
+    # Do NOT use gemini-2.5-flash-image-preview or any other model.
+    model: str = "google/gemini-3-pro-image-preview",
     max_concurrent: int = 3,
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.

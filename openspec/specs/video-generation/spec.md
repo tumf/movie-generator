@@ -1,6 +1,10 @@
 # Video Generation Specification
 
-## ADDED Requirements
+## Purpose
+
+This specification defines the video generation system for creating YouTube slide videos from blog URLs. The system automates the entire workflow from content extraction to final video rendering, including script generation, phrase-based audio synthesis with VOICEVOX, AI-generated slide images, and video composition using Remotion.
+
+## Requirements
 
 ### Requirement: URL Content Extraction
 

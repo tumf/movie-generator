@@ -1,31 +1,76 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 
-// Type definition for phrase metadata
+/**
+ * Generic Video Generator Component
+ * 
+ * This component generates videos from structured phrase data.
+ * It's designed to be reusable across multiple video projects.
+ */
+
 export interface PhraseData {
-  text: string;
+  id: string;
+  subtitle: string;
+  slide?: string;
   audioFile: string;
-  slideFile?: string;
   duration: number;
+  section?: string;
 }
 
-// Props interface
 export interface VideoGeneratorProps {
+  projectName: string;
   phrases: PhraseData[];
+  style?: VideoStyle;
 }
 
-// Calculate timing for each phrase
-const getScenesWithTiming = (phrases: PhraseData[]) => {
+export interface VideoStyle {
+  backgroundColor?: string;
+  subtitlePosition?: 'top' | 'bottom' | 'middle';
+  subtitleFontSize?: number;
+  subtitleFontFamily?: string;
+  subtitleColor?: string;
+  slideTransitionDuration?: number;
+  slideFit?: 'contain' | 'cover';
+}
+
+const DEFAULT_STYLE: Required<VideoStyle> = {
+  backgroundColor: '#1a1a1a',
+  subtitlePosition: 'bottom',
+  subtitleFontSize: 36,
+  subtitleFontFamily: 'Arial, sans-serif',
+  subtitleColor: 'white',
+  slideTransitionDuration: 0.5,
+  slideFit: 'contain',
+};
+
+interface Scene {
+  id: string;
+  audioFile: string;
+  subtitle?: string;
+  slideFile?: string;
+  section?: string;
+  startFrame: number;
+  durationFrames: number;
+  endFrame: number;
+}
+
+interface SlideGroup {
+  slideFile?: string;
+  startFrame: number;
+  endFrame: number;
+}
+
+const calculateScenes = (phrases: PhraseData[], fps: number): Scene[] => {
   let currentFrame = 0;
-  const fps = 30;
   
-  return phrases.map((phrase, index) => {
+  return phrases.map(phrase => {
     const durationFrames = Math.round(phrase.duration * fps);
-    const scene = {
-      id: `phrase-${index}`,
+    const scene: Scene = {
+      id: phrase.id,
       audioFile: phrase.audioFile,
-      subtitle: phrase.text,
-      slideFile: phrase.slideFile,
+      subtitle: phrase.subtitle,
+      slideFile: phrase.slide,
+      section: phrase.section,
       startFrame: currentFrame,
       durationFrames,
       endFrame: currentFrame + durationFrames,
@@ -35,20 +80,13 @@ const getScenesWithTiming = (phrases: PhraseData[]) => {
   });
 };
 
-// Helper to group consecutive scenes with the same slide
-const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
-  const groups: Array<{
-    slideFile?: string;
-    startFrame: number;
-    endFrame: number;
-  }> = [];
-
+const groupSlides = (scenes: Scene[]): SlideGroup[] => {
+  const groups: SlideGroup[] = [];
   let currentSlide: string | undefined = undefined;
   let currentStart = 0;
 
   scenes.forEach((scene, index) => {
     if (scene.slideFile !== currentSlide) {
-      // Slide changed, save previous group
       if (index > 0) {
         groups.push({
           slideFile: currentSlide,
@@ -60,7 +98,6 @@ const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
       currentStart = scene.startFrame;
     }
     
-    // Last scene
     if (index === scenes.length - 1) {
       groups.push({
         slideFile: currentSlide,
@@ -74,16 +111,16 @@ const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
 };
 
 const SlideLayer: React.FC<{
+  projectName: string;
   slideFile?: string;
-  startFrame: number;
   durationFrames: number;
-}> = ({ slideFile, durationFrames }) => {
+  style: Required<VideoStyle>;
+}> = ({ projectName, slideFile, durationFrames, style }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Fade in/out animation only at slide boundaries
-  const fadeInDuration = fps * 0.5; // 0.5 seconds
-  const fadeOutDuration = fps * 0.5;
+  const fadeInDuration = fps * style.slideTransitionDuration;
+  const fadeOutDuration = fps * style.slideTransitionDuration;
   const opacity = Math.min(
     1,
     frame / fadeInDuration,
@@ -91,21 +128,7 @@ const SlideLayer: React.FC<{
   );
 
   if (!slideFile) {
-    return (
-      <AbsoluteFill
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontSize: '48px',
-          fontFamily: 'Arial, sans-serif',
-          opacity,
-        }}
-      >
-        <div>Movie Generator</div>
-      </AbsoluteFill>
-    );
+    return null;
   }
 
   return (
@@ -119,11 +142,11 @@ const SlideLayer: React.FC<{
     >
       <div style={{ width: '80%', height: '80%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Img
-          src={staticFile(slideFile)}
+          src={staticFile(`projects/${projectName}/slides/${slideFile}`)}
           style={{
             maxWidth: '100%',
             maxHeight: '100%',
-            objectFit: 'contain',
+            objectFit: style.slideFit,
           }}
         />
       </div>
@@ -132,31 +155,43 @@ const SlideLayer: React.FC<{
 };
 
 const AudioSubtitleLayer: React.FC<{
+  projectName: string;
   audioFile: string;
   subtitle?: string;
-}> = ({ audioFile, subtitle }) => {
+  style: Required<VideoStyle>;
+}> = ({ projectName, audioFile, subtitle, style }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Subtle fade for subtitles only
   const fadeInDuration = fps * 0.3;
   const opacity = Math.min(1, frame / fadeInDuration);
 
+  const subtitlePositionStyle = (() => {
+    switch (style.subtitlePosition) {
+      case 'top':
+        return { top: '30px' };
+      case 'middle':
+        return { top: '50%', transform: 'translate(-50%, -50%)' };
+      case 'bottom':
+      default:
+        return { bottom: '30px', transform: 'translateX(-50%)' };
+    }
+  })();
+
   return (
     <>
-      <Audio src={staticFile(audioFile)} />
+      <Audio src={staticFile(`projects/${projectName}/audio/${audioFile}`)} />
       
       {subtitle && (
         <div
           style={{
             position: 'absolute',
-            bottom: '30px',
             left: '50%',
-            transform: 'translateX(-50%)',
+            ...subtitlePositionStyle,
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            color: 'white',
-            fontSize: '36px',
-            fontFamily: 'Arial, sans-serif',
+            color: style.subtitleColor,
+            fontSize: `${style.subtitleFontSize}px`,
+            fontFamily: style.subtitleFontFamily,
             padding: '20px 40px',
             borderRadius: '10px',
             maxWidth: '80%',
@@ -172,13 +207,19 @@ const AudioSubtitleLayer: React.FC<{
   );
 };
 
-export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
-  const scenes = getScenesWithTiming(phrases);
-  const slideGroups = getSlideGroups(scenes);
+export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ 
+  projectName, 
+  phrases,
+  style: customStyle = {}
+}) => {
+  const { fps } = useVideoConfig();
+  const style = { ...DEFAULT_STYLE, ...customStyle };
+  
+  const scenes = calculateScenes(phrases, fps);
+  const slideGroups = groupSlides(scenes);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: '#1a1a1a' }}>
-      {/* Slide layer - only changes when slide actually changes */}
+    <AbsoluteFill style={{ backgroundColor: style.backgroundColor }}>
       {slideGroups.map((group, index) => (
         <Sequence
           key={`slide-${index}`}
@@ -186,14 +227,14 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
           durationInFrames={group.endFrame - group.startFrame}
         >
           <SlideLayer
+            projectName={projectName}
             slideFile={group.slideFile}
-            startFrame={group.startFrame}
             durationFrames={group.endFrame - group.startFrame}
+            style={style}
           />
         </Sequence>
       ))}
 
-      {/* Audio and subtitle layer - changes with each phrase */}
       {scenes.map((scene) => (
         <Sequence
           key={scene.id}
@@ -201,8 +242,10 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
           durationInFrames={scene.durationFrames}
         >
           <AudioSubtitleLayer
+            projectName={projectName}
             audioFile={scene.audioFile}
             subtitle={scene.subtitle}
+            style={style}
           />
         </Sequence>
       ))}
@@ -210,9 +253,7 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
   );
 };
 
-// Calculate total frames for the composition
-export const calculateTotalFrames = (phrases: PhraseData[]): number => {
-  const fps = 30;
+export const calculateTotalFrames = (phrases: PhraseData[], fps: number = 30): number => {
   const totalDuration = phrases.reduce((sum, phrase) => sum + phrase.duration, 0);
   return Math.round(totalDuration * fps);
 };

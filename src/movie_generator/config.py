@@ -49,10 +49,19 @@ class ContentConfig(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
 
 
+class SlidesLLMConfig(BaseModel):
+    """LLM configuration for slide generation."""
+
+    provider: str = Field(default="openrouter")
+    # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
+    # Do NOT use gemini-2.5-flash-image-preview or any other model.
+    model: str = Field(default="google/gemini-3-pro-image-preview")
+
+
 class SlidesConfig(BaseModel):
     """Slide generation configuration."""
 
-    llm: LLMConfig = Field(default_factory=LLMConfig)
+    llm: SlidesLLMConfig = Field(default_factory=SlidesLLMConfig)
     style: str = Field(default="presentation")
 
 

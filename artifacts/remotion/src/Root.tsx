@@ -5,10 +5,12 @@ import { VideoGenerator, calculateTotalFrames } from './VideoGenerator';
 // Sample data for development - will be replaced by Python-generated data
 const samplePhrases = [
   {
-    text: "Sample subtitle",
+    id: "001",
+    subtitle: "Sample subtitle text",
+    slide: "sample.png",
     audioFile: "sample.wav",
-    slideFile: "slide1.png",
-    duration: 3.0
+    duration: 3.0,
+    section: "intro"
   }
 ];
 
@@ -18,13 +20,14 @@ export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition
-        id="VideoGenerator"
+        id="Sample"
         component={VideoGenerator}
         durationInFrames={totalFrames}
         fps={30}
         width={1920}
         height={1080}
         defaultProps={{
+          projectName: "sample",
           phrases: samplePhrases
         }}
       />

@@ -44,6 +44,19 @@ output/
 *.mp4
 *.mp3
 
+# Generated artifacts (Remotion builds)
+artifacts/
+
+# Project assets (generated audio and slides)
+projects/*/assets/audio/
+projects/*/assets/slides/
+projects/*/output/
+
+# Keep project configuration
+!projects/*/project.yaml
+!projects/*/script.md
+!projects/*/phrases.json
+
 # Test
 .pytest_cache/
 .coverage
@@ -51,10 +64,7 @@ htmlcov/
 .tox/
 
 # Node.js
-remotion/node_module
-
-# openspec
-s/
+node_modules/
 
 # Logs
 *.log
