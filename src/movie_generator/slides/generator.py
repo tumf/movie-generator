@@ -48,17 +48,16 @@ async def generate_slide(
         return output_path
 
     # Create prompt for slide generation
-    full_prompt = f"""Create a professional presentation slide image for YouTube video.
+    # IMPORTANT: Must explicitly request direct image output
+    full_prompt = f"""Draw this image directly: A professional YouTube presentation slide.
 
-Topic: {prompt}
+Content: {prompt}
 
-Style requirements:
-- Clean, modern design
-- Readable text with good contrast
-- Professional aesthetic suitable for educational content
-- Visual elements that support the topic
-- 16:9 aspect ratio
-- High quality, polished look"""
+Requirements:
+- Output the image directly (do not describe how to make it)
+- Clean, modern flat design
+- High contrast, readable text
+- 16:9 aspect ratio"""
 
     last_error = None
     for attempt in range(max_retries):
@@ -75,10 +74,10 @@ Style requirements:
                         "messages": [
                             {
                                 "role": "user",
-                                "content": full_prompt,
+                                "content": [{"type": "text", "text": full_prompt}],
                             }
                         ],
-                        "modalities": ["image", "text"],
+                        "modalities": ["text", "image"],
                         "image_config": {
                             "aspect_ratio": "16:9",
                             "image_size": "2K",
@@ -109,6 +108,22 @@ Style requirements:
                 # No image in response - treat as error
                 error_msg = f"No image data in API response for '{prompt[:50]}...'"
                 print(f"⚠ {error_msg}")
+                # Debug: show response structure
+                print(f"  Response keys: {list(data.keys())}")
+                if "choices" in data and data["choices"]:
+                    msg_keys = list(message.keys()) if message else []
+                    print(f"  Message keys: {msg_keys}")
+                    if "content" in message:
+                        content = message["content"]
+                        if isinstance(content, str):
+                            print(f"  Content (text): {content[:200]}...")
+                        elif isinstance(content, list):
+                            print(f"  Content (list): {len(content)} items")
+                            for idx, item in enumerate(content[:3]):
+                                if isinstance(item, dict):
+                                    print(
+                                        f"    [{idx}] type={item.get('type')}, keys={list(item.keys())}"
+                                    )
                 last_error = ValueError(error_msg)
 
         except httpx.HTTPStatusError as e:
@@ -162,8 +177,9 @@ async def generate_slides_for_sections(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Prepare all tasks
-    tasks = []
     slide_paths = []
+    tasks_to_run = []
+    task_indices = []
 
     print(f"\n📊 Preparing to generate {len(sections)} slides...")
 
@@ -174,28 +190,40 @@ async def generate_slides_for_sections(
         # Check if already exists
         if output_path.exists() and output_path.stat().st_size > 0:
             print(f"⊙ Slide {i:02d}/{len(sections) - 1} already exists: {output_path.name}")
-
-            # Create a dummy coroutine that returns the path
-            async def skip_existing(path=output_path):
-                return path
-
-            tasks.append(skip_existing())
         else:
             print(f"→ Slide {i:02d}/{len(sections) - 1} queued: {title[:50]}...")
-            tasks.append(generate_slide(prompt, output_path, api_key, model))
+            tasks_to_run.append(generate_slide(prompt, output_path, api_key, model))
+            task_indices.append(i)
+
+    if not tasks_to_run:
+        print("\n✓ All slides already exist, nothing to generate")
+        return slide_paths
 
     # Execute tasks with concurrency limit
-    print(f"\n🚀 Generating slides (max {max_concurrent} concurrent requests)...\n")
+    print(
+        f"\n🚀 Generating {len(tasks_to_run)} slides (max {max_concurrent} concurrent requests)...\n"
+    )
 
     # Process in batches to limit concurrency
     results = []
-    for i in range(0, len(tasks), max_concurrent):
-        batch = tasks[i : i + max_concurrent]
+    for batch_idx in range(0, len(tasks_to_run), max_concurrent):
+        batch = tasks_to_run[batch_idx : batch_idx + max_concurrent]
+        batch_task_indices = task_indices[batch_idx : batch_idx + max_concurrent]
+
+        print(
+            f"Processing batch {batch_idx // max_concurrent + 1}/{(len(tasks_to_run) + max_concurrent - 1) // max_concurrent}..."
+        )
         batch_results = await asyncio.gather(*batch, return_exceptions=True)
+
+        # Check for exceptions in batch
+        for idx, result in zip(batch_task_indices, batch_results):
+            if isinstance(result, Exception):
+                print(f"✗ Error generating slide {idx:04d}: {result}")
+
         results.extend(batch_results)
 
         # Brief pause between batches to avoid rate limiting
-        if i + max_concurrent < len(tasks):
+        if batch_idx + max_concurrent < len(tasks_to_run):
             await asyncio.sleep(1.0)
 
     # Check results

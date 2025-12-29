@@ -239,19 +239,44 @@ def generate(
                 if (slide_dir / f"slide_{i:04d}.png").exists()
                 and (slide_dir / f"slide_{i:04d}.png").stat().st_size > 0
             )
-            slide_paths = asyncio.run(
-                generate_slides_for_sections(
-                    slide_prompts, slide_dir, api_key, cfg.slides.llm.model
+
+            try:
+                slide_paths = asyncio.run(
+                    generate_slides_for_sections(
+                        slide_prompts,
+                        slide_dir,
+                        api_key,
+                        cfg.slides.llm.model,
+                        max_concurrent=2,  # Conservative to avoid rate limits
+                    )
                 )
-            )
-            progress.update(task, completed=True)
-            new_slide_count = len(slide_paths) - existing_slide_count
-            if existing_slide_count > 0:
-                console.print(
-                    f"✓ Slides: {new_slide_count} generated, {existing_slide_count} reused"
+                progress.update(task, completed=True)
+
+                # Count successful slides
+                successful_count = sum(
+                    1 for p in slide_paths if p.exists() and p.stat().st_size > 0
                 )
-            else:
-                console.print(f"✓ Generated {len(slide_paths)} slides")
+                failed_count = len(slide_paths) - successful_count
+                new_slide_count = successful_count - existing_slide_count
+
+                if existing_slide_count > 0:
+                    console.print(
+                        f"✓ Slides: {new_slide_count} generated, {existing_slide_count} reused"
+                    )
+                else:
+                    console.print(f"✓ Generated {successful_count} slides")
+
+                if failed_count > 0:
+                    console.print(
+                        f"[yellow]⚠ Warning: {failed_count} slides failed to generate[/yellow]"
+                    )
+                    console.print(
+                        f"[dim]  Run 'find {slide_dir} -size 0 -delete' to remove failed slides and retry[/dim]"
+                    )
+            except Exception as e:
+                progress.update(task, completed=True)
+                console.print(f"[red]✗ Error generating slides: {e}[/red]")
+                slide_paths = []
         else:
             console.print("[yellow]⚠ Skipping slides (no API key provided)[/yellow]")
             slide_paths = []

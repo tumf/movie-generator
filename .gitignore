@@ -51,7 +51,13 @@ htmlcov/
 .tox/
 
 # Node.js
-remotion/node_modules/
+remotion/node_module
+
+# openspec
+s/
 
 # Logs
 *.log
+
+# openspec
+openspec/changes/
