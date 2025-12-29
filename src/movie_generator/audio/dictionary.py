@@ -35,6 +35,32 @@ class PronunciationDictionary:
         """
         self.entries[entry.surface] = entry
 
+    def add_word(
+        self,
+        word: str,
+        reading: str,
+        accent: int = 0,
+        word_type: str = "COMMON_NOUN",
+        priority: int = 10,
+    ) -> None:
+        """Add a single word to the dictionary.
+
+        Args:
+            word: The word/phrase to add.
+            reading: Katakana reading.
+            accent: Accent position (0=auto).
+            word_type: Word type (PROPER_NOUN, COMMON_NOUN, etc).
+            priority: Priority (1-10, higher = more priority).
+        """
+        entry = DictionaryEntry(
+            surface=word,
+            reading=reading,
+            accent=accent,
+            word_type=word_type,
+            priority=priority,
+        )
+        self.add_entry(entry)
+
     def add_from_config(self, config_dict: dict[str, Any]) -> None:
         """Add entries from configuration dictionary.
 

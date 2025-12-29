@@ -42,6 +42,34 @@ video:
 
 pronunciation:
   custom:
+    # Common English words that are often misread
+    "ENGINE":
+      reading: "エンジン"
+      accent: 1
+      word_type: "COMMON_NOUN"
+      priority: 10
+    "Engine":
+      reading: "エンジン"
+      accent: 1
+      word_type: "COMMON_NOUN"
+      priority: 10
+    "API":
+      reading: "エーピーアイ"
+      accent: 1
+      word_type: "COMMON_NOUN"
+      priority: 10
+    "CPU":
+      reading: "シーピーユー"
+      accent: 1
+      word_type: "COMMON_NOUN"
+      priority: 10
+    "GPU":
+      reading: "ジーピーユー"
+      accent: 1
+      word_type: "COMMON_NOUN"
+      priority: 10
+    
+    # Project-specific terms
     "Bubble Tea":
       reading: "バブルティー"
       accent: 5

@@ -52,7 +52,7 @@ class ContentConfig(BaseModel):
 class SlidesConfig(BaseModel):
     """Slide generation configuration."""
 
-    llm: LLMConfig = Field(default_factory=lambda: LLMConfig(model="nonobananapro"))
+    llm: LLMConfig = Field(default_factory=LLMConfig)
     style: str = Field(default="presentation")
 
 
@@ -195,7 +195,7 @@ def generate_default_config_yaml() -> str:
         "slides:",
         "  llm:",
         '    provider: "openrouter"  # LLM provider for slide generation',
-        '    model: "nonobananapro"  # Model for slide images',
+        '    model: "google/gemini-3-pro-image-preview"  # Model for slide images',
         '  style: "presentation"  # Slide style: presentation, illustration, minimal',
         "",
         "# Video rendering settings",

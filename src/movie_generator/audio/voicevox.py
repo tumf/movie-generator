@@ -174,15 +174,21 @@ class VoicevoxSynthesizer:
         for i, phrase in enumerate(phrases):
             output_path = output_dir / f"phrase_{i:04d}.wav"
 
-            # Skip if audio file already exists
-            if output_path.exists():
-                # Read existing metadata
-                with wave.open(str(output_path), "rb") as wf:
-                    frames = wf.getnframes()
-                    rate = wf.getframerate()
-                    duration = frames / float(rate)
-                metadata = AudioMetadata(duration=duration, sample_rate=rate)
-                phrase.duration = duration
+            # Skip if audio file already exists and is not empty
+            if output_path.exists() and output_path.stat().st_size > 0:
+                try:
+                    # Read existing metadata
+                    with wave.open(str(output_path), "rb") as wf:
+                        frames = wf.getnframes()
+                        rate = wf.getframerate()
+                        duration = frames / float(rate)
+                    metadata = AudioMetadata(duration=duration, sample_rate=rate)
+                    phrase.duration = duration
+                    print(f"  ↷ Skipping existing audio: {output_path.name}")
+                except Exception:
+                    # If file is corrupt, regenerate
+                    metadata = self.synthesize_phrase(phrase, output_path)
+                    phrase.duration = metadata.duration
             else:
                 metadata = self.synthesize_phrase(phrase, output_path)
                 # Update phrase duration

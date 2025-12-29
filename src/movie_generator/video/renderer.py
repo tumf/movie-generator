@@ -95,6 +95,11 @@ def render_video(
     import shutil
     from pathlib import Path
 
+    # Skip if video already exists and is not empty
+    if output_path.exists() and output_path.stat().st_size > 0:
+        print(f"↷ Skipping existing video: {output_path.name}")
+        return
+
     # Check if ffmpeg is available
     if not shutil.which("ffmpeg"):
         raise FileNotFoundError(

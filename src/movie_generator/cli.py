@@ -94,7 +94,20 @@ def generate(
             console.print(f"[yellow]⊙ Script already exists, loading: {script_path}[/yellow]")
             with open(script_path, encoding="utf-8") as f:
                 script_dict = yaml.safe_load(f)
-            from .script.generator import ScriptSection, VideoScript
+            from .script.generator import PronunciationEntry, ScriptSection, VideoScript
+
+            # Load pronunciations if available
+            pronunciations = None
+            if "pronunciations" in script_dict and script_dict["pronunciations"]:
+                pronunciations = [
+                    PronunciationEntry(
+                        word=entry["word"],
+                        reading=entry["reading"],
+                        word_type=entry.get("word_type", "COMMON_NOUN"),
+                        accent=entry.get("accent", 0),
+                    )
+                    for entry in script_dict["pronunciations"]
+                ]
 
             script = VideoScript(
                 title=script_dict["title"],
@@ -107,6 +120,7 @@ def generate(
                     )
                     for section in script_dict["sections"]
                 ],
+                pronunciations=pronunciations,
             )
         else:
             task = progress.add_task("Generating script...", total=None)
@@ -138,9 +152,22 @@ def generate(
                     for section in script.sections
                 ],
             }
+            # Add pronunciations if available
+            if script.pronunciations:
+                script_dict["pronunciations"] = [
+                    {
+                        "word": entry.word,
+                        "reading": entry.reading,
+                        "word_type": entry.word_type,
+                        "accent": entry.accent,
+                    }
+                    for entry in script.pronunciations
+                ]
             with open(script_path, "w", encoding="utf-8") as f:
                 yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
             console.print(f"✓ Script saved: {script_path}")
+            if script.pronunciations:
+                console.print(f"  Pronunciations: {len(script.pronunciations)} entries")
 
         # Step 3: Split into phrases
         task = progress.add_task("Splitting into phrases...", total=None)
@@ -154,6 +181,18 @@ def generate(
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
         synthesizer = create_synthesizer_from_config(cfg, allow_placeholder=allow_placeholder)
+
+        # Add pronunciations from script to dictionary
+        if script.pronunciations:
+            for entry in script.pronunciations:
+                synthesizer.dictionary.add_word(
+                    word=entry.word,
+                    reading=entry.reading,
+                    accent=entry.accent,
+                    word_type=entry.word_type,
+                    priority=10,
+                )
+            console.print(f"  Added {len(script.pronunciations)} pronunciations to dictionary")
 
         # Initialize VOICEVOX if not in placeholder mode
         if not allow_placeholder:
