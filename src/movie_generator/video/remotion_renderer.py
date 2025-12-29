@@ -60,6 +60,38 @@ def create_remotion_input(
     return remotion_phrases
 
 
+def _get_slide_file_path(slide_paths: list[Path], index: int) -> str:
+    """Get slide file path relative to Remotion public directory.
+
+    Handles both legacy flat structure and new language-based structure.
+
+    Args:
+        slide_paths: List of slide paths.
+        index: Index of the slide.
+
+    Returns:
+        Slide path relative to public directory (e.g., "slides/ja/slide_0000.png").
+    """
+    if not slide_paths or index >= len(slide_paths):
+        return ""
+
+    slide_path = slide_paths[index]
+
+    # If slide_path is absolute, try to make it relative to find the structure
+    # Expected structure: .../slides/[lang or provider]/slide_XXXX.png
+    parts = slide_path.parts
+
+    # Find 'slides' in the path
+    try:
+        slides_idx = parts.index("slides")
+        # Get everything from 'slides' onwards
+        relative_parts = parts[slides_idx:]
+        return str(Path(*relative_parts))
+    except (ValueError, IndexError):
+        # Fallback: just use the filename under slides/
+        return f"slides/{slide_path.name}"
+
+
 def ensure_pnpm_dependencies(remotion_root: Path) -> None:
     """Ensure pnpm dependencies are installed in the Remotion project.
 
@@ -114,7 +146,7 @@ def update_composition_json(
             {
                 "text": phrase.text,
                 "audioFile": f"audio/{audio_paths[i].name}" if i < len(audio_paths) else "",
-                "slideFile": f"slides/{slide_paths[phrase.section_index].name}"
+                "slideFile": _get_slide_file_path(slide_paths, phrase.section_index)
                 if slide_paths and phrase.section_index < len(slide_paths)
                 else None,
                 "duration": phrase.duration,

@@ -335,11 +335,12 @@ class Project:
         console.print(f"[green]✓ Remotion project created at {remotion_dir}[/green]")
         return remotion_dir
 
-    def update_composition_json(self, phrases: list[dict[str, Any]]) -> None:
+    def update_composition_json(self, phrases: list[dict[str, Any]], language: str = "ja") -> None:
         """Update composition.json with phrase data.
 
         Args:
             phrases: List of phrase dictionaries with text, duration, etc.
+            language: Language code for slides path (e.g., "ja", "en"). Defaults to "ja".
         """
         remotion_dir = self.project_dir / "remotion"
         if not remotion_dir.exists():
@@ -357,7 +358,7 @@ class Project:
                 {
                     "text": phrase.get("text", ""),
                     "audioFile": f"audio/{phrase.get('audio_file', '')}",
-                    "slideFile": f"slides/{phrase.get('slide_file', '')}"
+                    "slideFile": f"slides/{language}/{phrase.get('slide_file', '')}"
                     if phrase.get("slide_file")
                     else None,
                     "duration": phrase.get("duration", 0.0),
@@ -370,7 +371,9 @@ class Project:
         with composition_path.open("w", encoding="utf-8") as f:
             json.dump(composition_data, f, indent=2, ensure_ascii=False)
 
-        console.print(f"[green]✓ Updated composition.json with {len(phrases)} phrases[/green]")
+        console.print(
+            f"[green]✓ Updated composition.json with {len(phrases)} phrases (language: {language})[/green]"
+        )
 
 
 def list_projects(root_dir: Path | None = None) -> list[Project]:

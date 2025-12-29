@@ -154,6 +154,7 @@ async def generate_slides_for_sections(
     sections: list[tuple[str, str]],
     output_dir: Path,
     api_key: str,
+    language: str = "ja",
     # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
     model: str = "google/gemini-3-pro-image-preview",
@@ -165,23 +166,26 @@ async def generate_slides_for_sections(
         sections: List of (title, prompt) tuples.
         output_dir: Directory to save slide images.
         api_key: OpenRouter API key.
+        language: Language code for organizing output (ja, en, etc.).
         model: Image model identifier.
         max_concurrent: Maximum number of concurrent API requests.
 
     Returns:
         List of paths to generated slides.
     """
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Create language-specific subdirectory
+    lang_output_dir = output_dir / language
+    lang_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Prepare all tasks
     slide_paths = []
     tasks_to_run = []
     task_indices = []
 
-    print(f"\n📊 Preparing to generate {len(sections)} slides...")
+    print(f"\n📊 Preparing to generate {len(sections)} slides for language '{language}'...")
 
     for i, (title, prompt) in enumerate(sections):
-        output_path = output_dir / f"slide_{i:04d}.png"
+        output_path = lang_output_dir / f"slide_{i:04d}.png"
         slide_paths.append(output_path)
 
         # Check if already exists

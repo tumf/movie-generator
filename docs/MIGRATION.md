@@ -257,6 +257,78 @@ Ensure `phrases.json` has accurate `duration` fields:
 2. Read [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details
 3. Explore project management with `movie_generator.project` module
 
+## Multi-Language Support Migration
+
+### For Existing Projects
+
+If you have existing projects created before the multi-language support feature, you may need to update slide paths.
+
+#### Problem: Slide Path Mismatch
+
+Old projects may have slides in provider-specific subdirectories:
+```
+slides/google/gemini-3-pro-image-preview/slide_0000.png
+```
+
+But `composition.json` may reference flat paths:
+```json
+{
+  "slideFile": "slides/slide_0000.png"
+}
+```
+
+#### Solution: Update composition.json
+
+Fix slide paths to match actual location:
+
+```python
+import json
+from pathlib import Path
+
+# Load composition
+comp_path = Path("output/your-project/remotion/composition.json")
+with comp_path.open("r") as f:
+    comp = json.load(f)
+
+# Find actual slide location
+slides_dir = Path("output/your-project/slides")
+actual_slides = list(slides_dir.rglob("*.png"))
+if actual_slides:
+    # Get actual subdirectory structure
+    rel_path = actual_slides[0].relative_to(slides_dir.parent)
+    slide_dir = str(rel_path.parent)
+    
+    # Update all slide paths
+    for phrase in comp["phrases"]:
+        if phrase.get("slideFile"):
+            slide_name = phrase["slideFile"].split("/")[-1]
+            phrase["slideFile"] = f"{slide_dir}/{slide_name}"
+
+# Save updated composition
+with comp_path.open("w") as f:
+    json.dump(comp, f, indent=2, ensure_ascii=False)
+```
+
+### For New Multi-Language Projects
+
+New projects with multi-language support use language-based directories:
+
+```yaml
+# config.yaml
+content:
+  languages: ["ja", "en"]
+```
+
+This generates:
+- `output/script_ja.yaml` + `slides/ja/`
+- `output/script_en.yaml` + `slides/en/`
+
+When calling `update_composition_json()`, specify the language:
+
+```python
+project.update_composition_json(phrases, language="ja")
+```
+
 ## Rollback
 
 If you need to revert to the old structure:

@@ -17,6 +17,7 @@ def test_default_config() -> None:
     assert config.project.name == "My YouTube Channel"
     assert config.style.resolution == (1920, 1080)
     assert config.audio.speaker_id == 3
+    assert config.content.languages == ["ja"]
 
 
 def test_load_config_from_file(tmp_path: Path) -> None:
@@ -64,3 +65,21 @@ def test_merge_configs() -> None:
     assert merged.project.name == "Override Project"
     # Note: merge replaces entire project dict, so output_dir comes from override's default
     assert merged.style.fps == 60
+
+
+def test_multilang_config(tmp_path: Path) -> None:
+    """Test loading multilingual configuration."""
+    config_file = tmp_path / "multilang_config.yaml"
+    config_file.write_text(
+        """
+project:
+  name: "Multilang Project"
+
+content:
+  languages: ["ja", "en"]
+"""
+    )
+
+    config = load_config(config_file)
+    assert config.project.name == "Multilang Project"
+    assert config.content.languages == ["ja", "en"]

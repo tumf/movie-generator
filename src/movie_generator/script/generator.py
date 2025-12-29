@@ -37,7 +37,7 @@ class VideoScript:
     pronunciations: list[PronunciationEntry] | None = None
 
 
-SCRIPT_GENERATION_PROMPT = """
+SCRIPT_GENERATION_PROMPT_JA = """
 あなたはYouTube動画の台本作成の専門家です。
 以下のコンテンツから、視聴者にわかりやすく説明するための動画台本を作成してください。
 
@@ -47,6 +47,8 @@ SCRIPT_GENERATION_PROMPT = """
 - 各セクションは3-6文程度で構成してください
 - 専門用語は避けるか、わかりやすく説明してください
 - 視覚的な説明を含めてください
+- **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
+  - 例: "A slide with text 'データベース設計' in the center, modern design"
 
 【元コンテンツ】
 タイトル: {title}
@@ -63,7 +65,7 @@ JSON形式で以下を出力してください：
     {{
       "title": "セクションタイトル",
       "narration": "ナレーション文",
-      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語）"
+      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）"
     }}
   ],
   "pronunciations": [
@@ -85,6 +87,48 @@ JSON形式で以下を出力してください：
 - 例: "API" → "エーピーアイ", "GitHub" → "ギットハブ", "Unity" → "ユニティ", "Kaiju Engine" → "カイジュウエンジン"
 """
 
+SCRIPT_GENERATION_PROMPT_EN = """
+You are an expert YouTube video script writer.
+Create a video script from the following content that explains clearly to viewers.
+
+[Requirements]
+- Write narration in natural spoken language with the character of "{character}"
+- Style: {style}
+- Each section should be 3-6 sentences
+- Avoid or clearly explain technical terms
+- Include visual descriptions
+- **IMPORTANT**: Write slide_prompt in English, but specify text to display on slides in English
+  - Example: "A slide with text 'Database Design' in the center, modern design"
+
+[Source Content]
+Title: {title}
+Description: {description}
+
+{content}
+
+[Output Format]
+Output in JSON format:
+{{
+  "title": "Video Title",
+  "description": "Video Description",
+  "sections": [
+    {{
+      "title": "Section Title",
+      "narration": "Narration text",
+      "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)"
+    }}
+  ],
+  "pronunciations": []
+}}
+
+Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
+"""
+
+SCRIPT_GENERATION_PROMPTS = {
+    "ja": SCRIPT_GENERATION_PROMPT_JA,
+    "en": SCRIPT_GENERATION_PROMPT_EN,
+}
+
 
 async def generate_script(
     content: str,
@@ -92,6 +136,7 @@ async def generate_script(
     description: str | None = None,
     character: str = "ずんだもん",
     style: str = "casual",
+    language: str = "ja",
     api_key: str | None = None,
     model: str = "openai/gpt-5.2",
     base_url: str = "https://openrouter.ai/api/v1",
@@ -104,6 +149,7 @@ async def generate_script(
         description: Content description.
         character: Character name for narration.
         style: Narration style (casual, formal, educational).
+        language: Language code for script generation (ja, en).
         api_key: OpenRouter API key.
         model: Model identifier.
         base_url: API base URL.
@@ -115,7 +161,8 @@ async def generate_script(
         httpx.HTTPError: If API request fails.
         ValueError: If response parsing fails.
     """
-    prompt = SCRIPT_GENERATION_PROMPT.format(
+    prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
+    prompt = prompt_template.format(
         character=character,
         style=style,
         title=title or "Unknown",

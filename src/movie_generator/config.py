@@ -47,6 +47,9 @@ class ContentConfig(BaseModel):
     """Content generation configuration."""
 
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    languages: list[str] = Field(
+        default=["ja"], description="Languages for content generation (e.g., ['ja', 'en'])"
+    )
 
 
 class SlidesLLMConfig(BaseModel):
@@ -199,6 +202,7 @@ def generate_default_config_yaml() -> str:
         "  llm:",
         '    provider: "openrouter"  # LLM provider for script generation',
         '    model: "openai/gpt-5.2"  # Model to use for content generation',
+        '  languages: ["ja"]  # Languages for content generation (e.g., ["ja", "en"])',
         "",
         "# Slide generation settings",
         "slides:",
