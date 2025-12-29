@@ -1,6 +1,7 @@
 """Video rendering using Remotion CLI.
 
 Generates video using Remotion's render functionality with subtitle animations.
+Per-project Remotion setup with pnpm workspace integration.
 """
 
 import json
@@ -9,7 +10,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rich.console import Console
+
 from ..script.phrases import Phrase
+
+console = Console()
 
 
 @dataclass
@@ -55,14 +60,85 @@ def create_remotion_input(
     return remotion_phrases
 
 
+def ensure_pnpm_dependencies(remotion_root: Path) -> None:
+    """Ensure pnpm dependencies are installed in the Remotion project.
+
+    Args:
+        remotion_root: Path to Remotion project root directory.
+
+    Raises:
+        RuntimeError: If pnpm install fails.
+    """
+    node_modules = remotion_root / "node_modules"
+    if node_modules.exists():
+        return
+
+    console.print("[cyan]Installing Remotion dependencies with pnpm...[/cyan]")
+    try:
+        subprocess.run(
+            ["pnpm", "install"],
+            cwd=remotion_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        console.print("[green]✓ Dependencies installed[/green]")
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Failed to install dependencies:[/red]")
+        console.print(f"[red]{e.stderr}[/red]")
+        raise RuntimeError("pnpm install failed") from e
+
+
+def update_composition_json(
+    remotion_root: Path,
+    phrases: list[Phrase],
+    audio_paths: list[Path],
+    slide_paths: list[Path] | None,
+    project_name: str,
+) -> None:
+    """Update composition.json with current phrase data.
+
+    Args:
+        remotion_root: Path to Remotion project root.
+        phrases: List of phrases with timing.
+        audio_paths: List of audio file paths (relative to project).
+        slide_paths: Optional list of slide image paths (relative to project).
+        project_name: Name of the project.
+    """
+    composition_data = {
+        "title": project_name,
+        "fps": 30,
+        "width": 1920,
+        "height": 1080,
+        "phrases": [
+            {
+                "text": phrase.text,
+                "audioFile": f"audio/{audio_paths[i].name}" if i < len(audio_paths) else "",
+                "slideFile": f"slides/{slide_paths[phrase.section_index].name}"
+                if slide_paths and phrase.section_index < len(slide_paths)
+                else None,
+                "duration": phrase.duration,
+            }
+            for i, phrase in enumerate(phrases)
+        ],
+    }
+
+    composition_path = remotion_root / "composition.json"
+    with composition_path.open("w", encoding="utf-8") as f:
+        json.dump(composition_data, f, indent=2, ensure_ascii=False)
+
+    console.print(f"[green]✓ Updated composition.json with {len(phrases)} phrases[/green]")
+
+
 def render_video_with_remotion(
     phrases: list[Phrase],
     audio_paths: list[Path],
     slide_paths: list[Path] | None,
     output_path: Path,
     remotion_root: Path,
+    project_name: str = "video",
 ) -> None:
-    """Render video using Remotion CLI.
+    """Render video using Remotion CLI with per-project setup.
 
     Args:
         phrases: List of phrases with timing.
@@ -70,6 +146,7 @@ def render_video_with_remotion(
         slide_paths: Optional list of slide image paths.
         output_path: Path to save rendered video.
         remotion_root: Path to Remotion project root directory.
+        project_name: Name of the project for metadata.
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
@@ -77,26 +154,14 @@ def render_video_with_remotion(
     """
     # Skip if video already exists and is not empty
     if output_path.exists() and output_path.stat().st_size > 0:
-        print(f"↷ Skipping existing video: {output_path.name}")
+        console.print(f"[yellow]↷ Skipping existing video: {output_path.name}[/yellow]")
         return
 
-    # Check if Remotion is installed
-    try:
-        subprocess.run(
-            ["npx", "remotion", "--version"],
-            cwd=remotion_root,
-            check=True,
-            capture_output=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise FileNotFoundError("Remotion not found. Please install: cd remotion && npm install")
+    # Ensure pnpm dependencies are installed
+    ensure_pnpm_dependencies(remotion_root)
 
-    # Create input data JSON
-    remotion_data = create_remotion_input(phrases, audio_paths, slide_paths)
-    input_props_path = remotion_root / "input_props.json"
-
-    with input_props_path.open("w", encoding="utf-8") as f:
-        json.dump({"phrases": remotion_data}, f, ensure_ascii=False, indent=2)
+    # Update composition.json with current data
+    update_composition_json(remotion_root, phrases, audio_paths, slide_paths, project_name)
 
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,7 +172,9 @@ def render_video_with_remotion(
 
     # Render video using Remotion CLI
     try:
-        print(f"🎬 Rendering video with Remotion ({total_duration:.1f}s, {total_frames} frames)...")
+        console.print(
+            f"[cyan]🎬 Rendering video with Remotion ({total_duration:.1f}s, {total_frames} frames)...[/cyan]"
+        )
 
         result = subprocess.run(
             [
@@ -116,8 +183,7 @@ def render_video_with_remotion(
                 "render",
                 "VideoGenerator",
                 str(output_path.absolute()),
-                "--props",
-                str(input_props_path.absolute()),
+                "--overwrite",
             ],
             cwd=remotion_root,
             check=True,
@@ -125,13 +191,9 @@ def render_video_with_remotion(
             text=True,
         )
 
-        print(f"✓ Video rendered: {output_path}")
-
-        # Clean up input props file
-        if input_props_path.exists():
-            input_props_path.unlink()
+        console.print(f"[green]✓ Video rendered: {output_path}[/green]")
 
     except subprocess.CalledProcessError as e:
         error_msg = f"Remotion rendering failed:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
-        print(error_msg)
+        console.print(f"[red]{error_msg}[/red]")
         raise RuntimeError(error_msg) from e

@@ -13,6 +13,7 @@ class Phrase:
     text: str
     duration: float = 0.0  # In seconds, filled by audio generation
     start_time: float = 0.0  # Cumulative start time
+    section_index: int = 0  # Index of the section this phrase belongs to
 
 
 def split_into_phrases(text: str, max_chars: int = 50) -> list[Phrase]:

@@ -4,13 +4,91 @@ Handles project creation, asset management, and Remotion integration.
 """
 
 import json
+import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
 import yaml
+from rich.console import Console
 
 from .config import Config
+from . import video
+
+console = Console()
+
+
+def _ensure_pnpm_available() -> None:
+    """Check if pnpm is available on the system.
+
+    Raises:
+        RuntimeError: If pnpm is not available with installation instructions.
+    """
+    try:
+        subprocess.run(
+            ["pnpm", "--version"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise RuntimeError(
+            "pnpm is not installed or not available in PATH.\n\n"
+            "Please install pnpm:\n"
+            "  npm install -g pnpm\n\n"
+            "Or visit: https://pnpm.io/installation"
+        )
+
+
+def _ensure_nodejs_available() -> None:
+    """Check if Node.js is available on the system.
+
+    Raises:
+        RuntimeError: If Node.js is not available with installation instructions.
+    """
+    try:
+        subprocess.run(
+            ["node", "--version"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise RuntimeError(
+            "Node.js is not installed or not available in PATH.\n\n"
+            "Please install Node.js 18+ from: https://nodejs.org/"
+        )
+
+
+def _create_symlink_safe(target: Path, link: Path) -> None:
+    """Create a symbolic link, removing existing link if present.
+
+    Args:
+        target: Target path (what the symlink points to).
+        link: Link path (the symlink itself).
+    """
+    # Remove existing link if present
+    if link.exists() or link.is_symlink():
+        if link.is_symlink():
+            link.unlink()
+        elif link.is_dir():
+            shutil.rmtree(link)
+        else:
+            link.unlink()
+
+    # Create parent directory if needed
+    link.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create symlink (relative path for portability)
+    try:
+        link.symlink_to(os.path.relpath(target, link.parent), target_is_directory=True)
+    except OSError as e:
+        # Fallback to absolute path on Windows if relative fails
+        console.print(
+            f"[yellow]Warning: Could not create relative symlink, using absolute path[/yellow]"
+        )
+        link.symlink_to(target.absolute(), target_is_directory=True)
 
 
 class Project:
@@ -149,6 +227,150 @@ class Project:
         # Copy phrases metadata
         if self.phrases_file.exists():
             shutil.copy2(self.phrases_file, remotion_public / "metadata.json")
+
+    def setup_remotion_project(self) -> Path:
+        """Setup per-project Remotion instance.
+
+        Creates a dedicated Remotion project for this video project with:
+        - pnpm create @remotion/video initialization
+        - Dynamic TypeScript component generation
+        - composition.json for phrase data
+        - Symbolic links to audio/slides assets
+
+        Returns:
+            Path to the created Remotion project directory.
+
+        Raises:
+            RuntimeError: If pnpm or Node.js is not available.
+            subprocess.CalledProcessError: If Remotion initialization fails.
+        """
+        # Import here to avoid circular dependency
+        from . import video
+
+        remotion_dir = self.project_dir / "remotion"
+
+        # Check if already initialized
+        if remotion_dir.exists() and (remotion_dir / "package.json").exists():
+            console.print(f"[yellow]Remotion project already exists at {remotion_dir}[/yellow]")
+            return remotion_dir
+
+        # Verify pnpm is available
+        _ensure_pnpm_available()
+
+        console.print(f"[cyan]Creating Remotion project for {self.name}...[/cyan]")
+
+        # Create remotion directory
+        remotion_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create package.json
+        console.print("[cyan]Creating package.json...[/cyan]")
+        package_json_path = remotion_dir / "package.json"
+        package_data = video.templates.get_package_json(self.name)
+        with package_json_path.open("w", encoding="utf-8") as f:
+            json.dump(package_data, f, indent=2)
+
+        # Install Remotion packages
+        console.print("[cyan]Installing Remotion packages...[/cyan]")
+        try:
+            subprocess.run(
+                ["pnpm", "install"],
+                cwd=remotion_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]Failed to install Remotion packages:[/red]")
+            console.print(f"[red]{e.stderr}[/red]")
+            raise
+
+        # Create src directory
+        src_dir = remotion_dir / "src"
+        src_dir.mkdir(exist_ok=True)
+
+        # Generate TypeScript components
+        console.print("[cyan]Generating TypeScript components...[/cyan]")
+
+        # VideoGenerator.tsx
+        (src_dir / "VideoGenerator.tsx").write_text(
+            video.templates.get_video_generator_tsx(), encoding="utf-8"
+        )
+
+        # Root.tsx
+        (src_dir / "Root.tsx").write_text(video.templates.get_root_tsx(), encoding="utf-8")
+
+        # index.ts
+        (src_dir / "index.ts").write_text(video.templates.get_index_ts(), encoding="utf-8")
+
+        # remotion.config.ts
+        (remotion_dir / "remotion.config.ts").write_text(
+            video.templates.get_remotion_config_ts(), encoding="utf-8"
+        )
+
+        # tsconfig.json
+        tsconfig_path = remotion_dir / "tsconfig.json"
+        with tsconfig_path.open("w", encoding="utf-8") as f:
+            json.dump(video.templates.get_tsconfig_json(), f, indent=2)
+
+        # Create public directory and symlinks to assets
+        public_dir = remotion_dir / "public"
+        public_dir.mkdir(exist_ok=True)
+
+        # Create symbolic links to audio and slides
+        _create_symlink_safe(self.audio_dir, public_dir / "audio")
+        _create_symlink_safe(self.slides_dir, public_dir / "slides")
+
+        # Create placeholder composition.json
+        composition_data = {
+            "title": self.name,
+            "fps": 30,
+            "width": 1920,
+            "height": 1080,
+            "phrases": [],
+        }
+        composition_path = remotion_dir / "composition.json"
+        with composition_path.open("w", encoding="utf-8") as f:
+            json.dump(composition_data, f, indent=2)
+
+        console.print(f"[green]✓ Remotion project created at {remotion_dir}[/green]")
+        return remotion_dir
+
+    def update_composition_json(self, phrases: list[dict[str, Any]]) -> None:
+        """Update composition.json with phrase data.
+
+        Args:
+            phrases: List of phrase dictionaries with text, duration, etc.
+        """
+        remotion_dir = self.project_dir / "remotion"
+        if not remotion_dir.exists():
+            raise FileNotFoundError(
+                f"Remotion project not initialized. Run setup_remotion_project() first."
+            )
+
+        # Build composition data
+        composition_data = {
+            "title": self.name,
+            "fps": 30,
+            "width": 1920,
+            "height": 1080,
+            "phrases": [
+                {
+                    "text": phrase.get("text", ""),
+                    "audioFile": f"audio/{phrase.get('audio_file', '')}",
+                    "slideFile": f"slides/{phrase.get('slide_file', '')}"
+                    if phrase.get("slide_file")
+                    else None,
+                    "duration": phrase.get("duration", 0.0),
+                }
+                for phrase in phrases
+            ],
+        }
+
+        composition_path = remotion_dir / "composition.json"
+        with composition_path.open("w", encoding="utf-8") as f:
+            json.dump(composition_data, f, indent=2, ensure_ascii=False)
+
+        console.print(f"[green]✓ Updated composition.json with {len(phrases)} phrases[/green]")
 
 
 def list_projects(root_dir: Path | None = None) -> list[Project]:

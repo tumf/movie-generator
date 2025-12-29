@@ -15,10 +15,12 @@ from .audio.voicevox import create_synthesizer_from_config
 from .config import Config, load_config, print_default_config, write_config_to_file
 from .content.fetcher import fetch_url_sync
 from .content.parser import parse_html
+from .project import Project, create_project
 from .script.generator import generate_script
 from .script.phrases import calculate_phrase_timings, split_into_phrases
 from .slides.generator import generate_slides_for_sections
-from .video.renderer import create_composition, render_video, save_composition
+from .video.remotion_renderer import render_video_with_remotion
+from .video.renderer import create_composition, save_composition
 
 console = Console()
 
@@ -173,8 +175,11 @@ def generate(
         # Step 3: Split into phrases
         task = progress.add_task("Splitting into phrases...", total=None)
         all_phrases = []
-        for section in script.sections:
+        for section_idx, section in enumerate(script.sections):
             phrases = split_into_phrases(section.narration)
+            # Set section_index for each phrase
+            for phrase in phrases:
+                phrase.section_index = section_idx
             all_phrases.extend(phrases)
         progress.update(task, completed=True)
         console.print(f"✓ Split into {len(all_phrases)} phrases")
@@ -301,13 +306,38 @@ def generate(
             progress.update(task, completed=True)
             console.print(f"✓ Created composition: {composition_path}")
 
-        # Step 7: Render video
+        # Step 7: Setup Remotion project and render video
         video_path = output_dir / "output.mp4"
         if video_path.exists():
             console.print(f"[yellow]⊙ Video already exists, skipping: {video_path}[/yellow]")
         else:
-            task = progress.add_task("Rendering video...", total=None)
-            render_video(composition_path, video_path)
+            # Create/load project
+            project_name = output_dir.name
+            project = Project(project_name, output_dir.parent)
+
+            # Setup Remotion project if needed
+            remotion_dir = output_dir / "remotion"
+            if not remotion_dir.exists():
+                task = progress.add_task("Setting up Remotion project...", total=None)
+                # Temporarily override project_dir for setup_remotion_project
+                original_project_dir = project.project_dir
+                project.project_dir = output_dir
+                project.audio_dir = output_dir / "audio"
+                project.slides_dir = output_dir / "slides"
+                project.setup_remotion_project()
+                project.project_dir = original_project_dir
+                progress.update(task, completed=True)
+
+            # Render video with Remotion
+            task = progress.add_task("Rendering video with Remotion...", total=None)
+            render_video_with_remotion(
+                phrases=all_phrases,
+                audio_paths=audio_paths,
+                slide_paths=slide_paths,
+                output_path=video_path,
+                remotion_root=remotion_dir,
+                project_name=project_name,
+            )
             progress.update(task, completed=True)
             console.print(f"✓ Video ready: {video_path}")
 

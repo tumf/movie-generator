@@ -66,6 +66,11 @@ htmlcov/
 # Node.js
 node_modules/
 
+# Per-project Remotion
+projects/*/remotion/node_modules/
+projects/*/remotion/.remotion/
+projects/*/remotion/out/
+
 # Logs
 *.log
 
