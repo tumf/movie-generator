@@ -102,7 +102,8 @@ def generate(
                 pronunciations = [
                     PronunciationEntry(
                         word=entry["word"],
-                        reading=entry["reading"],
+                        # Remove spaces from reading (VOICEVOX requires katakana-only)
+                        reading=entry["reading"].replace(" ", "").replace("　", ""),
                         word_type=entry.get("word_type", "COMMON_NOUN"),
                         accent=entry.get("accent", 0),
                     )

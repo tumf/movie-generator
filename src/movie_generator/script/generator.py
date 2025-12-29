@@ -79,9 +79,10 @@ JSON形式で以下を出力してください：
 【読み方辞書（pronunciations）について】
 - ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
 - 各単語について、正しいカタカナ読みを指定してください
+- **重要**: カタカナ読みにはスペースを含めないでください（例: "カイジュウエンジン" ○、"カイジュウ エンジン" ×）
 - word_typeは以下から選択: PROPER_NOUN（固有名詞）, COMMON_NOUN（普通名詞）, VERB（動詞）, ADJECTIVE（形容詞）
 - accentは0（自動）または1-N（アクセント位置）を指定
-- 例: "API" → "エーピーアイ", "GitHub" → "ギットハブ", "Unity" → "ユニティ"
+- 例: "API" → "エーピーアイ", "GitHub" → "ギットハブ", "Unity" → "ユニティ", "Kaiju Engine" → "カイジュウエンジン"
 """
 
 
@@ -159,7 +160,8 @@ async def generate_script(
         pronunciations = [
             PronunciationEntry(
                 word=entry["word"],
-                reading=entry["reading"],
+                # Remove spaces from reading (VOICEVOX requires katakana-only)
+                reading=entry["reading"].replace(" ", "").replace("　", ""),
                 word_type=entry.get("word_type", "COMMON_NOUN"),
                 accent=entry.get("accent", 0),
             )

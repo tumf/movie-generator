@@ -33,6 +33,8 @@ class PronunciationDictionary:
         Args:
             entry: Dictionary entry to add.
         """
+        # Ensure reading has no spaces (final validation)
+        entry.reading = entry.reading.replace(" ", "").replace("　", "")
         self.entries[entry.surface] = entry
 
     def add_word(
