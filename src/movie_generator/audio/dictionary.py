@@ -47,14 +47,16 @@ class PronunciationDictionary:
 
         Args:
             word: The word/phrase to add.
-            reading: Katakana reading.
+            reading: Katakana reading (spaces will be removed automatically).
             accent: Accent position (0=auto).
             word_type: Word type (PROPER_NOUN, COMMON_NOUN, etc).
             priority: Priority (1-10, higher = more priority).
         """
+        # Remove spaces from reading (VOICEVOX requires katakana-only)
+        clean_reading = reading.replace(" ", "").replace("　", "")
         entry = DictionaryEntry(
             surface=word,
-            reading=reading,
+            reading=clean_reading,
             accent=accent,
             word_type=word_type,
             priority=priority,
@@ -70,12 +72,16 @@ class PronunciationDictionary:
         for surface, value in config_dict.items():
             if isinstance(value, str):
                 # Simple format: just reading
-                entry = DictionaryEntry(surface=surface, reading=value)
+                # Remove spaces from reading (VOICEVOX requires katakana-only)
+                reading = value.replace(" ", "").replace("　", "")
+                entry = DictionaryEntry(surface=surface, reading=reading)
             elif isinstance(value, dict):
                 # Full format with all fields
+                # Remove spaces from reading (VOICEVOX requires katakana-only)
+                reading = value["reading"].replace(" ", "").replace("　", "")
                 entry = DictionaryEntry(
                     surface=surface,
-                    reading=value["reading"],
+                    reading=reading,
                     accent=value.get("accent", 0),
                     word_type=value.get("word_type", "PROPER_NOUN"),
                     priority=value.get("priority", 10),
