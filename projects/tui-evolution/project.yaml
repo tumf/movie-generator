@@ -1,0 +1,60 @@
+# TUI Evolution 2023-2024 Video Project
+
+project:
+  title: "TUI Evolution 2023-2024"
+  description: "Evolution of TUI applications explained by Zundamon"
+  output_dir: "./output"
+
+style:
+  resolution: [1920, 1080]
+  fps: 30
+  font_family: "Noto Sans JP"
+  primary_color: "#FFFFFF"
+  background_color: "#1a1a1a"
+
+audio:
+  engine: "voicevox"
+  speaker_id: 3  # Zundamon
+  speed_scale: 1.0
+
+narration:
+  character: "ずんだもん"
+  style: "casual"
+
+video:
+  renderer: "remotion"
+  template: "default"
+  output_format: "mp4"
+
+pronunciation:
+  custom:
+    "Bubble Tea":
+      reading: "バブルティー"
+      accent: 5
+      word_type: "PROPER_NOUN"
+      priority: 10
+    "Ratatui":
+      reading: "ラタトゥイ"
+      accent: 4
+      word_type: "PROPER_NOUN"
+      priority: 10
+    "lazygit":
+      reading: "レイジーギット"
+      accent: 5
+      word_type: "PROPER_NOUN"
+      priority: 10
+    "yazi":
+      reading: "ヤジ"
+      accent: 2
+      word_type: "PROPER_NOUN"
+      priority: 10
+    "GitHub":
+      reading: "ギットハブ"
+      accent: 4
+      word_type: "PROPER_NOUN"
+      priority: 10
+    "TUI":
+      reading: "ティーユーアイ"
+      accent: 1
+      word_type: "COMMON_NOUN"
+      priority: 10

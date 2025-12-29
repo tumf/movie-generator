@@ -14,7 +14,7 @@ async def generate_slide(
     prompt: str,
     output_path: Path,
     api_key: str,
-    model: str = "google/gemini-3-pro-image-preview",
+    model: str = "google/gemini-2.5-flash-image-preview",
     base_url: str = "https://openrouter.ai/api/v1",
     width: int = 1920,
     height: int = 1080,
@@ -48,16 +48,10 @@ async def generate_slide(
         return output_path
 
     # Create prompt for slide generation
-    # IMPORTANT: Must explicitly request direct image output
-    full_prompt = f"""Draw this image directly: A professional YouTube presentation slide.
+    # Simple, direct prompt to maximize image generation success
+    full_prompt = f"""Generate an image: {prompt}
 
-Content: {prompt}
-
-Requirements:
-- Output the image directly (do not describe how to make it)
-- Clean, modern flat design
-- High contrast, readable text
-- 16:9 aspect ratio"""
+Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
 
     last_error = None
     for attempt in range(max_retries):
@@ -159,7 +153,7 @@ async def generate_slides_for_sections(
     sections: list[tuple[str, str]],
     output_dir: Path,
     api_key: str,
-    model: str = "google/gemini-3-pro-image-preview",
+    model: str = "google/gemini-2.5-flash-image-preview",
     max_concurrent: int = 3,
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.
