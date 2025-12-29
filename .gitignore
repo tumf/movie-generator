@@ -49,3 +49,9 @@ output/
 .coverage
 htmlcov/
 .tox/
+
+# Node.js
+remotion/node_modules/
+
+# Logs
+*.log
