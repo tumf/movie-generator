@@ -45,11 +45,27 @@ def create_composition(
     Returns:
         Composition data object.
     """
+    # Build slide map: section_index -> slide path
+    slide_map: dict[int, str] = {}
+    for slide_path in slide_paths:
+        # Extract section index from filename (e.g., "slide_0003.png" -> 3)
+        filename = slide_path.name
+        if filename.startswith("slide_") and filename.endswith(".png"):
+            try:
+                section_index = int(filename[6:10])  # Extract "0003" part
+                # Convert to relative path from slides directory
+                slide_map[section_index] = f"slides/ja/{filename}"
+            except ValueError:
+                pass
+
+    # Create phrase data with slide files
     phrase_dicts = [
         {
             "text": p.text,
             "duration": p.duration,
             "start_time": p.start_time,
+            "audioFile": f"audio/phrase_{p.original_index:04d}.wav",
+            "slideFile": slide_map.get(p.section_index),
         }
         for p in phrases
     ]

@@ -251,3 +251,36 @@ async def generate_slides_for_sections(
         print(f"\n💡 Tip: Delete failed (0-byte) slides and run again to retry only those.")
 
     return slide_paths
+
+
+async def download_image_as_slide(url: str, output_path: Path) -> Path:
+    """Download an image from URL and save as slide.
+
+    Args:
+        url: URL of the image to download.
+        output_path: Path to save the downloaded image.
+
+    Returns:
+        Path to the saved image file.
+
+    Raises:
+        httpx.HTTPError: If download fails.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Skip if already exists
+    if output_path.exists() and output_path.stat().st_size > 0:
+        print(f"  ↷ Skipping existing slide: {output_path.name}")
+        return output_path
+
+    print(f"  ↓ Downloading image: {url}")
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(url, follow_redirects=True)
+        response.raise_for_status()
+
+        # Save the image
+        output_path.write_bytes(response.content)
+        print(f"  ✓ Downloaded: {output_path.name} ({len(response.content)} bytes)")
+
+    return output_path

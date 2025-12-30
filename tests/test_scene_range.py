@@ -44,7 +44,7 @@ class TestSceneRangeParsing:
 
     def test_invalid_range_non_numeric(self) -> None:
         """Test error handling for non-numeric range."""
-        with pytest.raises(ValueError, match="Invalid scene numbers in range"):
+        with pytest.raises(ValueError, match="Invalid end scene number"):
             parse_scene_range("1-abc")
 
     def test_invalid_range_zero(self) -> None:
@@ -52,11 +52,12 @@ class TestSceneRangeParsing:
         with pytest.raises(ValueError, match="Scene number must be >= 1"):
             parse_scene_range("0")
 
-    def test_invalid_range_negative(self) -> None:
-        """Test error handling for negative scene number."""
-        # "-1" is interpreted as a range with empty start, so error message differs
-        with pytest.raises(ValueError, match="Invalid scene numbers in range"):
-            parse_scene_range("-1")
+    def test_from_beginning_to_scene_1(self) -> None:
+        """Test '-1' format (from beginning to scene 1)."""
+        # "-1" is a valid format meaning "from beginning to scene 1"
+        start, end = parse_scene_range("-1")
+        assert start is None  # From beginning
+        assert end == 0  # Scene 1 (0-based)
 
     def test_invalid_range_start_greater_than_end(self) -> None:
         """Test error handling for reversed range."""

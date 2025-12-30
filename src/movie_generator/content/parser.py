@@ -21,12 +21,36 @@ class ContentMetadata:
 
 
 @dataclass
+class ImageInfo:
+    """Information about an image found in the content."""
+
+    src: str
+    alt: str | None = None
+    title: str | None = None
+    width: int | None = None
+    height: int | None = None
+
+
+@dataclass
 class ParsedContent:
     """Parsed content with metadata."""
 
     metadata: ContentMetadata
     content: str
     markdown: str
+    images: list[ImageInfo]  # List of images found in content
+
+    def __init__(
+        self,
+        metadata: ContentMetadata,
+        content: str,
+        markdown: str,
+        images: list[ImageInfo] | None = None,
+    ):
+        self.metadata = metadata
+        self.content = content
+        self.markdown = markdown
+        self.images = images or []
 
 
 def parse_html(html: str) -> ParsedContent:
@@ -64,6 +88,43 @@ def parse_html(html: str) -> ParsedContent:
         soup.find("article") or soup.find("main") or soup.find("div", class_="content") or soup.body
     )
 
+    # Extract images before removing elements
+    images: list[ImageInfo] = []
+    if content_element:
+        for img_tag in content_element.find_all("img"):
+            src = img_tag.get("src")
+            if src:  # Only include images with src attribute
+                # Parse width/height if present
+                width_str = img_tag.get("width")
+                height_str = img_tag.get("height")
+
+                width = None
+                if width_str:
+                    try:
+                        width = int(str(width_str))
+                    except (ValueError, TypeError):
+                        width = None
+
+                height = None
+                if height_str:
+                    try:
+                        height = int(str(height_str))
+                    except (ValueError, TypeError):
+                        height = None
+
+                alt_val = img_tag.get("alt")
+                title_val = img_tag.get("title")
+
+                images.append(
+                    ImageInfo(
+                        src=str(src),
+                        alt=str(alt_val) if alt_val else None,
+                        title=str(title_val) if title_val else None,
+                        width=width,
+                        height=height,
+                    )
+                )
+
     if content_element:
         # Remove script and style elements
         for script in content_element(["script", "style"]):
@@ -76,4 +137,6 @@ def parse_html(html: str) -> ParsedContent:
         content_text = ""
         markdown_content = ""
 
-    return ParsedContent(metadata=metadata, content=content_text, markdown=markdown_content)
+    return ParsedContent(
+        metadata=metadata, content=content_text, markdown=markdown_content, images=images
+    )

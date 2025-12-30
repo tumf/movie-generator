@@ -25,14 +25,16 @@ from .video.renderer import create_composition, save_composition
 console = Console()
 
 
-def parse_scene_range(scenes_arg: str) -> tuple[int, int]:
+def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
     """Parse scene range argument.
 
     Args:
-        scenes_arg: Scene range string (e.g., "1-3" or "2").
+        scenes_arg: Scene range string (e.g., "1-3", "6-" for 6 onwards, "-3" for up to 3, or "2").
 
     Returns:
         Tuple of (start_index, end_index) (0-based, inclusive).
+        start_index can be None to indicate "from the beginning".
+        end_index can be None to indicate "to the end".
 
     Raises:
         ValueError: If the format is invalid or range is invalid.
@@ -41,15 +43,47 @@ def parse_scene_range(scenes_arg: str) -> tuple[int, int]:
         parts = scenes_arg.split("-")
         if len(parts) != 2:
             raise ValueError(
-                f"Invalid scene range format: '{scenes_arg}'. Expected format: '1-3' or '2'"
+                f"Invalid scene range format: '{scenes_arg}'. Expected format: '1-3', '6-', '-3', or '2'"
             )
+
+        # Handle "-3" format (from beginning to scene 3)
+        if parts[0] == "":
+            if parts[1] == "":
+                raise ValueError(
+                    f"Invalid scene range format: '{scenes_arg}'. Cannot use '-' alone."
+                )
+
+            try:
+                end = int(parts[1])
+            except ValueError:
+                raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
+
+            if end < 1:
+                raise ValueError(f"Scene number must be >= 1, got: {end}")
+
+            # "-3" format - from beginning to scene 3
+            return (None, end - 1)
+
+        # Parse start
         try:
             start = int(parts[0])
+        except ValueError:
+            raise ValueError(f"Invalid start scene number: '{parts[0]}'. Must be an integer.")
+
+        if start < 1:
+            raise ValueError(f"Scene number must be >= 1, got: {start}")
+
+        # Parse end (can be empty for "N-" format)
+        if parts[1] == "":
+            # "6-" format - from scene 6 to the end
+            return (start - 1, None)
+
+        try:
             end = int(parts[1])
         except ValueError:
-            raise ValueError(f"Invalid scene numbers in range: '{scenes_arg}'. Must be integers.")
+            raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
 
-        if start < 1 or end < 1:
+        if end < 1:
             raise ValueError(f"Scene numbers must be >= 1, got: {scenes_arg}")
         if start > end:
             raise ValueError(
@@ -92,12 +126,6 @@ def cli() -> None:
 )
 @click.option("--api-key", envvar="OPENROUTER_API_KEY", help="OpenRouter API key")
 @click.option(
-    "--allow-placeholder",
-    is_flag=True,
-    default=False,
-    help="Allow running without VOICEVOX (generates placeholder audio for testing)",
-)
-@click.option(
     "--scenes",
     type=str,
     help="Scene range to render (e.g., '1-3' for scenes 1-3, '2' for scene 2 only)",
@@ -107,7 +135,6 @@ def generate(
     config: Path | None,
     output: Path | None,
     api_key: str | None,
-    allow_placeholder: bool,
     scenes: str | None,
 ) -> None:
     """Generate video from URL or existing script.yaml.
@@ -258,16 +285,38 @@ def generate(
                 scene_start_idx, scene_end_idx = parse_scene_range(scenes)
                 # Validate against actual number of sections
                 num_sections = len(script.sections)
+
+                # Handle None values (open-ended ranges)
+                if scene_start_idx is None:
+                    scene_start_idx = 0
+
+                if scene_end_idx is None:
+                    scene_end_idx = num_sections - 1
+
+                # Validate bounds
                 if scene_end_idx >= num_sections:
                     console.print(
                         f"[red]Error: Scene range {scenes} is out of bounds. "
                         f"Available scenes: 1-{num_sections}[/red]"
                     )
                     raise click.Abort()
-                console.print(
-                    f"[cyan]Scene range: {scene_start_idx + 1}-{scene_end_idx + 1} "
-                    f"(of {num_sections} total sections)[/cyan]"
-                )
+
+                # Display appropriate message
+                if scenes.startswith("-"):
+                    console.print(
+                        f"[cyan]Scene range: up to {scene_end_idx + 1} "
+                        f"(scenes 1-{scene_end_idx + 1})[/cyan]"
+                    )
+                elif scenes.endswith("-"):
+                    console.print(
+                        f"[cyan]Scene range: {scene_start_idx + 1} onwards "
+                        f"(scenes {scene_start_idx + 1}-{num_sections})[/cyan]"
+                    )
+                else:
+                    console.print(
+                        f"[cyan]Scene range: {scene_start_idx + 1}-{scene_end_idx + 1} "
+                        f"(of {num_sections} total sections)[/cyan]"
+                    )
             except ValueError as e:
                 console.print(f"[red]Error: {e}[/red]")
                 raise click.Abort()
@@ -281,6 +330,11 @@ def generate(
             for phrase in phrases:
                 phrase.section_index = section_idx
             all_phrases.extend(phrases)
+
+        # Set original_index for all phrases (global index for file naming)
+        for idx, phrase in enumerate(all_phrases):
+            phrase.original_index = idx
+
         progress.update(task, completed=True)
         console.print(f"✓ Split into {len(all_phrases)} phrases")
 
@@ -297,7 +351,7 @@ def generate(
 
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
-        synthesizer = create_synthesizer_from_config(cfg, allow_placeholder=allow_placeholder)
+        synthesizer = create_synthesizer_from_config(cfg)
 
         # Add pronunciations from script to dictionary (LLM-generated, high priority)
         if script.pronunciations:
@@ -317,25 +371,24 @@ def generate(
         if morpheme_count > 0:
             console.print(f"  Added {morpheme_count} morphological analysis pronunciations")
 
-        # Initialize VOICEVOX if not in placeholder mode
-        if not allow_placeholder:
-            import os
+        # Initialize VOICEVOX
+        import os
 
-            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+        dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+        model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+        onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
 
-            if dict_dir_str and model_path_str:
-                synthesizer.initialize(
-                    dict_dir=Path(dict_dir_str),
-                    model_path=Path(model_path_str),
-                    onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
-                )
+        if dict_dir_str and model_path_str:
+            synthesizer.initialize(
+                dict_dir=Path(dict_dir_str),
+                model_path=Path(model_path_str),
+                onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
+            )
 
         audio_dir = output_dir / "audio"
-        # Count existing audio files before generation
+        # Count existing audio files before generation (use original_index for correct file naming)
         existing_audio_count = sum(
-            1 for i in range(len(all_phrases)) if (audio_dir / f"phrase_{i:04d}.wav").exists()
+            1 for p in all_phrases if (audio_dir / f"phrase_{p.original_index:04d}.wav").exists()
         )
         audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
         calculate_phrase_timings(all_phrases)
@@ -441,6 +494,8 @@ def generate(
         else:
             video_filename = "output.mp4"
         video_path = output_dir / video_filename
+
+        # Check if video already exists
         if video_path.exists():
             console.print(f"[yellow]⊙ Video already exists, skipping: {video_path}[/yellow]")
         else:
