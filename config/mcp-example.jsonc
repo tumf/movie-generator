@@ -13,13 +13,19 @@
     // Requires FIRECRAWL_API_KEY environment variable
     "firecrawl": {
       "command": "npx",
-      "args": ["-y", "@firecrawl/mcp-server-firecrawl"],
+      "args": ["-y", "firecrawl-mcp"],
       "env": {
         // Environment variable reference - will be replaced at runtime
         "FIRECRAWL_API_KEY": "{env:FIRECRAWL_API_KEY}"
       }
     },
-
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
+      },
+    }
     // Example: Custom MCP server
     // Uncomment and modify to add your own MCP server
     /*
