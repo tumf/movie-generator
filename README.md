@@ -5,6 +5,7 @@ Generate YouTube slide videos from blog URLs automatically.
 ## Features
 
 - **Content Extraction**: Fetch and parse blog content from URLs
+- **MCP Integration**: Enhanced web scraping via MCP servers (Firecrawl, etc.)
 - **AI Script Generation**: Generate video scripts using LLM (OpenRouter)
 - **Voice Synthesis**: Text-to-speech using VOICEVOX with pronunciation dictionary
 - **Slide Generation**: Create presentation slides using AI image generation
@@ -100,6 +101,64 @@ uv run movie-generator generate https://example.com/blog-post -o ./my-videos
 # Testing mode without VOICEVOX
 uv run movie-generator generate https://example.com/blog-post --allow-placeholder
 ```
+
+### MCP Integration (Optional)
+
+Use MCP (Model Context Protocol) servers for enhanced web scraping capabilities:
+
+```bash
+# Generate video using Firecrawl MCP server for better content extraction
+uv run movie-generator generate https://example.com/blog-post --mcp-config opencode.jsonc
+
+# Works with different MCP config formats
+uv run movie-generator generate https://example.com/blog-post --mcp-config ~/.cursor/mcp.json
+uv run movie-generator generate https://example.com/blog-post --mcp-config ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+#### MCP Configuration File
+
+Create an MCP configuration file (supports JSON or JSONC format):
+
+**Example: `opencode.jsonc`**
+```jsonc
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "@firecrawl/mcp-server-firecrawl"],
+      "env": {
+        "FIRECRAWL_API_KEY": "{env:FIRECRAWL_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+**Environment Variable Replacement:**
+- Use `{env:VAR_NAME}` syntax to reference environment variables
+- Variables are replaced at runtime
+- Example: `{env:FIRECRAWL_API_KEY}` → actual API key value
+
+**Example: `.cursor/mcp.json`**
+```json
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "@firecrawl/mcp-server-firecrawl"],
+      "env": {
+        "FIRECRAWL_API_KEY": "fc-your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Benefits of MCP Integration:**
+- Better content extraction from complex websites
+- Handles JavaScript-rendered content
+- More robust parsing of modern web pages
+- Falls back to standard fetcher if MCP fails
 
 ### Configuration
 
@@ -222,10 +281,14 @@ movie-generator/
 │       ├── script/             # Script generation & phrases
 │       ├── audio/              # VOICEVOX integration
 │       ├── slides/             # Slide generation
-│       └── video/              # Video rendering
+│       ├── video/              # Video rendering
+│       └── mcp/                # MCP integration
+│           ├── config.py       # MCP config loader
+│           └── client.py       # MCP client
 ├── config/
 │   ├── default.yaml            # Default configuration
-│   └── examples/               # Example configs
+│   ├── examples/               # Example configs
+│   └── mcp-example.jsonc       # Example MCP config
 ├── tests/                      # Test files
 └── pyproject.toml              # Project dependencies
 ```
@@ -234,6 +297,7 @@ movie-generator/
 
 **Implemented Features:**
 - ✅ Content extraction from URLs
+- ✅ MCP server integration for enhanced web scraping (Firecrawl, etc.)
 - ✅ AI-powered script generation
 - ✅ VOICEVOX voice synthesis with pronunciation dictionary
 - ✅ Automatic furigana generation for technical terms

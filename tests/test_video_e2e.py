@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from src.movie_generator.script.phrases import Phrase, calculate_phrase_timings
-from src.movie_generator.video.remotion_renderer import (
+from movie_generator.script.phrases import Phrase, calculate_phrase_timings
+from movie_generator.video.remotion_renderer import (
     create_remotion_input,
     render_video_with_remotion,
 )

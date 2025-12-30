@@ -52,12 +52,18 @@ def cli() -> None:
     default=False,
     help="Allow running without VOICEVOX (generates placeholder audio for testing)",
 )
+@click.option(
+    "--mcp-config",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to MCP configuration file (enables web scraping via MCP servers)",
+)
 def generate(
     url_or_script: str | None,
     config: Path | None,
     output: Path | None,
     api_key: str | None,
     allow_placeholder: bool,
+    mcp_config: Path | None,
 ) -> None:
     """Generate video from URL or existing script.yaml.
 
@@ -67,6 +73,7 @@ def generate(
         output: Output directory.
         api_key: OpenRouter API key.
         allow_placeholder: Allow running without VOICEVOX (testing only).
+        mcp_config: Path to MCP configuration file for enhanced web scraping.
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -147,10 +154,36 @@ def generate(
 
             console.print(f"[bold]Generating video from URL:[/bold] {url}")
             task = progress.add_task("Fetching content...", total=None)
-            html_content = fetch_url_sync(url)
-            parsed = parse_html(html_content)
-            progress.update(task, completed=True)
-            console.print(f"✓ Fetched: {parsed.metadata.title}")
+
+            # Use MCP if config provided, otherwise use standard fetcher
+            if mcp_config:
+                try:
+                    from .mcp import fetch_content_with_mcp
+
+                    console.print(f"[dim]Using MCP server from: {mcp_config}[/dim]")
+                    markdown_content = asyncio.run(fetch_content_with_mcp(url, mcp_config))
+                    # Create a simple metadata-like structure
+                    from .content.parser import ContentMetadata, ParsedContent
+
+                    parsed = ParsedContent(
+                        content=markdown_content,
+                        markdown=markdown_content,
+                        metadata=ContentMetadata(title="", description=""),
+                    )
+                    progress.update(task, completed=True)
+                    console.print(f"✓ Fetched via MCP: {len(markdown_content)} chars")
+                except Exception as e:
+                    console.print(f"[yellow]⚠ MCP fetch failed: {e}[/yellow]")
+                    console.print("[dim]Falling back to standard fetcher...[/dim]")
+                    html_content = fetch_url_sync(url)
+                    parsed = parse_html(html_content)
+                    progress.update(task, completed=True)
+                    console.print(f"✓ Fetched: {parsed.metadata.title}")
+            else:
+                html_content = fetch_url_sync(url)
+                parsed = parse_html(html_content)
+                progress.update(task, completed=True)
+                console.print(f"✓ Fetched: {parsed.metadata.title}")
 
             task = progress.add_task("Generating script...", total=None)
             script = asyncio.run(

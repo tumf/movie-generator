@@ -1,0 +1,36 @@
+// Example MCP (Model Context Protocol) configuration file
+// This file demonstrates how to configure MCP servers for enhanced web scraping
+//
+// Usage:
+//   movie-generator generate <URL> --mcp-config config/mcp-example.jsonc
+//
+// Supported formats: JSON, JSONC (with comments)
+// Environment variables: Use {env:VAR_NAME} syntax to reference environment variables
+
+{
+  "mcpServers": {
+    // Firecrawl - Advanced web scraping and crawling
+    // Requires FIRECRAWL_API_KEY environment variable
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "@firecrawl/mcp-server-firecrawl"],
+      "env": {
+        // Environment variable reference - will be replaced at runtime
+        "FIRECRAWL_API_KEY": "{env:FIRECRAWL_API_KEY}"
+      }
+    },
+
+    // Example: Custom MCP server
+    // Uncomment and modify to add your own MCP server
+    /*
+    "custom_server": {
+      "command": "/path/to/mcp-server",
+      "args": ["--option", "value"],
+      "env": {
+        "API_KEY": "{env:CUSTOM_API_KEY}",
+        "DEBUG": "false"
+      }
+    }
+    */
+  }
+}
