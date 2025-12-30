@@ -72,12 +72,40 @@ class SlidesConfig(BaseModel):
     style: str = Field(default="presentation")
 
 
+class TransitionConfig(BaseModel):
+    """Transition configuration for slide changes."""
+
+    type: str = Field(
+        default="fade",
+        description="Transition type: fade, slide, wipe, flip, clockWipe, none",
+    )
+    duration_frames: int = Field(default=15, ge=1, description="Transition duration in frames")
+    timing: str = Field(default="linear", description="Timing function: linear, spring")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validate transition type."""
+        valid_types = {"fade", "slide", "wipe", "flip", "clockWipe", "none"}
+        if self.type not in valid_types:
+            raise ValueError(
+                f"Invalid transition type '{self.type}'. "
+                f"Must be one of: {', '.join(sorted(valid_types))}"
+            )
+
+        valid_timings = {"linear", "spring"}
+        if self.timing not in valid_timings:
+            raise ValueError(
+                f"Invalid timing function '{self.timing}'. "
+                f"Must be one of: {', '.join(sorted(valid_timings))}"
+            )
+
+
 class VideoConfig(BaseModel):
     """Video rendering configuration."""
 
     renderer: str = Field(default="remotion")
     template: str = Field(default="default")
     output_format: str = Field(default="mp4")
+    transition: TransitionConfig = Field(default_factory=TransitionConfig)
 
 
 class PronunciationWord(BaseModel):
@@ -221,6 +249,10 @@ def generate_default_config_yaml() -> str:
         '  renderer: "remotion"  # Video rendering engine',
         '  template: "default"  # Video template to use',
         '  output_format: "mp4"  # Output video format',
+        "  transition:",
+        '    type: "fade"  # Transition type: fade, slide, wipe, flip, clockWipe, none',
+        "    duration_frames: 15  # Transition duration in frames (0.5s at 30fps)",
+        '    timing: "linear"  # Timing function: linear, spring',
         "",
         "# Pronunciation dictionary for proper nouns and technical terms",
         "pronunciation:",

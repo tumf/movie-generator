@@ -8,7 +8,7 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from movie_generator.config import Config, load_config, merge_configs
+from movie_generator.config import Config, TransitionConfig, load_config, merge_configs
 
 
 def test_default_config() -> None:
@@ -83,3 +83,73 @@ content:
     config = load_config(config_file)
     assert config.project.name == "Multilang Project"
     assert config.content.languages == ["ja", "en"]
+
+
+def test_default_transition_config() -> None:
+    """Test default transition configuration."""
+    config = Config()
+    assert config.video.transition.type == "fade"
+    assert config.video.transition.duration_frames == 15
+    assert config.video.transition.timing == "linear"
+
+
+def test_custom_transition_config(tmp_path: Path) -> None:
+    """Test loading custom transition configuration."""
+    config_file = tmp_path / "transition_config.yaml"
+    config_file.write_text(
+        """
+video:
+  transition:
+    type: "slide"
+    duration_frames: 30
+    timing: "spring"
+"""
+    )
+
+    config = load_config(config_file)
+    assert config.video.transition.type == "slide"
+    assert config.video.transition.duration_frames == 30
+    assert config.video.transition.timing == "spring"
+
+
+def test_invalid_transition_type() -> None:
+    """Test that invalid transition type raises validation error."""
+    from pydantic import ValidationError
+
+    from movie_generator.config import TransitionConfig
+
+    with pytest.raises(ValueError, match="Invalid transition type"):
+        TransitionConfig(type="invalid_type")
+
+
+def test_invalid_timing_function() -> None:
+    """Test that invalid timing function raises validation error."""
+    from movie_generator.config import TransitionConfig
+
+    with pytest.raises(ValueError, match="Invalid timing function"):
+        TransitionConfig(timing="invalid_timing")
+
+
+def test_all_valid_transition_types() -> None:
+    """Test that all supported transition types are valid."""
+    from movie_generator.config import TransitionConfig
+
+    valid_types = ["fade", "slide", "wipe", "flip", "clockWipe", "none"]
+    for transition_type in valid_types:
+        config = TransitionConfig(type=transition_type)
+        assert config.type == transition_type
+
+
+def test_transition_none_type(tmp_path: Path) -> None:
+    """Test transition with 'none' type (no transition)."""
+    config_file = tmp_path / "no_transition.yaml"
+    config_file.write_text(
+        """
+video:
+  transition:
+    type: "none"
+"""
+    )
+
+    config = load_config(config_file)
+    assert config.video.transition.type == "none"
