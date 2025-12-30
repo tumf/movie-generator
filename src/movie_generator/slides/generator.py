@@ -161,6 +161,7 @@ async def generate_slides_for_sections(
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
     model: str = "google/gemini-3-pro-image-preview",
     max_concurrent: int = 3,
+    start_index: int = 0,
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.
 
@@ -171,6 +172,7 @@ async def generate_slides_for_sections(
         language: Language code for organizing output (ja, en, etc.).
         model: Image model identifier.
         max_concurrent: Maximum number of concurrent API requests.
+        start_index: Starting section index for file naming (useful for scene ranges).
 
     Returns:
         List of paths to generated slides.
@@ -187,14 +189,16 @@ async def generate_slides_for_sections(
     print(f"\n📊 Preparing to generate {len(sections)} slides for language '{language}'...")
 
     for i, (title, prompt) in enumerate(sections):
-        output_path = lang_output_dir / f"slide_{i:04d}.png"
+        # Use start_index to generate correct file names for scene ranges
+        section_idx = start_index + i
+        output_path = lang_output_dir / f"slide_{section_idx:04d}.png"
         slide_paths.append(output_path)
 
         # Check if already exists
         if output_path.exists() and output_path.stat().st_size > 0:
-            print(f"⊙ Slide {i:02d}/{len(sections) - 1} already exists: {output_path.name}")
+            print(f"⊙ Slide {section_idx:02d} already exists: {output_path.name}")
         else:
-            print(f"→ Slide {i:02d}/{len(sections) - 1} queued: {title[:50]}...")
+            print(f"→ Slide {section_idx:02d} queued: {title[:50]}...")
             tasks_to_run.append(
                 generate_slide(
                     prompt=prompt,
@@ -203,7 +207,7 @@ async def generate_slides_for_sections(
                     model=model,
                 )
             )
-            task_indices.append(i)
+            task_indices.append(section_idx)
 
     if not tasks_to_run:
         print("\n✓ All slides already exist, nothing to generate")

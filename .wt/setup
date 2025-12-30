@@ -1,0 +1,7 @@
+#! /bin/bash
+# wt - Git Worktree Management Tool
+# https://github.com/tumf/wt
+# $ROOT_WORKTREE_PATH is path to the base repository (source tree)
+if [ -f .wt/setup.local ]; then
+  source .wt/setup.local
+fi

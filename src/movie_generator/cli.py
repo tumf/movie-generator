@@ -25,6 +25,51 @@ from .video.renderer import create_composition, save_composition
 console = Console()
 
 
+def parse_scene_range(scenes_arg: str) -> tuple[int, int]:
+    """Parse scene range argument.
+
+    Args:
+        scenes_arg: Scene range string (e.g., "1-3" or "2").
+
+    Returns:
+        Tuple of (start_index, end_index) (0-based, inclusive).
+
+    Raises:
+        ValueError: If the format is invalid or range is invalid.
+    """
+    if "-" in scenes_arg:
+        parts = scenes_arg.split("-")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid scene range format: '{scenes_arg}'. Expected format: '1-3' or '2'"
+            )
+        try:
+            start = int(parts[0])
+            end = int(parts[1])
+        except ValueError:
+            raise ValueError(f"Invalid scene numbers in range: '{scenes_arg}'. Must be integers.")
+
+        if start < 1 or end < 1:
+            raise ValueError(f"Scene numbers must be >= 1, got: {scenes_arg}")
+        if start > end:
+            raise ValueError(
+                f"Invalid scene range: {scenes_arg}. Start must be <= end. "
+                f"Example: '1-3' for scenes 1 through 3."
+            )
+        # Convert to 0-based indexing
+        return (start - 1, end - 1)
+    else:
+        try:
+            scene_num = int(scenes_arg)
+        except ValueError:
+            raise ValueError(f"Invalid scene number: '{scenes_arg}'. Must be an integer.")
+
+        if scene_num < 1:
+            raise ValueError(f"Scene number must be >= 1, got: {scene_num}")
+        # Convert to 0-based indexing
+        return (scene_num - 1, scene_num - 1)
+
+
 @click.group()
 def cli() -> None:
     """Movie Generator - Generate YouTube videos from blog URLs."""
@@ -52,12 +97,18 @@ def cli() -> None:
     default=False,
     help="Allow running without VOICEVOX (generates placeholder audio for testing)",
 )
+@click.option(
+    "--scenes",
+    type=str,
+    help="Scene range to render (e.g., '1-3' for scenes 1-3, '2' for scene 2 only)",
+)
 def generate(
     url_or_script: str | None,
     config: Path | None,
     output: Path | None,
     api_key: str | None,
     allow_placeholder: bool,
+    scenes: str | None,
 ) -> None:
     """Generate video from URL or existing script.yaml.
 
@@ -67,6 +118,7 @@ def generate(
         output: Output directory.
         api_key: OpenRouter API key.
         allow_placeholder: Allow running without VOICEVOX (testing only).
+        scenes: Scene range to render (e.g., "1-3" or "2").
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -198,6 +250,28 @@ def generate(
             if script.pronunciations:
                 console.print(f"  Pronunciations: {len(script.pronunciations)} entries")
 
+        # Parse scene range if provided
+        scene_start_idx = None
+        scene_end_idx = None
+        if scenes:
+            try:
+                scene_start_idx, scene_end_idx = parse_scene_range(scenes)
+                # Validate against actual number of sections
+                num_sections = len(script.sections)
+                if scene_end_idx >= num_sections:
+                    console.print(
+                        f"[red]Error: Scene range {scenes} is out of bounds. "
+                        f"Available scenes: 1-{num_sections}[/red]"
+                    )
+                    raise click.Abort()
+                console.print(
+                    f"[cyan]Scene range: {scene_start_idx + 1}-{scene_end_idx + 1} "
+                    f"(of {num_sections} total sections)[/cyan]"
+                )
+            except ValueError as e:
+                console.print(f"[red]Error: {e}[/red]")
+                raise click.Abort()
+
         # Step 3: Split into phrases
         task = progress.add_task("Splitting into phrases...", total=None)
         all_phrases = []
@@ -209,6 +283,17 @@ def generate(
             all_phrases.extend(phrases)
         progress.update(task, completed=True)
         console.print(f"✓ Split into {len(all_phrases)} phrases")
+
+        # Filter phrases by scene range BEFORE audio generation
+        if scene_start_idx is not None and scene_end_idx is not None:
+            filtered_phrases = [
+                p for p in all_phrases if scene_start_idx <= p.section_index <= scene_end_idx
+            ]
+            console.print(
+                f"[cyan]Filtering to {len(filtered_phrases)} phrases "
+                f"for scenes {scene_start_idx + 1}-{scene_end_idx + 1}[/cyan]"
+            )
+            all_phrases = filtered_phrases
 
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
@@ -264,17 +349,24 @@ def generate(
         # Step 5: Generate slides
         if api_key:
             task = progress.add_task("Generating slides...", total=None)
+            # Filter sections by scene range BEFORE slide generation
+            if scene_start_idx is not None and scene_end_idx is not None:
+                sections_to_generate = script.sections[scene_start_idx : scene_end_idx + 1]
+            else:
+                sections_to_generate = script.sections
+
             slide_prompts = [
                 (section.title, section.slide_prompt or section.title)
-                for section in script.sections
+                for section in sections_to_generate
             ]
             slide_dir = output_dir / "slides"
             # Count existing slides before generation
+            start_idx = scene_start_idx if scene_start_idx is not None else 0
             existing_slide_count = sum(
                 1
                 for i in range(len(slide_prompts))
-                if (slide_dir / f"slide_{i:04d}.png").exists()
-                and (slide_dir / f"slide_{i:04d}.png").stat().st_size > 0
+                if (slide_dir / f"slide_{start_idx + i:04d}.png").exists()
+                and (slide_dir / f"slide_{start_idx + i:04d}.png").stat().st_size > 0
             )
 
             try:
@@ -285,6 +377,7 @@ def generate(
                         api_key=api_key,
                         model=cfg.slides.llm.model,
                         max_concurrent=2,  # Conservative to avoid rate limits
+                        start_index=scene_start_idx if scene_start_idx is not None else 0,
                     )
                 )
                 progress.update(task, completed=True)
@@ -339,7 +432,15 @@ def generate(
             console.print(f"✓ Created composition: {composition_path}")
 
         # Step 7: Setup Remotion project and render video
-        video_path = output_dir / "output.mp4"
+        # Adjust output filename if scene range is specified
+        if scenes:
+            if "-" in scenes:
+                video_filename = f"output_scenes_{scenes.replace('-', '-')}.mp4"
+            else:
+                video_filename = f"output_scenes_{scenes}.mp4"
+        else:
+            video_filename = "output.mp4"
+        video_path = output_dir / video_filename
         if video_path.exists():
             console.print(f"[yellow]⊙ Video already exists, skipping: {video_path}[/yellow]")
         else:
