@@ -25,6 +25,85 @@ from .video.renderer import create_composition, save_composition
 console = Console()
 
 
+def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
+    """Parse scene range argument.
+
+    Args:
+        scenes_arg: Scene range string (e.g., "1-3", "6-" for 6 onwards, "-3" for up to 3, or "2").
+
+    Returns:
+        Tuple of (start_index, end_index) (0-based, inclusive).
+        start_index can be None to indicate "from the beginning".
+        end_index can be None to indicate "to the end".
+
+    Raises:
+        ValueError: If the format is invalid or range is invalid.
+    """
+    if "-" in scenes_arg:
+        parts = scenes_arg.split("-")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid scene range format: '{scenes_arg}'. Expected format: '1-3', '6-', '-3', or '2'"
+            )
+
+        # Handle "-3" format (from beginning to scene 3)
+        if parts[0] == "":
+            if parts[1] == "":
+                raise ValueError(
+                    f"Invalid scene range format: '{scenes_arg}'. Cannot use '-' alone."
+                )
+
+            try:
+                end = int(parts[1])
+            except ValueError:
+                raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
+
+            if end < 1:
+                raise ValueError(f"Scene number must be >= 1, got: {end}")
+
+            # "-3" format - from beginning to scene 3
+            return (None, end - 1)
+
+        # Parse start
+        try:
+            start = int(parts[0])
+        except ValueError:
+            raise ValueError(f"Invalid start scene number: '{parts[0]}'. Must be an integer.")
+
+        if start < 1:
+            raise ValueError(f"Scene number must be >= 1, got: {start}")
+
+        # Parse end (can be empty for "N-" format)
+        if parts[1] == "":
+            # "6-" format - from scene 6 to the end
+            return (start - 1, None)
+
+        try:
+            end = int(parts[1])
+        except ValueError:
+            raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
+
+        if end < 1:
+            raise ValueError(f"Scene numbers must be >= 1, got: {scenes_arg}")
+        if start > end:
+            raise ValueError(
+                f"Invalid scene range: {scenes_arg}. Start must be <= end. "
+                f"Example: '1-3' for scenes 1 through 3."
+            )
+        # Convert to 0-based indexing
+        return (start - 1, end - 1)
+    else:
+        try:
+            scene_num = int(scenes_arg)
+        except ValueError:
+            raise ValueError(f"Invalid scene number: '{scenes_arg}'. Must be an integer.")
+
+        if scene_num < 1:
+            raise ValueError(f"Scene number must be >= 1, got: {scene_num}")
+        # Convert to 0-based indexing
+        return (scene_num - 1, scene_num - 1)
+
+
 @click.group()
 def cli() -> None:
     """Movie Generator - Generate YouTube videos from blog URLs."""
@@ -47,9 +126,21 @@ def cli() -> None:
 )
 @click.option("--api-key", envvar="OPENROUTER_API_KEY", help="OpenRouter API key")
 @click.option(
+    "--scenes",
+    type=str,
+    help="Scene range to render (e.g., '1-3' for scenes 1-3, '2' for scene 2 only)",
+)
+@click.option(
     "--mcp-config",
     type=click.Path(exists=True, path_type=Path),
     help="Path to MCP configuration file (enables web scraping via MCP servers)",
+)
+@click.option(
+    "--progress",
+    "show_progress",
+    is_flag=True,
+    default=False,
+    help="Show real-time rendering progress (default: hide)",
 )
 @click.option(
     "--allow-placeholder",
@@ -62,7 +153,9 @@ def generate(
     config: Path | None,
     output: Path | None,
     api_key: str | None,
+    scenes: str | None,
     mcp_config: Path | None,
+    show_progress: bool,
     allow_placeholder: bool,
 ) -> None:
     """Generate video from URL or existing script.yaml.
@@ -72,7 +165,9 @@ def generate(
         config: Path to config file.
         output: Output directory.
         api_key: OpenRouter API key.
+        scenes: Scene range to render (e.g., "1-3" or "2").
         mcp_config: Path to MCP configuration file for enhanced web scraping.
+        show_progress: Show real-time rendering progress.
         allow_placeholder: Allow running without VOICEVOX (testing only).
     """
     # Load configuration
