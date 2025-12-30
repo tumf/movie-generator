@@ -130,22 +130,37 @@ def cli() -> None:
     type=str,
     help="Scene range to render (e.g., '1-3' for scenes 1-3, '2' for scene 2 only)",
 )
+@click.option(
+    "--mcp-config",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to MCP configuration file (enables web scraping via MCP servers)",
+)
+@click.option(
+    "--progress",
+    "show_progress",
+    is_flag=True,
+    default=False,
+    help="Show real-time rendering progress (default: hide)",
+)
 def generate(
     url_or_script: str | None,
     config: Path | None,
     output: Path | None,
     api_key: str | None,
     scenes: str | None,
+    mcp_config: Path | None,
+    show_progress: bool,
 ) -> None:
-    """Generate video from URL or existing script.yaml.
+    """Generate video from URL or existing script.
 
     Args:
         url_or_script: Blog URL to convert OR path to existing script.yaml.
         config: Path to config file.
         output: Output directory.
         api_key: OpenRouter API key.
-        allow_placeholder: Allow running without VOICEVOX (testing only).
         scenes: Scene range to render (e.g., "1-3" or "2").
+        mcp_config: Path to MCP configuration file for enhanced web scraping.
+        show_progress: Show real-time rendering progress.
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -226,10 +241,36 @@ def generate(
 
             console.print(f"[bold]Generating video from URL:[/bold] {url}")
             task = progress.add_task("Fetching content...", total=None)
-            html_content = fetch_url_sync(url)
-            parsed = parse_html(html_content)
-            progress.update(task, completed=True)
-            console.print(f"✓ Fetched: {parsed.metadata.title}")
+
+            # Use MCP if config provided, otherwise use standard fetcher
+            if mcp_config:
+                try:
+                    from .mcp import fetch_content_with_mcp
+
+                    console.print(f"[dim]Using MCP server from: {mcp_config}[/dim]")
+                    markdown_content = asyncio.run(fetch_content_with_mcp(url, mcp_config))
+                    # Create a simple metadata-like structure
+                    from .content.parser import ContentMetadata, ParsedContent
+
+                    parsed = ParsedContent(
+                        content=markdown_content,
+                        markdown=markdown_content,
+                        metadata=ContentMetadata(title="", description=""),
+                    )
+                    progress.update(task, completed=True)
+                    console.print(f"✓ Fetched via MCP: {len(markdown_content)} chars")
+                except Exception as e:
+                    console.print(f"[yellow]⚠ MCP fetch failed: {e}[/yellow]")
+                    console.print("[dim]Falling back to standard fetcher...[/dim]")
+                    html_content = fetch_url_sync(url)
+                    parsed = parse_html(html_content)
+                    progress.update(task, completed=True)
+                    console.print(f"✓ Fetched: {parsed.metadata.title}")
+            else:
+                html_content = fetch_url_sync(url)
+                parsed = parse_html(html_content)
+                progress.update(task, completed=True)
+                console.print(f"✓ Fetched: {parsed.metadata.title}")
 
             task = progress.add_task("Generating script...", total=None)
             script = asyncio.run(
@@ -512,17 +553,33 @@ def generate(
                 progress.update(task, completed=True)
 
             # Render video with Remotion
-            task = progress.add_task("Rendering video with Remotion...", total=None)
-            render_video_with_remotion(
-                phrases=all_phrases,
-                audio_paths=audio_paths,
-                slide_paths=slide_paths,
-                output_path=video_path,
-                remotion_root=remotion_dir,
-                project_name=project_name,
-            )
-            progress.update(task, completed=True)
-            console.print(f"✓ Video ready: {video_path}")
+            if show_progress:
+                # Stop rich Progress to avoid interference with Remotion output
+                progress.stop()
+                console.print("[cyan]🎬 Rendering video with Remotion...[/cyan]")
+                render_video_with_remotion(
+                    phrases=all_phrases,
+                    audio_paths=audio_paths,
+                    slide_paths=slide_paths,
+                    output_path=video_path,
+                    remotion_root=remotion_dir,
+                    project_name=project_name,
+                    show_progress=show_progress,
+                )
+                console.print(f"[green]✓ Video ready: {video_path}[/green]")
+            else:
+                task = progress.add_task("Rendering video with Remotion...", total=None)
+                render_video_with_remotion(
+                    phrases=all_phrases,
+                    audio_paths=audio_paths,
+                    slide_paths=slide_paths,
+                    output_path=video_path,
+                    remotion_root=remotion_dir,
+                    project_name=project_name,
+                    show_progress=show_progress,
+                )
+                progress.update(task, completed=True)
+                console.print(f"✓ Video ready: {video_path}")
 
     console.print("\n[bold green]✓ Video generation complete![/bold green]")
 
