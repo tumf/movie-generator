@@ -144,7 +144,7 @@ def update_composition_json(
         "height": 1080,
         "phrases": [
             {
-                "text": phrase.text,
+                "text": phrase.get_subtitle_text(),
                 "audioFile": f"audio/{audio_paths[i].name}" if i < len(audio_paths) else "",
                 "slideFile": _get_slide_file_path(slide_paths, phrase.section_index)
                 if slide_paths and phrase.section_index < len(slide_paths)

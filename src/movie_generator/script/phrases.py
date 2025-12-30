@@ -15,9 +15,25 @@ class Phrase:
     start_time: float = 0.0  # Cumulative start time
     section_index: int = 0  # Index of the section this phrase belongs to
 
+    def get_subtitle_text(self) -> str:
+        """Get text suitable for subtitle display.
+
+        Removes trailing punctuation marks that are not necessary for display.
+
+        Returns:
+            Text with trailing punctuation removed.
+        """
+        text = self.text
+        # Remove trailing Japanese punctuation
+        while text and text[-1] in ["。", "、"]:
+            text = text[:-1]
+        return text
+
 
 def split_into_phrases(text: str, max_chars: int = 50) -> list[Phrase]:
     """Split text into phrases based on punctuation and length.
+
+    Respects quotation marks and prioritizes natural break points.
 
     Args:
         text: Input text to split.
@@ -26,25 +42,50 @@ def split_into_phrases(text: str, max_chars: int = 50) -> list[Phrase]:
     Returns:
         List of Phrase objects.
     """
-    # Split by Japanese punctuation marks
-    delimiters = ["。", "、", "！", "？", "\n"]
+    # Prioritized delimiters (higher priority = better split point)
+    primary_delimiters = ["。", "！", "？"]
+    secondary_delimiters = ["、", "\n"]
 
     phrases: list[Phrase] = []
     current_phrase = ""
+    in_quote = False  # Track if we're inside quotation marks
 
-    for char in text:
+    for i, char in enumerate(text):
         current_phrase += char
 
-        # Check if we hit a delimiter or reached max length
-        if char in delimiters or len(current_phrase) >= max_chars:
+        # Track quotation mark state
+        if char == "「":
+            in_quote = True
+        elif char == "」":
+            in_quote = False
+
+        # Check if we should split here
+        should_split = False
+
+        # Primary: hit a strong delimiter outside quotes
+        if not in_quote and char in primary_delimiters:
+            should_split = True
+        # Secondary: hit a weak delimiter outside quotes
+        elif not in_quote and char in secondary_delimiters:
+            should_split = True
+        # Emergency: reached max length and not in quote
+        elif not in_quote and len(current_phrase) >= max_chars:
+            should_split = True
+        # Very long phrase even with quote - split at quote boundary
+        elif len(current_phrase) >= max_chars * 1.5 and char == "」":
+            should_split = True
+
+        if should_split:
             phrase_text = current_phrase.strip()
-            if phrase_text:
+            # Only add if not just punctuation
+            if phrase_text and not all(c in "。、！？\n" for c in phrase_text):
                 phrases.append(Phrase(text=phrase_text))
             current_phrase = ""
 
     # Add remaining text
-    if current_phrase.strip():
-        phrases.append(Phrase(text=current_phrase.strip()))
+    remaining = current_phrase.strip()
+    if remaining and not all(c in "。、！？\n" for c in remaining):
+        phrases.append(Phrase(text=remaining))
 
     return phrases
 
