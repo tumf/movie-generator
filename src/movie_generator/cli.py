@@ -148,9 +148,23 @@ def generate(
             console.print(f"[bold]Generating video from URL:[/bold] {url}")
             task = progress.add_task("Fetching content...", total=None)
             html_content = fetch_url_sync(url)
-            parsed = parse_html(html_content)
+            parsed = parse_html(html_content, base_url=url)
             progress.update(task, completed=True)
             console.print(f"✓ Fetched: {parsed.metadata.title}")
+
+            # Prepare images metadata for script generation
+            images_metadata = None
+            if parsed.images:
+                images_metadata = [
+                    {
+                        "src": img.src,
+                        "alt": img.alt,
+                        "title": img.title,
+                        "aria_describedby": img.aria_describedby,
+                    }
+                    for img in parsed.images
+                ]
+                console.print(f"  Found {len(parsed.images)} usable images in content")
 
             task = progress.add_task("Generating script...", total=None)
             script = asyncio.run(
@@ -162,6 +176,7 @@ def generate(
                     style=cfg.narration.style,
                     api_key=api_key,
                     model=cfg.content.llm.model,
+                    images=images_metadata,
                 )
             )
             progress.update(task, completed=True)
@@ -177,6 +192,7 @@ def generate(
                         "title": section.title,
                         "narration": section.narration,
                         "slide_prompt": section.slide_prompt,
+                        "source_image_url": section.source_image_url,
                     }
                     for section in script.sections
                 ],

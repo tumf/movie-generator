@@ -15,6 +15,7 @@ class ScriptSection:
     title: str
     narration: str
     slide_prompt: str | None = None
+    source_image_url: str | None = None
 
 
 @dataclass
@@ -56,6 +57,8 @@ SCRIPT_GENERATION_PROMPT_JA = """
 
 {content}
 
+{images_section}
+
 【出力形式】
 JSON形式で以下を出力してください：
 {{
@@ -65,7 +68,8 @@ JSON形式で以下を出力してください：
     {{
       "title": "セクションタイトル",
       "narration": "ナレーション文",
-      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）"
+      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
+      "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
     }}
   ],
   "pronunciations": [
@@ -77,6 +81,12 @@ JSON形式で以下を出力してください：
     }}
   ]
 }}
+
+【スライド画像について】
+- 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
+- source_image_url: 元記事の画像リストから適切な画像を選択する場合に使用
+- slide_prompt: AI生成する場合に使用
+- 元記事に適切な図解やスクリーンショットがある場合は、source_image_urlを優先してください
 
 【読み方辞書（pronunciations）について】
 - ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
@@ -106,6 +116,8 @@ Description: {description}
 
 {content}
 
+{images_section}
+
 [Output Format]
 Output in JSON format:
 {{
@@ -115,11 +127,18 @@ Output in JSON format:
     {{
       "title": "Section Title",
       "narration": "Narration text",
-      "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)"
+      "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)",
+      "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
     }}
   ],
   "pronunciations": []
 }}
+
+[About Slide Images]
+- For each section, specify either source_image_url OR slide_prompt (not both)
+- source_image_url: Use when selecting an appropriate image from the blog's image list
+- slide_prompt: Use when generating a new slide with AI
+- Prefer source_image_url if the blog contains suitable diagrams or screenshots
 
 Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
 """
@@ -140,6 +159,7 @@ async def generate_script(
     api_key: str | None = None,
     model: str = "openai/gpt-5.2",
     base_url: str = "https://openrouter.ai/api/v1",
+    images: list[dict[str, str]] | None = None,
 ) -> VideoScript:
     """Generate video script from content using LLM.
 
@@ -153,6 +173,7 @@ async def generate_script(
         api_key: OpenRouter API key.
         model: Model identifier.
         base_url: API base URL.
+        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
 
     Returns:
         Generated video script.
@@ -161,6 +182,29 @@ async def generate_script(
         httpx.HTTPError: If API request fails.
         ValueError: If response parsing fails.
     """
+    # Format images section for prompt
+    images_section = ""
+    if images:
+        if language == "ja":
+            images_section = "【利用可能な画像】\n以下の画像がブログ記事内で利用可能です。適切なセクションに割り当ててください：\n"
+        else:
+            images_section = "[Available Images]\nThe following images are available from the blog content. Assign them to appropriate sections:\n"
+
+        for idx, img in enumerate(images, 1):
+            alt_text = img.get("alt", "")
+            title_text = img.get("title", "")
+            aria_text = img.get("aria_describedby", "")
+            description_parts = []
+            if alt_text:
+                description_parts.append(f"Alt: {alt_text}")
+            if title_text:
+                description_parts.append(f"Title: {title_text}")
+            if aria_text:
+                description_parts.append(f"Description: {aria_text}")
+            description = ", ".join(description_parts) if description_parts else "No description"
+
+            images_section += f"{idx}. URL: {img['src']}\n   {description}\n"
+
     prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
     prompt = prompt_template.format(
         character=character,
@@ -168,6 +212,7 @@ async def generate_script(
         title=title or "Unknown",
         description=description or "",
         content=content,
+        images_section=images_section,
     )
 
     headers = {
@@ -197,6 +242,7 @@ async def generate_script(
             title=section["title"],
             narration=section["narration"],
             slide_prompt=section.get("slide_prompt"),
+            source_image_url=section.get("source_image_url"),
         )
         for section in script_data["sections"]
     ]

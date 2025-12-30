@@ -65,11 +65,16 @@ async def main():
         for section in script.get("sections", []):
             title = section.get("title", "")
             slide_prompt = section.get("slide_prompt", "")
-            if slide_prompt:
-                sections.append((title, slide_prompt))
+            source_image_url = section.get("source_image_url")
+
+            # Include section if it has either a prompt or source image
+            if slide_prompt or source_image_url:
+                sections.append((title, slide_prompt, source_image_url))
 
         if not sections:
-            print(f"⚠️  Warning: No sections with slide_prompt found in {script_path}")
+            print(
+                f"⚠️  Warning: No sections with slide_prompt or source_image_url found in {script_path}"
+            )
             continue
 
         print(f"📊 Found {len(sections)} sections to generate slides for")

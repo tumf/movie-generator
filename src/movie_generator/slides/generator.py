@@ -5,9 +5,109 @@ Generates presentation slides using image generation models.
 
 import asyncio
 import base64
+from io import BytesIO
 from pathlib import Path
+from typing import Sequence
 
 import httpx
+from PIL import Image
+
+
+async def download_and_process_image(
+    *,
+    url: str,
+    output_path: Path,
+    target_width: int = 1920,
+    target_height: int = 1080,
+    min_width: int = 800,
+    min_height: int = 600,
+) -> Path:
+    """Download and process an image from URL.
+
+    Args:
+        url: Image URL to download.
+        output_path: Path to save processed image.
+        target_width: Target width for resizing.
+        target_height: Target height for resizing.
+        min_width: Minimum acceptable width.
+        min_height: Minimum acceptable height.
+
+    Returns:
+        Path to processed image file.
+
+    Raises:
+        httpx.HTTPError: If download fails.
+        ValueError: If image is below minimum resolution.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Skip if already exists
+    if output_path.exists() and output_path.stat().st_size > 0:
+        print(f"  ↷ Skipping existing image: {output_path.name}")
+        return output_path
+
+    # Download image
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        image_data = response.content
+
+    # Open image with PIL
+    img = Image.open(BytesIO(image_data))
+
+    # Check minimum resolution
+    if img.width < min_width or img.height < min_height:
+        raise ValueError(
+            f"Image resolution {img.width}x{img.height} is below minimum {min_width}x{min_height}"
+        )
+
+    # Convert to RGB if necessary (handle RGBA, grayscale, etc.)
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    # Resize to fit target dimensions while maintaining aspect ratio
+    img.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
+
+    # Create canvas with target dimensions (centered)
+    canvas = Image.new("RGB", (target_width, target_height), (255, 255, 255))
+    offset_x = (target_width - img.width) // 2
+    offset_y = (target_height - img.height) // 2
+    canvas.paste(img, (offset_x, offset_y))
+
+    # Save processed image
+    canvas.save(output_path, "PNG", optimize=True)
+    print(f"✓ Downloaded and processed: {output_path.name}")
+    return output_path
+
+
+async def _download_or_generate_slide(
+    *,
+    source_url: str,
+    prompt: str,
+    output_path: Path,
+    api_key: str,
+    model: str,
+) -> Path:
+    """Try to download source image, fallback to AI generation on failure.
+
+    Args:
+        source_url: Image URL to download.
+        prompt: Fallback prompt for AI generation.
+        output_path: Path to save slide.
+        api_key: OpenRouter API key.
+        model: AI model identifier.
+
+    Returns:
+        Path to generated/downloaded slide.
+    """
+    try:
+        return await download_and_process_image(url=source_url, output_path=output_path)
+    except (httpx.HTTPError, ValueError, Exception) as e:
+        print(f"⚠ Failed to download image from {source_url}: {e}")
+        print(f"  ⟳ Falling back to AI generation...")
+        return await generate_slide(
+            prompt=prompt, output_path=output_path, api_key=api_key, model=model
+        )
 
 
 async def generate_slide(
@@ -153,7 +253,7 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
 
 async def generate_slides_for_sections(
     *,
-    sections: list[tuple[str, str]],
+    sections: Sequence[tuple[str, str] | tuple[str, str, str | None]],
     output_dir: Path,
     api_key: str,
     language: str = "ja",
@@ -165,7 +265,9 @@ async def generate_slides_for_sections(
     """Generate slides for multiple script sections with concurrent processing.
 
     Args:
-        sections: List of (title, prompt) tuples.
+        sections: List of (title, prompt, source_image_url) tuples.
+                  If source_image_url is provided, download and use that image.
+                  Otherwise, generate using AI with the prompt.
         output_dir: Directory to save slide images.
         api_key: OpenRouter API key.
         language: Language code for organizing output (ja, en, etc.).
@@ -186,7 +288,14 @@ async def generate_slides_for_sections(
 
     print(f"\n📊 Preparing to generate {len(sections)} slides for language '{language}'...")
 
-    for i, (title, prompt) in enumerate(sections):
+    for i, section_data in enumerate(sections):
+        # Support both old format (title, prompt) and new format (title, prompt, source_image_url)
+        if len(section_data) == 2:
+            title, prompt = section_data
+            source_image_url = None
+        else:
+            title, prompt, source_image_url = section_data
+
         output_path = lang_output_dir / f"slide_{i:04d}.png"
         slide_paths.append(output_path)
 
@@ -194,15 +303,43 @@ async def generate_slides_for_sections(
         if output_path.exists() and output_path.stat().st_size > 0:
             print(f"⊙ Slide {i:02d}/{len(sections) - 1} already exists: {output_path.name}")
         else:
-            print(f"→ Slide {i:02d}/{len(sections) - 1} queued: {title[:50]}...")
-            tasks_to_run.append(
-                generate_slide(
-                    prompt=prompt,
-                    output_path=output_path,
-                    api_key=api_key,
-                    model=model,
+            # Decide whether to download image or generate with AI
+            if source_image_url:
+                print(f"→ Slide {i:02d}/{len(sections) - 1} queued (download): {title[:40]}...")
+                # Create a task that tries download first, then falls back to generation if available
+                if prompt:
+                    # Fallback available
+                    tasks_to_run.append(
+                        _download_or_generate_slide(
+                            source_url=source_image_url,
+                            prompt=prompt,
+                            output_path=output_path,
+                            api_key=api_key,
+                            model=model,
+                        )
+                    )
+                else:
+                    # No fallback, just download
+                    tasks_to_run.append(
+                        download_and_process_image(url=source_image_url, output_path=output_path)
+                    )
+            elif prompt:
+                print(f"→ Slide {i:02d}/{len(sections) - 1} queued (generate): {title[:40]}...")
+                tasks_to_run.append(
+                    generate_slide(
+                        prompt=prompt,
+                        output_path=output_path,
+                        api_key=api_key,
+                        model=model,
+                    )
                 )
-            )
+            else:
+                # Neither source image nor prompt available
+                print(
+                    f"⚠ Slide {i:02d}/{len(sections) - 1} has no image source or prompt, skipping"
+                )
+                continue
+
             task_indices.append(i)
 
     if not tasks_to_run:
