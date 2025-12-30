@@ -24,7 +24,7 @@
       "args": ["-y", "@modelcontextprotocol/server-brave-search"],
       "env": {
         "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
-      },
+      }
     }
     // Example: Custom MCP server
     // Uncomment and modify to add your own MCP server

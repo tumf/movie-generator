@@ -199,6 +199,7 @@ def render_video_with_remotion(
     output_path: Path,
     remotion_root: Path,
     project_name: str = "video",
+    show_progress: bool = False,
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
 
@@ -209,6 +210,7 @@ def render_video_with_remotion(
         output_path: Path to save rendered video.
         remotion_root: Path to Remotion project root directory.
         project_name: Name of the project for metadata.
+        show_progress: If True, show real-time rendering progress. Default False.
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
@@ -234,9 +236,11 @@ def render_video_with_remotion(
 
     # Render video using Remotion CLI
     try:
-        console.print(
-            f"[cyan]🎬 Rendering video with Remotion ({total_duration:.1f}s, {total_frames} frames)...[/cyan]"
-        )
+        # Only show initial message when progress is hidden
+        if not show_progress:
+            console.print(
+                f"[cyan]🎬 Rendering video with Remotion ({total_duration:.1f}s, {total_frames} frames)...[/cyan]"
+            )
 
         result = subprocess.run(
             [
@@ -246,16 +250,24 @@ def render_video_with_remotion(
                 "VideoGenerator",
                 str(output_path.absolute()),
                 "--overwrite",
+                "--concurrency",
+                "8",  # Use 8 concurrent threads for faster rendering
             ],
             cwd=remotion_root,
             check=True,
-            capture_output=True,
+            # Show progress only if requested
+            capture_output=not show_progress,
             text=True,
         )
 
-        console.print(f"[green]✓ Video rendered: {output_path}[/green]")
+        # Only show completion message when progress is hidden
+        if not show_progress:
+            console.print(f"[green]✓ Video rendered: {output_path}[/green]")
 
     except subprocess.CalledProcessError as e:
-        error_msg = f"Remotion rendering failed:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
-        console.print(f"[red]{error_msg}[/red]")
-        raise RuntimeError(error_msg) from e
+        if show_progress:
+            console.print(f"[red]Remotion rendering failed with exit code {e.returncode}[/red]")
+        else:
+            error_msg = f"Remotion rendering failed:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
+            console.print(f"[red]{error_msg}[/red]")
+        raise RuntimeError(f"Remotion rendering failed with exit code {e.returncode}") from e

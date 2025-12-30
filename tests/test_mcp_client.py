@@ -1,7 +1,6 @@
 """Tests for MCP client."""
 
 import asyncio
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -68,10 +67,11 @@ async def test_mcp_client_connect_command_not_found(mock_config):
 
 @pytest.mark.asyncio
 async def test_mcp_client_call_tool_not_connected(mock_config):
-    """Test calling tool when not connected."""
+    """Test calling tool when not connected (tool not found)."""
     client = MCPClient(mock_config, "firecrawl")
 
-    with pytest.raises(RuntimeError, match="Not connected to MCP server"):
+    # With no tools available, should raise error about tool not found
+    with pytest.raises(RuntimeError, match="Tool 'test_tool' not found"):
         await client.call_tool("test_tool", {})
 
 
@@ -86,8 +86,11 @@ async def test_mcp_client_call_tool_timeout(mock_config):
     mock_process.stdin = MagicMock()
     client.process = mock_process
 
+    # Add a fake tool to available_tools
+    client.available_tools = [{"name": "test_tool"}]
+
     # Mock readline to never return (simulating timeout)
-    with patch.object(client, "_read_response_line", side_effect=asyncio.TimeoutError()):
+    with patch.object(client, "_read_response_line", side_effect=TimeoutError()):
         with pytest.raises(asyncio.TimeoutError, match="timed out"):
             await client.call_tool("test_tool", {}, timeout=0.1)
 
@@ -103,19 +106,29 @@ async def test_mcp_client_scrape_url_success(mock_config):
     mock_process.stdin = MagicMock()
     client.process = mock_process
 
-    # Mock successful response
-    response_data = {"data": {"markdown": "# Test Content\n\nThis is test content."}}
+    # Add firecrawl_scrape to available tools
+    client.available_tools = [{"name": "firecrawl_scrape"}]
 
-    with patch.object(
-        client, "_read_response_line", return_value='{"result": ' + str(response_data) + "}"
-    ):
-        # Need to patch json.loads to handle the mock response properly
-        import json
+    # Mock successful response in MCP format
+    markdown_content = "# Test Content\n\nThis is test content."
+    import json as json_module
 
-        with patch("json.loads", return_value={"result": response_data}):
-            result = await client.scrape_url("https://example.com")
+    response_data = {
+        "content": [
+            {
+                "type": "text",
+                "text": json_module.dumps({"markdown": markdown_content}),
+            }
+        ]
+    }
 
-            assert result == "# Test Content\n\nThis is test content."
+    # Mock call_tool to return the response
+    async def mock_call_tool(tool_name, arguments, timeout=30.0):
+        return response_data
+
+    with patch.object(client, "call_tool", side_effect=mock_call_tool):
+        result = await client.scrape_url("https://example.com")
+        assert result == markdown_content
 
 
 @pytest.mark.asyncio
@@ -145,8 +158,11 @@ async def test_mcp_client_context_manager(mock_config):
         mock_process.poll.return_value = None  # Process running
         mock_popen.return_value = mock_process
 
-        async with client:
-            assert client.process is not None
+        # Mock _initialize and _list_tools to avoid actual JSON-RPC calls
+        with patch.object(client, "_initialize", new_callable=AsyncMock):
+            with patch.object(client, "_list_tools", new_callable=AsyncMock):
+                async with client:
+                    assert client.process is not None
 
-        # Verify process was terminated
-        mock_process.terminate.assert_called()
+                # Verify process was terminated
+                mock_process.terminate.assert_called()

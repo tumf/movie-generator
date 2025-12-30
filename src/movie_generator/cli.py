@@ -135,6 +135,13 @@ def cli() -> None:
     type=click.Path(exists=True, path_type=Path),
     help="Path to MCP configuration file (enables web scraping via MCP servers)",
 )
+@click.option(
+    "--progress",
+    "show_progress",
+    is_flag=True,
+    default=False,
+    help="Show real-time rendering progress (default: hide)",
+)
 def generate(
     url_or_script: str | None,
     config: Path | None,
@@ -142,6 +149,7 @@ def generate(
     api_key: str | None,
     scenes: str | None,
     mcp_config: Path | None,
+    show_progress: bool,
 ) -> None:
     """Generate video from URL or existing script.
 
@@ -152,6 +160,7 @@ def generate(
         api_key: OpenRouter API key.
         scenes: Scene range to render (e.g., "1-3" or "2").
         mcp_config: Path to MCP configuration file for enhanced web scraping.
+        show_progress: Show real-time rendering progress.
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -544,17 +553,33 @@ def generate(
                 progress.update(task, completed=True)
 
             # Render video with Remotion
-            task = progress.add_task("Rendering video with Remotion...", total=None)
-            render_video_with_remotion(
-                phrases=all_phrases,
-                audio_paths=audio_paths,
-                slide_paths=slide_paths,
-                output_path=video_path,
-                remotion_root=remotion_dir,
-                project_name=project_name,
-            )
-            progress.update(task, completed=True)
-            console.print(f"✓ Video ready: {video_path}")
+            if show_progress:
+                # Stop rich Progress to avoid interference with Remotion output
+                progress.stop()
+                console.print("[cyan]🎬 Rendering video with Remotion...[/cyan]")
+                render_video_with_remotion(
+                    phrases=all_phrases,
+                    audio_paths=audio_paths,
+                    slide_paths=slide_paths,
+                    output_path=video_path,
+                    remotion_root=remotion_dir,
+                    project_name=project_name,
+                    show_progress=show_progress,
+                )
+                console.print(f"[green]✓ Video ready: {video_path}[/green]")
+            else:
+                task = progress.add_task("Rendering video with Remotion...", total=None)
+                render_video_with_remotion(
+                    phrases=all_phrases,
+                    audio_paths=audio_paths,
+                    slide_paths=slide_paths,
+                    output_path=video_path,
+                    remotion_root=remotion_dir,
+                    project_name=project_name,
+                    show_progress=show_progress,
+                )
+                progress.update(task, completed=True)
+                console.print(f"✓ Video ready: {video_path}")
 
     console.print("\n[bold green]✓ Video generation complete![/bold green]")
 
