@@ -149,6 +149,12 @@ slides:
   provider: "openrouter"
   model: "nonobananapro"
 
+video:
+  transition:
+    type: "fade"              # Transition type: fade, slide, wipe, flip, clockWipe, none
+    duration_frames: 15       # Transition duration in frames (at 30fps)
+    timing: "linear"          # Timing function: linear or spring
+
 pronunciation:
   custom:
     "TechTerm":
@@ -156,6 +162,55 @@ pronunciation:
       accent: 0  # Auto
       word_type: "PROPER_NOUN"
       priority: 10
+```
+
+### Slide Transitions
+
+Configure smooth transitions between slides using the `video.transition` settings:
+
+```yaml
+video:
+  transition:
+    type: "fade"              # Transition type (see below)
+    duration_frames: 15       # Duration in frames (at 30fps: 15 frames ≈ 0.5 seconds)
+    timing: "linear"          # Timing function: linear or spring
+```
+
+**Available Transition Types:**
+- `fade` - Fade in/out between slides (default)
+- `slide` - Slide in from the side
+- `wipe` - Wipe across the screen
+- `flip` - 3D flip effect
+- `clockWipe` - Circular wipe like clock hands
+- `none` - No transition, instant cut
+
+**Timing Functions:**
+- `linear` - Constant speed throughout (use `duration_frames` to control length)
+- `spring` - Natural spring animation (ignores `duration_frames`, uses physics)
+
+**Examples:**
+
+```yaml
+# Fast slide transition
+video:
+  transition:
+    type: "slide"
+    duration_frames: 10
+    timing: "linear"
+
+# Smooth spring-based fade
+video:
+  transition:
+    type: "fade"
+    duration_frames: 15
+    timing: "spring"
+
+# No transition (instant cuts)
+video:
+  transition:
+    type: "none"
+    duration_frames: 0
+    timing: "linear"
 ```
 
 ### Pronunciation Dictionary
@@ -239,6 +294,7 @@ movie-generator/
 - ✅ Automatic furigana generation for technical terms
 - ✅ AI slide generation (OpenRouter integration)
 - ✅ Video rendering with Remotion
+- ✅ Smooth slide transitions (fade, slide, wipe, flip, clockWipe)
 - ✅ Generate from URL or existing script.yaml
 
 **Known Limitations:**

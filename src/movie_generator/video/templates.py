@@ -12,29 +12,33 @@ def get_video_generator_tsx(
     transition_duration: int = 15,
     transition_timing: str = "linear",
 ) -> str:
-    """Generate VideoGenerator.tsx component template.
+    """Generate VideoGenerator.tsx component template with TransitionSeries.
 
     This component handles:
     - Phrase timing calculation
     - Slide grouping (consecutive phrases with same slide)
-    - Fade in/out animations
+    - Transitions between slides using @remotion/transitions
     - Audio and subtitle synchronization
 
     Args:
         transition_type: Type of transition (fade, slide, wipe, flip, clockWipe, none).
-                         Currently using composition.json for configuration.
-        transition_duration: Transition duration in frames. Currently using composition.json.
-        transition_timing: Timing function (linear, spring). Currently using composition.json.
+        transition_duration: Transition duration in frames.
+        transition_timing: Timing function (linear, spring).
 
     Note:
-        Transition configuration is passed via composition.json.
-        Future implementation will use @remotion/transitions TransitionSeries.
+        Uses TransitionSeries from @remotion/transitions for smooth transitions.
+        Configuration is read from composition.json at runtime.
     """
-    # NOTE: For the initial implementation, we keep the existing fade-based template
-    # and pass transition settings via composition.json for future use.
-    # This ensures backward compatibility while setting up the configuration infrastructure.
     return """import React from 'react';
 import { AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { TransitionSeries, springTiming, linearTiming } from '@remotion/transitions';
+import { fade } from '@remotion/transitions/fade';
+import { slide } from '@remotion/transitions/slide';
+import { wipe } from '@remotion/transitions/wipe';
+import { flip } from '@remotion/transitions/flip';
+import { clockWipe } from '@remotion/transitions/clock-wipe';
+import { none } from '@remotion/transitions/none';
+import compositionData from '../composition.json';
 
 // Type definition for phrase metadata
 export interface PhraseData {
@@ -74,33 +78,36 @@ const getScenesWithTiming = (phrases: PhraseData[]) => {
 const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
   const groups: Array<{
     slideFile?: string;
-    startFrame: number;
-    endFrame: number;
+    scenes: ReturnType<typeof getScenesWithTiming>;
+    durationFrames: number;
   }> = [];
 
   let currentSlide: string | undefined = undefined;
-  let currentStart = 0;
+  let currentScenes: typeof scenes = [];
 
   scenes.forEach((scene, index) => {
     if (scene.slideFile !== currentSlide) {
       // Slide changed, save previous group
-      if (index > 0) {
+      if (index > 0 && currentScenes.length > 0) {
+        const duration = currentScenes.reduce((sum, s) => sum + s.durationFrames, 0);
         groups.push({
           slideFile: currentSlide,
-          startFrame: currentStart,
-          endFrame: scene.startFrame,
+          scenes: currentScenes,
+          durationFrames: duration,
         });
+        currentScenes = [];
       }
       currentSlide = scene.slideFile;
-      currentStart = scene.startFrame;
     }
+    currentScenes.push(scene);
     
     // Last scene
     if (index === scenes.length - 1) {
+      const duration = currentScenes.reduce((sum, s) => sum + s.durationFrames, 0);
       groups.push({
         slideFile: currentSlide,
-        startFrame: currentStart,
-        endFrame: scene.endFrame,
+        scenes: currentScenes,
+        durationFrames: duration,
       });
     }
   });
@@ -108,23 +115,37 @@ const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
   return groups;
 };
 
+// Get transition presentation based on type
+const getTransitionPresentation = (type: string) => {
+  switch (type) {
+    case 'fade':
+      return fade();
+    case 'slide':
+      return slide();
+    case 'wipe':
+      return wipe();
+    case 'flip':
+      return flip();
+    case 'clockWipe':
+      return clockWipe();
+    case 'none':
+      return none();
+    default:
+      return fade();
+  }
+};
+
+// Get transition timing based on configuration
+const getTransitionTiming = (timing: string, durationInFrames: number) => {
+  if (timing === 'spring') {
+    return springTiming({ config: { damping: 200 } });
+  }
+  return linearTiming({ durationInFrames });
+};
+
 const SlideLayer: React.FC<{
   slideFile?: string;
-  startFrame: number;
-  durationFrames: number;
-}> = ({ slideFile, durationFrames }) => {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-
-  // Fade in/out animation only at slide boundaries
-  const fadeInDuration = fps * 0.5; // 0.5 seconds
-  const fadeOutDuration = fps * 0.5;
-  const opacity = Math.min(
-    1,
-    frame / fadeInDuration,
-    (durationFrames - frame) / fadeOutDuration
-  );
-
+}> = ({ slideFile }) => {
   if (!slideFile) {
     return (
       <AbsoluteFill
@@ -135,7 +156,6 @@ const SlideLayer: React.FC<{
           color: 'white',
           fontSize: '48px',
           fontFamily: 'Arial, sans-serif',
-          opacity,
         }}
       >
         <div>Movie Generator</div>
@@ -149,7 +169,6 @@ const SlideLayer: React.FC<{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        opacity,
       }}
     >
       <div style={{ width: '80%', height: '80%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -210,23 +229,38 @@ const AudioSubtitleLayer: React.FC<{
 export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
   const scenes = getScenesWithTiming(phrases);
   const slideGroups = getSlideGroups(scenes);
+  const { fps } = useVideoConfig();
+
+  // Get transition configuration from composition data
+  const transitionType = (compositionData as any).transitionType || 'fade';
+  const transitionDuration = (compositionData as any).transitionDuration || 15;
+  const transitionTiming = (compositionData as any).transitionTiming || 'linear';
+
+  const presentation = getTransitionPresentation(transitionType);
+  const timing = getTransitionTiming(transitionTiming, transitionDuration);
+
+  // Calculate actual transition duration for slide sequences
+  const transitionDurationFrames = timing.getDurationInFrames({ fps });
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#1a1a1a' }}>
-      {/* Slide layer - only changes when slide actually changes */}
-      {slideGroups.map((group, index) => (
-        <Sequence
-          key={`slide-${index}`}
-          from={group.startFrame}
-          durationInFrames={group.endFrame - group.startFrame}
-        >
-          <SlideLayer
-            slideFile={group.slideFile}
-            startFrame={group.startFrame}
-            durationFrames={group.endFrame - group.startFrame}
-          />
-        </Sequence>
-      ))}
+      {/* TransitionSeries for slides */}
+      <TransitionSeries>
+        {slideGroups.map((group, index) => (
+          <React.Fragment key={`slide-${index}`}>
+            <TransitionSeries.Sequence durationInFrames={group.durationFrames}>
+              <SlideLayer slideFile={group.slideFile} />
+            </TransitionSeries.Sequence>
+            {/* Add transition between slides, but not after the last slide */}
+            {index < slideGroups.length - 1 && (
+              <TransitionSeries.Transition
+                presentation={presentation}
+                timing={timing}
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </TransitionSeries>
 
       {/* Audio and subtitle layer - changes with each phrase */}
       {scenes.map((scene) => (
@@ -248,8 +282,21 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
 // Calculate total frames for the composition
 export const calculateTotalFrames = (phrases: PhraseData[]): number => {
   const fps = 30;
-  const totalDuration = phrases.reduce((sum, phrase) => sum + phrase.duration, 0);
-  return Math.round(totalDuration * fps);
+  const scenes = getScenesWithTiming(phrases);
+  const slideGroups = getSlideGroups(scenes);
+  
+  // Get transition configuration
+  const transitionTiming = (compositionData as any).transitionTiming || 'linear';
+  const transitionDuration = (compositionData as any).transitionDuration || 15;
+  const timing = getTransitionTiming(transitionTiming, transitionDuration);
+  const transitionDurationFrames = timing.getDurationInFrames({ fps });
+  
+  // Calculate total: sum of all slide durations minus transition overlaps
+  const totalSlideFrames = slideGroups.reduce((sum, group) => sum + group.durationFrames, 0);
+  const numTransitions = Math.max(0, slideGroups.length - 1);
+  const totalTransitionOverlap = numTransitions * transitionDurationFrames;
+  
+  return totalSlideFrames - totalTransitionOverlap;
 };
 """
 
