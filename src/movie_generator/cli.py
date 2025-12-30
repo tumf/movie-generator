@@ -15,7 +15,7 @@ from .audio.voicevox import create_synthesizer_from_config
 from .config import Config, load_config, print_default_config, write_config_to_file
 from .content.fetcher import fetch_url_sync
 from .content.parser import parse_html
-from .project import Project, create_project
+from .project import Project
 from .script.generator import generate_script
 from .script.phrases import calculate_phrase_timings, split_into_phrases
 from .slides.generator import generate_slides_for_sections
@@ -343,21 +343,53 @@ def generate(
             if script.pronunciations:
                 console.print(f"  Pronunciations: {len(script.pronunciations)} entries")
 
-        # Step 3: Split into phrases
+        # Step 3: Parse scene range if specified
+        scene_start: int | None = None
+        scene_end: int | None = None
+        if scenes:
+            scene_start, scene_end = parse_scene_range(scenes)
+            # Display scene range info
+            if scene_start is not None and scene_end is not None:
+                console.print(f"[cyan]Filtering to scenes {scene_start + 1}-{scene_end + 1}[/cyan]")
+            elif scene_start is not None:
+                console.print(f"[cyan]Filtering to scenes {scene_start + 1} onwards[/cyan]")
+            elif scene_end is not None:
+                console.print(f"[cyan]Filtering to scenes 1-{scene_end + 1}[/cyan]")
+
+        # Step 4: Split into phrases
         task = progress.add_task("Splitting into phrases...", total=None)
-        all_phrases = []
+
+        # First pass: generate all phrases to determine original_index
+        all_sections_phrases = []
         for section_idx, section in enumerate(script.sections):
             phrases = split_into_phrases(section.narration)
-            # Set section_index for each phrase
             for phrase in phrases:
                 phrase.section_index = section_idx
+            all_sections_phrases.append((section_idx, phrases))
+
+        # Set original_index for all phrases globally
+        global_index = 0
+        for section_idx, phrases in all_sections_phrases:
+            for phrase in phrases:
+                phrase.original_index = global_index
+                global_index += 1
+
+        # Second pass: filter by scene range if specified
+        all_phrases = []
+        for section_idx, phrases in all_sections_phrases:
+            # Skip sections outside scene range
+            if scene_start is not None and section_idx < scene_start:
+                continue
+            if scene_end is not None and section_idx > scene_end:
+                continue
             all_phrases.extend(phrases)
+
         progress.update(task, completed=True)
         console.print(f"✓ Split into {len(all_phrases)} phrases")
 
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
-        synthesizer = create_synthesizer_from_config(cfg, allow_placeholder=allow_placeholder)
+        synthesizer = create_synthesizer_from_config(cfg)
 
         # Add pronunciations from script to dictionary (LLM-generated, high priority)
         if script.pronunciations:
@@ -393,9 +425,12 @@ def generate(
                 )
 
         audio_dir = output_dir / "audio"
-        # Count existing audio files before generation
+        # Count existing audio files before generation (use original_index)
         existing_audio_count = sum(
-            1 for i in range(len(all_phrases)) if (audio_dir / f"phrase_{i:04d}.wav").exists()
+            1
+            for phrase in all_phrases
+            if (audio_dir / f"phrase_{phrase.original_index:04d}.wav").exists()
+            and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
         )
         audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
         calculate_phrase_timings(all_phrases)
@@ -409,17 +444,34 @@ def generate(
         # Step 5: Generate slides
         if api_key:
             task = progress.add_task("Generating slides...", total=None)
-            slide_prompts = [
-                (section.title, section.slide_prompt or section.title, section.source_image_url)
-                for section in script.sections
-            ]
+            # Filter slide prompts based on scene range and track original indices
+            slide_prompts = []
+            slide_indices = []  # Track original section indices for correct file naming
+            for section_idx, section in enumerate(script.sections):
+                # Skip sections outside scene range
+                if scene_start is not None and section_idx < scene_start:
+                    continue
+                if scene_end is not None and section_idx > scene_end:
+                    continue
+                slide_prompts.append(
+                    (section.title, section.slide_prompt or section.title, section.source_image_url)
+                )
+                slide_indices.append(section_idx)
             slide_dir = output_dir / "slides"
-            # Count existing slides before generation
+            # Count existing slides before generation (use original indices)
+            # Check in language subdirectory (ja by default) or root
+            lang_slide_dir = slide_dir / "ja"
             existing_slide_count = sum(
                 1
-                for i in range(len(slide_prompts))
-                if (slide_dir / f"slide_{i:04d}.png").exists()
-                and (slide_dir / f"slide_{i:04d}.png").stat().st_size > 0
+                for idx in slide_indices
+                if (
+                    (lang_slide_dir / f"slide_{idx:04d}.png").exists()
+                    and (lang_slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                )
+                or (
+                    (slide_dir / f"slide_{idx:04d}.png").exists()
+                    and (slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                )
             )
 
             try:
@@ -430,6 +482,7 @@ def generate(
                         api_key=api_key,
                         model=cfg.slides.llm.model,
                         max_concurrent=2,  # Conservative to avoid rate limits
+                        section_indices=slide_indices,
                     )
                 )
                 progress.update(task, completed=True)
@@ -514,6 +567,7 @@ def generate(
                 output_path=video_path,
                 remotion_root=remotion_dir,
                 project_name=project_name,
+                show_progress=show_progress,
             )
             progress.update(task, completed=True)
             console.print(f"✓ Video ready: {video_path}")

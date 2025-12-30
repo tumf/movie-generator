@@ -7,13 +7,13 @@
     "setup": "pnpm install"
   },
   "devDependencies": {
-    "@remotion/cli": "^4.0.395",
-    "@remotion/transitions": "^4.0.395",
+    "@remotion/cli": "4.0.397",
+    "@remotion/transitions": "4.0.397",
     "@types/react": "^19.0.6",
     "@types/react-dom": "^19.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "remotion": "^4.0.395",
+    "remotion": "4.0.397",
     "typescript": "^5.7.2"
   }
 }

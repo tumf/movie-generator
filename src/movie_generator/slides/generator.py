@@ -5,9 +5,9 @@ Generates presentation slides using image generation models.
 
 import asyncio
 import base64
+from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
-from typing import Sequence
 
 import httpx
 from PIL import Image
@@ -104,7 +104,7 @@ async def _download_or_generate_slide(
         return await download_and_process_image(url=source_url, output_path=output_path)
     except (httpx.HTTPError, ValueError, Exception) as e:
         print(f"⚠ Failed to download image from {source_url}: {e}")
-        print(f"  ⟳ Falling back to AI generation...")
+        print("  ⟳ Falling back to AI generation...")
         return await generate_slide(
             prompt=prompt, output_path=output_path, api_key=api_key, model=model
         )
@@ -261,6 +261,7 @@ async def generate_slides_for_sections(
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
     model: str = "google/gemini-3-pro-image-preview",
     max_concurrent: int = 3,
+    section_indices: list[int] | None = None,
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.
 
@@ -273,6 +274,8 @@ async def generate_slides_for_sections(
         language: Language code for organizing output (ja, en, etc.).
         model: Image model identifier.
         max_concurrent: Maximum number of concurrent API requests.
+        section_indices: Optional list of original section indices for file naming.
+                        If None, uses sequential indices 0, 1, 2, ...
 
     Returns:
         List of paths to generated slides.
@@ -289,6 +292,9 @@ async def generate_slides_for_sections(
     print(f"\n📊 Preparing to generate {len(sections)} slides for language '{language}'...")
 
     for i, section_data in enumerate(sections):
+        # Use custom index if provided, otherwise use sequential index
+        file_index = section_indices[i] if section_indices else i
+
         # Support both old format (title, prompt) and new format (title, prompt, source_image_url)
         if len(section_data) == 2:
             title, prompt = section_data
@@ -296,7 +302,7 @@ async def generate_slides_for_sections(
         else:
             title, prompt, source_image_url = section_data
 
-        output_path = lang_output_dir / f"slide_{i:04d}.png"
+        output_path = lang_output_dir / f"slide_{file_index:04d}.png"
         slide_paths.append(output_path)
 
         # Check if already exists
@@ -377,10 +383,10 @@ async def generate_slides_for_sections(
     successful = sum(1 for path in slide_paths if path.exists() and path.stat().st_size > 0)
     failed = len(slide_paths) - successful
 
-    print(f"\n📈 Slide generation complete:")
+    print("\n📈 Slide generation complete:")
     print(f"  ✓ Successful: {successful}/{len(slide_paths)}")
     if failed > 0:
         print(f"  ✗ Failed: {failed}/{len(slide_paths)}")
-        print(f"\n💡 Tip: Delete failed (0-byte) slides and run again to retry only those.")
+        print("\n💡 Tip: Delete failed (0-byte) slides and run again to retry only those.")
 
     return slide_paths
