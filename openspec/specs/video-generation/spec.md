@@ -292,3 +292,21 @@ The system SHALL use cleaned subtitle text in video composition while maintainin
 - **THEN** subtitles are synchronized with corresponding audio within ±0.1 second accuracy
 - **AND** subtitle display uses cleaned text while audio includes all punctuation
 
+### Requirement: Subtitle Display Area
+
+The system SHALL display subtitles within a horizontally constrained area to ensure readability.
+
+#### Scenario: Maximum Subtitle Width
+
+- **WHEN** a subtitle is rendered on the video
+- **THEN** the subtitle container width SHALL NOT exceed 80% of the video width
+- **AND** the subtitle text is horizontally centered within the video frame
+- **AND** the subtitle remains fully visible without extending to screen edges
+
+#### Scenario: Long Subtitle Text Wrapping
+
+- **WHEN** subtitle text exceeds the maximum width
+- **THEN** the text wraps to multiple lines within the 80% width constraint
+- **AND** line height is maintained at 1.4 for readability
+- **AND** all wrapped lines remain within the constrained area
+

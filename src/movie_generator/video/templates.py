@@ -177,7 +177,7 @@ const AudioSubtitleLayer: React.FC<{
             fontFamily: 'Arial, sans-serif',
             padding: '20px 40px',
             borderRadius: '10px',
-            maxWidth: '80%',
+            width: '80%',
             textAlign: 'center',
             lineHeight: '1.4',
             opacity,
