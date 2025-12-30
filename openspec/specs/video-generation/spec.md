@@ -294,19 +294,23 @@ The system SHALL use cleaned subtitle text in video composition while maintainin
 
 ### Requirement: Subtitle Display Area
 
-The system SHALL display subtitles within a horizontally constrained area to ensure readability.
+The system SHALL render subtitles with a fixed width of 80% of the video width to maximize text display area before wrapping.
 
-#### Scenario: Maximum Subtitle Width
+#### Scenario: Fixed Subtitle Width
 
-- **WHEN** a subtitle is rendered on the video
-- **THEN** the subtitle container width SHALL NOT exceed 80% of the video width
-- **AND** the subtitle text is horizontally centered within the video frame
-- **AND** the subtitle remains fully visible without extending to screen edges
+- **WHEN** a subtitle is displayed
+- **THEN** the subtitle container has a fixed width of 80% of the video width (not maxWidth)
+- **AND** the subtitle is horizontally centered on the screen
+- **AND** text utilizes the full 80% width before wrapping
 
 #### Scenario: Long Subtitle Text Wrapping
 
-- **WHEN** subtitle text exceeds the maximum width
-- **THEN** the text wraps to multiple lines within the 80% width constraint
-- **AND** line height is maintained at 1.4 for readability
-- **AND** all wrapped lines remain within the constrained area
+- **WHEN** subtitle text exceeds the 80% width container
+- **THEN** the text wraps to multiple lines within the container
+- **AND** maintains a line-height of 1.4 for readability
+
+**Technical Note:**
+- Previously used `maxWidth: '80%'` which caused container to shrink based on text length
+- Changed to `width: '80%'` to ensure container always uses full 80% width
+- This prevents premature text wrapping on shorter text
 
