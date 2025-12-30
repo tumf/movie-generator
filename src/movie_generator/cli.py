@@ -274,10 +274,10 @@ def generate(
             try:
                 slide_paths = asyncio.run(
                     generate_slides_for_sections(
-                        slide_prompts,
-                        slide_dir,
-                        api_key,
-                        cfg.slides.llm.model,
+                        sections=slide_prompts,
+                        output_dir=slide_dir,
+                        api_key=api_key,
+                        model=cfg.slides.llm.model,
                         max_concurrent=2,  # Conservative to avoid rate limits
                     )
                 )

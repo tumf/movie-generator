@@ -11,6 +11,7 @@ import httpx
 
 
 async def generate_slide(
+    *,
     prompt: str,
     output_path: Path,
     api_key: str,
@@ -151,6 +152,7 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
 
 
 async def generate_slides_for_sections(
+    *,
     sections: list[tuple[str, str]],
     output_dir: Path,
     api_key: str,
@@ -193,7 +195,14 @@ async def generate_slides_for_sections(
             print(f"⊙ Slide {i:02d}/{len(sections) - 1} already exists: {output_path.name}")
         else:
             print(f"→ Slide {i:02d}/{len(sections) - 1} queued: {title[:50]}...")
-            tasks_to_run.append(generate_slide(prompt, output_path, api_key, model))
+            tasks_to_run.append(
+                generate_slide(
+                    prompt=prompt,
+                    output_path=output_path,
+                    api_key=api_key,
+                    model=model,
+                )
+            )
             task_indices.append(i)
 
     if not tasks_to_run:
