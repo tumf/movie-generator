@@ -63,6 +63,10 @@ projects/*/output/
 htmlcov/
 .tox/
 
+# Ad-hoc test scripts and outputs (root level only)
+/test_*.py
+/test_output/
+
 # Node.js
 node_modules/
 
