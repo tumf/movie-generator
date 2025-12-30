@@ -21,6 +21,7 @@ async def generate_multilang_content(
     config: Config,
     output_dir: Path,
     api_key: str,
+    images: list[dict[str, str]] | None = None,
 ) -> dict[str, VideoScript]:
     """Generate scripts and slides for multiple languages.
 
@@ -31,6 +32,7 @@ async def generate_multilang_content(
         config: Project configuration.
         output_dir: Output directory for scripts and slides.
         api_key: OpenRouter API key.
+        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
 
     Returns:
         Dictionary mapping language codes to VideoScript objects.
@@ -56,6 +58,7 @@ async def generate_multilang_content(
             language=lang_code,
             api_key=api_key,
             model=config.content.llm.model,
+            images=images,
         )
 
         # Save script to language-specific file
@@ -68,6 +71,7 @@ async def generate_multilang_content(
                     "title": section.title,
                     "narration": section.narration,
                     "slide_prompt": section.slide_prompt,
+                    "source_image_url": section.source_image_url,
                 }
                 for section in script.sections
             ],
@@ -88,11 +92,12 @@ async def generate_multilang_content(
         print(f"✓ Saved script to: {script_path}")
 
         # Generate slides for this language
-        sections_for_slides = [
-            (section.title, section.slide_prompt)
-            for section in script.sections
-            if section.slide_prompt
-        ]
+        sections_for_slides: list[tuple[str, str, str | None]] = []
+        for section in script.sections:
+            if section.slide_prompt or section.source_image_url:
+                # Ensure slide_prompt is not None (use empty string as fallback)
+                prompt = section.slide_prompt or ""
+                sections_for_slides.append((section.title, prompt, section.source_image_url))
 
         if sections_for_slides:
             print(f"\n📊 Generating {len(sections_for_slides)} slides for {lang_code.upper()}...")
@@ -108,7 +113,7 @@ async def generate_multilang_content(
                 max_concurrent=3,
             )
         else:
-            print(f"⚠️  No slide prompts found in {lang_code.upper()} script")
+            print(f"⚠️  No slide prompts or source images found in {lang_code.upper()} script")
 
         results[lang_code] = script
 

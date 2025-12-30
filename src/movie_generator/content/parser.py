@@ -5,6 +5,7 @@ Parses HTML content and extracts metadata and main content.
 
 from dataclasses import dataclass
 from datetime import datetime
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from markdownify import markdownify
@@ -22,11 +23,12 @@ class ContentMetadata:
 
 @dataclass
 class ImageInfo:
-    """Information about an image found in the content."""
+    """Image information extracted from blog content."""
 
     src: str
     alt: str | None = None
     title: str | None = None
+    aria_describedby: str | None = None
     width: int | None = None
     height: int | None = None
 
@@ -38,26 +40,15 @@ class ParsedContent:
     metadata: ContentMetadata
     content: str
     markdown: str
-    images: list[ImageInfo]  # List of images found in content
-
-    def __init__(
-        self,
-        metadata: ContentMetadata,
-        content: str,
-        markdown: str,
-        images: list[ImageInfo] | None = None,
-    ):
-        self.metadata = metadata
-        self.content = content
-        self.markdown = markdown
-        self.images = images or []
+    images: list[ImageInfo] | None = None
 
 
-def parse_html(html: str) -> ParsedContent:
+def parse_html(html: str, base_url: str | None = None) -> ParsedContent:
     """Parse HTML content and extract metadata.
 
     Args:
         html: Raw HTML content.
+        base_url: Base URL for resolving relative image URLs.
 
     Returns:
         Parsed content with metadata.
@@ -88,43 +79,6 @@ def parse_html(html: str) -> ParsedContent:
         soup.find("article") or soup.find("main") or soup.find("div", class_="content") or soup.body
     )
 
-    # Extract images before removing elements
-    images: list[ImageInfo] = []
-    if content_element:
-        for img_tag in content_element.find_all("img"):
-            src = img_tag.get("src")
-            if src:  # Only include images with src attribute
-                # Parse width/height if present
-                width_str = img_tag.get("width")
-                height_str = img_tag.get("height")
-
-                width = None
-                if width_str:
-                    try:
-                        width = int(str(width_str))
-                    except (ValueError, TypeError):
-                        width = None
-
-                height = None
-                if height_str:
-                    try:
-                        height = int(str(height_str))
-                    except (ValueError, TypeError):
-                        height = None
-
-                alt_val = img_tag.get("alt")
-                title_val = img_tag.get("title")
-
-                images.append(
-                    ImageInfo(
-                        src=str(src),
-                        alt=str(alt_val) if alt_val else None,
-                        title=str(title_val) if title_val else None,
-                        width=width,
-                        height=height,
-                    )
-                )
-
     if content_element:
         # Remove script and style elements
         for script in content_element(["script", "style"]):
@@ -137,6 +91,74 @@ def parse_html(html: str) -> ParsedContent:
         content_text = ""
         markdown_content = ""
 
+    # Extract images from the content
+    images = _extract_images(soup, base_url)
+
     return ParsedContent(
         metadata=metadata, content=content_text, markdown=markdown_content, images=images
     )
+
+
+def _extract_images(soup: BeautifulSoup, base_url: str | None = None) -> list[ImageInfo]:
+    """Extract image information from HTML content.
+
+    Args:
+        soup: BeautifulSoup object of the HTML content.
+        base_url: Base URL for resolving relative URLs.
+
+    Returns:
+        List of extracted image information.
+    """
+    images = []
+
+    for img_tag in soup.find_all("img"):
+        src = img_tag.get("src")
+        if not src:
+            continue
+
+        # Resolve relative URLs to absolute URLs
+        if base_url:
+            src = urljoin(base_url, src)
+
+        # Extract alt and title attributes
+        alt = img_tag.get("alt")
+        title = img_tag.get("title")
+
+        # Extract aria-describedby if present
+        aria_describedby = None
+        aria_describedby_id = img_tag.get("aria-describedby")
+        if aria_describedby_id:
+            described_element = soup.find(id=aria_describedby_id)
+            if described_element:
+                aria_describedby = described_element.get_text(strip=True)
+
+        # Extract width and height if available
+        width = None
+        height = None
+        try:
+            if width_attr := img_tag.get("width"):
+                width = int(width_attr)
+            if height_attr := img_tag.get("height"):
+                height = int(height_attr)
+        except (ValueError, TypeError):
+            pass
+
+        # Filter images by meaningful description (as per spec)
+        # Meaningful: alt text (10+ chars) OR title OR aria-describedby
+        has_meaningful_alt = alt and len(alt.strip()) >= 10
+        has_title = title and len(title.strip()) > 0
+        has_aria_description = aria_describedby and len(aria_describedby.strip()) > 0
+
+        if has_meaningful_alt or has_title or has_aria_description:
+            images.append(
+                ImageInfo(
+                    src=src,
+                    alt=alt,
+                    title=title,
+                    aria_describedby=aria_describedby,
+                    width=width,
+                    height=height,
+                )
+            )
+
+    return images
