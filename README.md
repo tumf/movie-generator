@@ -33,33 +33,49 @@ uv sync --extra dev
 
 **⚠️ VOICEVOX Core is required for voice synthesis.**
 
-The project will raise an `ImportError` if VOICEVOX Core is not installed:
+VOICEVOX Core is not available via PyPI and must be installed manually. If not installed, the generator will raise an error:
 
 ```
 ImportError: VOICEVOX Core is not installed and is required for audio synthesis.
-See docs/VOICEVOX_SETUP.md for installation instructions.
+Please install voicevox_core or see docs/VOICEVOX_SETUP.md for instructions.
+To run without VOICEVOX (placeholder mode for testing), set allow_placeholder=True.
 ```
 
-Manual installation required (not available via pip):
+#### Quick Setup (macOS)
 
-1. Download VOICEVOX Core from the official repository
-2. Set environment variables for dylib paths (macOS)
-3. Update configuration with dictionary and model paths
+```bash
+# Run the automated setup script
+bash scripts/install_voicevox_macos.sh
 
-**See `docs/VOICEVOX_SETUP.md` for detailed setup instructions.**
+# Set environment variables
+source ~/.local/share/voicevox/env.sh
+```
+
+#### Manual Setup
+
+1. **Install VOICEVOX Core**: Download from [VOICEVOX releases](https://github.com/VOICEVOX/voicevox_core/releases)
+2. **Link to virtual environment**:
+   ```bash
+   # If installed via pyenv
+   ln -sf ~/.pyenv/versions/3.13.1/lib/python3.13/site-packages/voicevox_core .venv/lib/python3.13/site-packages/
+   ln -sf ~/.pyenv/versions/3.13.1/lib/python3.13/site-packages/voicevox_core-*.dist-info .venv/lib/python3.13/site-packages/
+   ```
+3. **Configure paths**: See `docs/VOICEVOX_SETUP.md` for detailed instructions
 
 #### Testing Without VOICEVOX
 
-For development/testing only, you can run in placeholder mode:
+For development/testing only, use placeholder mode:
 
-```python
+```bash
+# CLI with placeholder mode
+uv run movie-generator generate https://example.com --allow-placeholder
+
+# Programmatic usage
 from movie_generator.audio.voicevox import VoicevoxSynthesizer
-
-# Enable placeholder mode (no actual audio generated)
 synth = VoicevoxSynthesizer(allow_placeholder=True)
 ```
 
-**Note:** Placeholder mode generates empty audio files and is only for testing pipeline structure.
+**Note:** Placeholder mode generates empty audio files for testing pipeline structure only.
 
 ## Usage
 
@@ -72,11 +88,17 @@ export OPENROUTER_API_KEY="your-api-key"
 # Generate video from URL
 uv run movie-generator generate https://example.com/blog-post
 
+# Generate from existing script.yaml
+uv run movie-generator generate path/to/script.yaml
+
 # With custom config
 uv run movie-generator generate https://example.com/blog-post -c config/my-config.yaml
 
 # Specify output directory
 uv run movie-generator generate https://example.com/blog-post -o ./my-videos
+
+# Testing mode without VOICEVOX
+uv run movie-generator generate https://example.com/blog-post --allow-placeholder
 ```
 
 ### Configuration
@@ -208,15 +230,23 @@ movie-generator/
 └── pyproject.toml              # Project dependencies
 ```
 
-## Current Limitations
+## Current Status
 
-This is Phase 1 implementation with the following limitations:
+**Implemented Features:**
+- ✅ Content extraction from URLs
+- ✅ AI-powered script generation
+- ✅ VOICEVOX voice synthesis with pronunciation dictionary
+- ✅ Automatic furigana generation for technical terms
+- ✅ AI slide generation (OpenRouter integration)
+- ✅ Video rendering with Remotion
+- ✅ Generate from URL or existing script.yaml
 
-- VOICEVOX Core integration is placeholder (requires manual installation)
-- Slide generation is placeholder (API integration pending)
-- Video rendering is placeholder (Remotion integration pending)
+**Known Limitations:**
+- VOICEVOX Core requires manual installation (not available via PyPI)
+- Script generation requires OpenRouter API key
+- Slide generation may take time depending on API rate limits
 
-See `openspec/changes/add-video-generator/` for implementation roadmap.
+See `openspec/` for detailed specifications and roadmap.
 
 ## License
 
