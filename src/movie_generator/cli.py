@@ -464,25 +464,20 @@ def generate(
             console.print("[yellow]⚠ Skipping slides (no API key provided)[/yellow]")
             slide_paths = []
 
-        # Step 6: Create composition
+        # Step 6: Create composition (always regenerate for current scene range)
         composition_path = output_dir / "composition.json"
-        if composition_path.exists():
-            console.print(
-                f"[yellow]⊙ Composition already exists, skipping: {composition_path}[/yellow]"
-            )
-        else:
-            task = progress.add_task("Creating composition...", total=None)
-            composition = create_composition(
-                title=script.title,
-                phrases=all_phrases,
-                slide_paths=slide_paths,
-                audio_paths=audio_paths,
-                fps=cfg.style.fps,
-                resolution=cfg.style.resolution,
-            )
-            save_composition(composition, composition_path)
-            progress.update(task, completed=True)
-            console.print(f"✓ Created composition: {composition_path}")
+        task = progress.add_task("Creating composition...", total=None)
+        composition = create_composition(
+            title=script.title,
+            phrases=all_phrases,
+            slide_paths=slide_paths,
+            audio_paths=audio_paths,
+            fps=cfg.style.fps,
+            resolution=cfg.style.resolution,
+        )
+        save_composition(composition, composition_path)
+        progress.update(task, completed=True)
+        console.print(f"✓ Created composition: {composition_path}")
 
         # Step 7: Setup Remotion project and render video
         # Adjust output filename if scene range is specified
