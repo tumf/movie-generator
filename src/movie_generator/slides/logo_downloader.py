@@ -71,3 +71,21 @@ async def download_logo_assets(
 
     print(f"✓ Downloaded {len(logo_paths)}/{len(logo_assets)} logo(s)\n")
     return logo_paths
+
+
+def create_logo_context(logo_names: list[str]) -> str:
+    """Create context string about available logos for slide generation prompt.
+
+    Args:
+        logo_names: List of logo names (products/companies).
+
+    Returns:
+        Context string to append to slide generation prompt.
+    """
+    if not logo_names:
+        return ""
+
+    logos_list = ", ".join(logo_names)
+    return (
+        f"Available logos: {logos_list}. Include relevant logos appropriately in the slide design."
+    )

@@ -23,6 +23,7 @@ async def generate_slide(
     height: int = 1080,
     max_retries: int = 3,
     retry_delay: float = 2.0,
+    logo_context: str | None = None,
 ) -> Path:
     """Generate a slide image from a prompt with retry logic.
 
@@ -36,6 +37,7 @@ async def generate_slide(
         height: Image height in pixels.
         max_retries: Maximum number of retry attempts on failure.
         retry_delay: Initial delay between retries (exponential backoff).
+        logo_context: Optional context about available logos to include in prompt.
 
     Returns:
         Path to generated image file.
@@ -55,6 +57,10 @@ async def generate_slide(
     full_prompt = f"""Generate an image: {prompt}
 
 Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
+
+    # Add logo context if available
+    if logo_context:
+        full_prompt += f"\n\n{logo_context}"
 
     last_error = None
     for attempt in range(max_retries):
@@ -162,6 +168,7 @@ async def generate_slides_for_sections(
     model: str = "google/gemini-3-pro-image-preview",
     max_concurrent: int = 3,
     start_index: int = 0,
+    logo_context: str | None = None,
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.
 
@@ -173,6 +180,7 @@ async def generate_slides_for_sections(
         model: Image model identifier.
         max_concurrent: Maximum number of concurrent API requests.
         start_index: Starting section index for file naming (useful for scene ranges).
+        logo_context: Optional context about available logos to include in prompts.
 
     Returns:
         List of paths to generated slides.
@@ -205,6 +213,7 @@ async def generate_slides_for_sections(
                     output_path=output_path,
                     api_key=api_key,
                     model=model,
+                    logo_context=logo_context,
                 )
             )
             task_indices.append(section_idx)
