@@ -32,7 +32,7 @@ def cli() -> None:
 
 
 @cli.command()
-@click.argument("url")
+@click.argument("url_or_script", required=False)
 @click.option(
     "--config",
     "-c",
@@ -53,16 +53,16 @@ def cli() -> None:
     help="Allow running without VOICEVOX (generates placeholder audio for testing)",
 )
 def generate(
-    url: str,
+    url_or_script: str | None,
     config: Path | None,
     output: Path | None,
     api_key: str | None,
     allow_placeholder: bool,
 ) -> None:
-    """Generate video from URL.
+    """Generate video from URL or existing script.yaml.
 
     Args:
-        url: Blog URL to convert to video.
+        url_or_script: Blog URL to convert OR path to existing script.yaml.
         config: Path to config file.
         output: Output directory.
         api_key: OpenRouter API key.
@@ -71,11 +71,28 @@ def generate(
     # Load configuration
     cfg = load_config(config) if config else Config()
 
-    # Set output directory
-    output_dir = Path(output) if output else Path(cfg.project.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Determine if input is a script file or URL
+    script_path_input = None
+    url = None
 
-    console.print(f"[bold]Generating video from:[/bold] {url}")
+    if url_or_script:
+        potential_script = Path(url_or_script)
+        if potential_script.exists() and potential_script.suffix in [".yaml", ".yml"]:
+            script_path_input = potential_script
+            # Extract output directory from script path if not specified
+            if not output:
+                output_dir = potential_script.parent
+            else:
+                output_dir = Path(output)
+        else:
+            url = url_or_script
+            output_dir = Path(output) if output else Path(cfg.project.output_dir)
+    else:
+        output_dir = Path(output) if output else Path(cfg.project.output_dir)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    script_path = script_path_input if script_path_input else (output_dir / "script.yaml")
+
     console.print(f"[bold]Output directory:[/bold] {output_dir}")
 
     with Progress(
@@ -83,15 +100,7 @@ def generate(
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        # Step 1: Fetch content
-        task = progress.add_task("Fetching content...", total=None)
-        html_content = fetch_url_sync(url)
-        parsed = parse_html(html_content)
-        progress.update(task, completed=True)
-        console.print(f"✓ Fetched: {parsed.metadata.title}")
-
-        # Step 2: Generate script
-        script_path = output_dir / "script.yaml"
+        # Step 1: Fetch content (only if URL provided and script doesn't exist)
         if script_path.exists():
             console.print(f"[yellow]⊙ Script already exists, loading: {script_path}[/yellow]")
             with open(script_path, encoding="utf-8") as f:
@@ -126,6 +135,23 @@ def generate(
                 pronunciations=pronunciations,
             )
         else:
+            # Need URL to generate new script
+            if not url:
+                console.print("[red]Error: No script.yaml found and no URL provided[/red]")
+                console.print("[yellow]Usage:[/yellow]")
+                console.print("  movie-generator generate <URL>              # Generate from URL")
+                console.print(
+                    "  movie-generator generate <script.yaml>      # Generate from existing script"
+                )
+                raise click.Abort()
+
+            console.print(f"[bold]Generating video from URL:[/bold] {url}")
+            task = progress.add_task("Fetching content...", total=None)
+            html_content = fetch_url_sync(url)
+            parsed = parse_html(html_content)
+            progress.update(task, completed=True)
+            console.print(f"✓ Fetched: {parsed.metadata.title}")
+
             task = progress.add_task("Generating script...", total=None)
             script = asyncio.run(
                 generate_script(
