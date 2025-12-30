@@ -7,7 +7,11 @@ Each template is a Python string that can be formatted with project-specific dat
 from typing import Any
 
 
-def get_video_generator_tsx() -> str:
+def get_video_generator_tsx(
+    transition_type: str = "fade",
+    transition_duration: int = 15,
+    transition_timing: str = "linear",
+) -> str:
     """Generate VideoGenerator.tsx component template.
 
     This component handles:
@@ -15,7 +19,20 @@ def get_video_generator_tsx() -> str:
     - Slide grouping (consecutive phrases with same slide)
     - Fade in/out animations
     - Audio and subtitle synchronization
+
+    Args:
+        transition_type: Type of transition (fade, slide, wipe, flip, clockWipe, none).
+                         Currently using composition.json for configuration.
+        transition_duration: Transition duration in frames. Currently using composition.json.
+        transition_timing: Timing function (linear, spring). Currently using composition.json.
+
+    Note:
+        Transition configuration is passed via composition.json.
+        Future implementation will use @remotion/transitions TransitionSeries.
     """
+    # NOTE: For the initial implementation, we keep the existing fade-based template
+    # and pass transition settings via composition.json for future use.
+    # This ensures backward compatibility while setting up the configuration infrastructure.
     return """import React from 'react';
 import { AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 

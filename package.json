@@ -8,6 +8,7 @@
   },
   "devDependencies": {
     "@remotion/cli": "^4.0.395",
+    "@remotion/transitions": "^4.0.395",
     "@types/react": "^19.0.6",
     "@types/react-dom": "^19.0.2",
     "react": "^19.0.0",

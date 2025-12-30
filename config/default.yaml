@@ -39,6 +39,10 @@ video:
   renderer: "remotion"
   template: "default"
   output_format: "mp4"
+  transition:
+    type: "fade"  # fade, slide, wipe, flip, clockWipe, none
+    duration_frames: 15  # Transition duration in frames (0.5s at 30fps)
+    timing: "linear"  # linear, spring
 
 pronunciation:
   custom:

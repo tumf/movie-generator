@@ -170,7 +170,19 @@ class Project:
         Args:
             config: Configuration to save.
         """
-        config_dict = config.model_dump()
+
+        def convert_tuples(obj: Any) -> Any:
+            """Recursively convert tuples to lists for YAML serialization."""
+            if isinstance(obj, dict):
+                return {k: convert_tuples(v) for k, v in obj.items()}
+            elif isinstance(obj, tuple):
+                return list(obj)
+            elif isinstance(obj, list):
+                return [convert_tuples(item) for item in obj]
+            else:
+                return obj
+
+        config_dict = convert_tuples(config.model_dump())
         with self.config_file.open("w", encoding="utf-8") as f:
             yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False)
 
@@ -320,6 +332,22 @@ class Project:
         _create_symlink_safe(self.audio_dir, public_dir / "audio")
         _create_symlink_safe(self.slides_dir, public_dir / "slides")
 
+        # Load project config to get transition settings
+        try:
+            project_config = self.load_config()
+            transition_config = {
+                "type": project_config.video.transition.type,
+                "duration_frames": project_config.video.transition.duration_frames,
+                "timing": project_config.video.transition.timing,
+            }
+        except Exception:
+            # Fallback to defaults if config loading fails
+            transition_config = {
+                "type": "fade",
+                "duration_frames": 15,
+                "timing": "linear",
+            }
+
         # Create placeholder composition.json
         composition_data = {
             "title": self.name,
@@ -327,6 +355,7 @@ class Project:
             "width": 1920,
             "height": 1080,
             "phrases": [],
+            "transition": transition_config,
         }
         composition_path = remotion_dir / "composition.json"
         with composition_path.open("w", encoding="utf-8") as f:
@@ -348,6 +377,22 @@ class Project:
                 f"Remotion project not initialized. Run setup_remotion_project() first."
             )
 
+        # Load project config to get transition settings
+        try:
+            project_config = self.load_config()
+            transition_config = {
+                "type": project_config.video.transition.type,
+                "duration_frames": project_config.video.transition.duration_frames,
+                "timing": project_config.video.transition.timing,
+            }
+        except Exception:
+            # Fallback to defaults if config loading fails
+            transition_config = {
+                "type": "fade",
+                "duration_frames": 15,
+                "timing": "linear",
+            }
+
         # Build composition data
         composition_data = {
             "title": self.name,
@@ -365,6 +410,7 @@ class Project:
                 }
                 for phrase in phrases
             ],
+            "transition": transition_config,
         }
 
         composition_path = remotion_dir / "composition.json"
