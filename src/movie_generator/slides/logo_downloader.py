@@ -2,9 +2,16 @@
 
 from pathlib import Path
 
-from ..assets.converter import convert_svg_to_png
 from ..assets.downloader import download_logo, sanitize_filename
 from ..script.generator import LogoAsset
+
+# Conditional import for converter
+try:
+    from ..assets.converter import convert_svg_to_png
+
+    _CONVERTER_AVAILABLE = True
+except (ImportError, OSError):
+    _CONVERTER_AVAILABLE = False
 
 
 async def download_logo_assets(
@@ -53,12 +60,17 @@ async def download_logo_assets(
 
             # Convert SVG to PNG if needed
             if is_svg and temp_path.exists():
-                try:
-                    convert_svg_to_png(temp_path, final_path)
-                    # Remove original SVG after successful conversion
-                    temp_path.unlink()
-                except Exception as e:
-                    print(f"⚠ SVG conversion failed for {name}: {e}")
+                if _CONVERTER_AVAILABLE:
+                    try:
+                        convert_svg_to_png(temp_path, final_path)
+                        # Remove original SVG after successful conversion
+                        temp_path.unlink()
+                    except Exception as e:
+                        print(f"⚠ SVG conversion failed for {name}: {e}")
+                        print(f"  → Using original SVG file (may not work for slide generation)")
+                        final_path = temp_path
+                else:
+                    print(f"⚠ SVG converter not available (cairo library missing) for {name}")
                     print(f"  → Using original SVG file (may not work for slide generation)")
                     final_path = temp_path
 

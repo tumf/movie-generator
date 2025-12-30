@@ -1,7 +1,5 @@
 """Tests for asset downloader module."""
 
-import pytest
-
 from movie_generator.assets.downloader import sanitize_filename
 
 
