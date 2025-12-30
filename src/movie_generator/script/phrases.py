@@ -14,6 +14,7 @@ class Phrase:
     duration: float = 0.0  # In seconds, filled by audio generation
     start_time: float = 0.0  # Cumulative start time
     section_index: int = 0  # Index of the section this phrase belongs to
+    original_index: int = 0  # Global phrase index across all sections (for file naming)
 
     def get_subtitle_text(self) -> str:
         """Get text suitable for subtitle display.

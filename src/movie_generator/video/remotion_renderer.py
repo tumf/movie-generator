@@ -60,22 +60,51 @@ def create_remotion_input(
     return remotion_phrases
 
 
-def _get_slide_file_path(slide_paths: list[Path], index: int) -> str:
+def _build_slide_map(slide_paths: list[Path]) -> dict[int, str]:
+    """Build a map from section_index to slide file path.
+
+    Args:
+        slide_paths: List of slide paths.
+
+    Returns:
+        Dictionary mapping section_index to slide path string.
+    """
+    slide_map: dict[int, str] = {}
+    for slide_path in slide_paths:
+        filename = slide_path.name
+        # Extract section index from filename (e.g., "slide_0003.png" -> 3)
+        if filename.startswith("slide_") and filename.endswith(".png"):
+            try:
+                section_index = int(filename[6:10])
+                # Determine if it's in a language subdirectory
+                if slide_path.parent.name in ["ja", "en", "zh"]:
+                    lang = slide_path.parent.name
+                    slide_map[section_index] = f"slides/{lang}/{filename}"
+                else:
+                    slide_map[section_index] = f"slides/{filename}"
+            except ValueError:
+                pass
+    return slide_map
+
+
+def _get_slide_file_path(slide_paths: list[Path], section_index: int) -> str:
     """Get slide file path relative to Remotion public directory.
 
     Handles both legacy flat structure and new language-based structure.
 
     Args:
         slide_paths: List of slide paths.
-        index: Index of the slide.
+        section_index: Section index to find slide for.
 
     Returns:
         Slide path relative to public directory (e.g., "slides/ja/slide_0000.png").
     """
-    if not slide_paths or index >= len(slide_paths):
+    if not slide_paths:
         return ""
 
-    slide_path = slide_paths[index]
+    # Build slide map and look up by section_index
+    slide_map = _build_slide_map(slide_paths)
+    return slide_map.get(section_index, "")
 
     # If slide_path is absolute, try to make it relative to find the structure
     # Expected structure: .../slides/[lang or provider]/slide_XXXX.png
@@ -137,6 +166,9 @@ def update_composition_json(
         slide_paths: Optional list of slide image paths (relative to project).
         project_name: Name of the project.
     """
+    # Build slide map for efficient lookup
+    slide_map = _build_slide_map(slide_paths) if slide_paths else {}
+
     composition_data = {
         "title": project_name,
         "fps": 30,
@@ -145,10 +177,8 @@ def update_composition_json(
         "phrases": [
             {
                 "text": phrase.get_subtitle_text(),
-                "audioFile": f"audio/{audio_paths[i].name}" if i < len(audio_paths) else "",
-                "slideFile": _get_slide_file_path(slide_paths, phrase.section_index)
-                if slide_paths and phrase.section_index < len(slide_paths)
-                else None,
+                "audioFile": f"audio/phrase_{phrase.original_index:04d}.wav",
+                "slideFile": slide_map.get(phrase.section_index),
                 "duration": phrase.duration,
             }
             for i, phrase in enumerate(phrases)

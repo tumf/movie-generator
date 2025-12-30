@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Movie Generator - ブログURLからYouTube向けスライド動画を一括生成するPythonツール。
+Movie Generator - A Python CLI tool that generates YouTube slide videos from blog URLs.
 
-主な機能:
-- ブログ記事からYouTube台本を自動生成
-- VOICEVOX音声合成によるナレーション
-- フレーズベースの正確な字幕同期
-- YAML設定によるスタイル統一
+Key features:
+- Automatic YouTube script generation from blog articles
+- Narration via VOICEVOX audio synthesis
+- Phrase-based accurate subtitle synchronization
+- Unified styling via YAML configuration
 
 ## Tech Stack
 
@@ -16,7 +16,7 @@ Movie Generator - ブログURLからYouTube向けスライド動画を一括生�
 - **Package Manager**: uv
 - **Audio**: VOICEVOX Core
 - **Video**: ffmpeg / Remotion
-- **LLM**: OpenRouter (Gemini等)
+- **LLM**: OpenRouter (Gemini, etc.)
 - **CLI**: typer + rich
 
 ## Project Conventions
@@ -54,18 +54,18 @@ URL → Content → Script → Phrases → Audio → Slides → Video
 
 ### Key Concepts
 
-- **Phrase**: 3-6秒単位のナレーションセグメント
-- **Pronunciation Dictionary**: 固有名詞の読み方辞書
-- **Scene**: スライド+音声+字幕の組み合わせ
+- **Phrase**: Narration segment of 3-6 seconds
+- **Pronunciation Dictionary**: Dictionary for proper noun readings
+- **Scene**: Combination of slide + audio + subtitles
 
 ## Important Constraints
 
-- VOICEVOX環境依存（Open JTalk辞書、音声モデル）
-- macOS/Linux優先（Windows対応はベストエフォート）
-- 日本語コンテンツのみ対応
+- VOICEVOX environment dependent (Open JTalk dictionary, voice models)
+- macOS/Linux prioritized (Windows support is best effort)
+- Japanese content only
 
 ## External Dependencies
 
 - VOICEVOX Core: https://voicevox.hiroshiba.jp/
 - OpenRouter API: https://openrouter.ai/
-- ffmpeg: システムインストール必須
+- ffmpeg: System installation required

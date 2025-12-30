@@ -15,6 +15,7 @@ class ScriptSection:
     title: str
     narration: str
     slide_prompt: str | None = None
+    source_image_url: str | None = None  # URL of image from source content to reuse
 
 
 @dataclass
@@ -140,6 +141,7 @@ async def generate_script(
     api_key: str | None = None,
     model: str = "openai/gpt-5.2",
     base_url: str = "https://openrouter.ai/api/v1",
+    images: list | None = None,  # List of ImageInfo from parsed content
 ) -> VideoScript:
     """Generate video script from content using LLM.
 
@@ -153,6 +155,7 @@ async def generate_script(
         api_key: OpenRouter API key.
         model: Model identifier.
         base_url: API base URL.
+        images: List of ImageInfo objects from parsed content (optional).
 
     Returns:
         Generated video script.
