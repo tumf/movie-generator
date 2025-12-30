@@ -1,11 +1,9 @@
 # Audio Furigana Generation Specification
 
-## Overview
+## Purpose
 
 This specification defines the automatic furigana (reading) generation capability for Japanese text using morphological analysis to improve VOICEVOX text-to-speech pronunciation accuracy.
-
-## ADDED Requirements
-
+## Requirements
 ### Requirement: Morphological Analysis Integration
 
 The system SHALL use morphological analysis to generate accurate readings for Japanese text.
@@ -68,6 +66,36 @@ The system SHALL support batch processing of multiple phrases for efficiency.
 - **When** prepare_phrases() is called before initialize()
 - **Then** all readings are registered to the dictionary for use in initialization
 
+### Requirement: CLI Integration for Morphological Fallback
+
+The CLI SHALL automatically supplement LLM-generated pronunciations with morphological analysis results.
+
+#### Scenario: LLM pronunciation takes precedence
+- **Given** a script.yaml with LLM-generated pronunciation for "Turso" -> "ターソ" (priority 10)
+- **And** the narration text contains "Turso"
+- **When** audio generation is executed
+- **Then** the LLM pronunciation "ターソ" is used
+
+#### Scenario: Morphological analysis fills gaps
+- **Given** a script.yaml without pronunciation for "BETA"
+- **And** the narration contains "今はBETAで"
+- **When** audio generation is executed
+- **Then** morphological analysis adds "BETA" -> "ベータ" (priority 5) to the dictionary
+
+#### Scenario: Error handling for missing MeCab
+- **Given** MeCab/UniDic is not installed or configured
+- **When** morphological analysis is attempted
+- **Then** a warning is logged and audio generation continues without morphological fallback
+
+### Requirement: Text-based Preparation Method
+
+The VoicevoxSynthesizer SHALL provide a method to prepare pronunciations from raw text strings.
+
+#### Scenario: Prepare from narration texts
+- **Given** a list of narration texts from script sections
+- **When** prepare_texts() is called
+- **Then** all morphological readings are added to the dictionary
+
 ## Dependencies
 
 - `fugashi>=1.3.0`: MeCab wrapper for Python
@@ -115,6 +143,13 @@ class VoicevoxSynthesizer:
     
     def prepare_phrases(self, phrases: list[Phrase]) -> int:
         """Prepare dictionary entries for all phrases."""
+    
+    def prepare_texts(self, texts: list[str]) -> int:
+        """Prepare dictionary entries from raw text strings.
+        
+        Similar to prepare_phrases() but accepts raw text strings.
+        Returns the number of dictionary entries added.
+        """
 ```
 
 ## Configuration Schema

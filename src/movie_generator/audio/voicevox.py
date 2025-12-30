@@ -127,6 +127,36 @@ class VoicevoxSynthesizer:
 
         return added
 
+    def prepare_texts(self, texts: list[str]) -> int:
+        """Prepare dictionary entries from texts using morphological analysis.
+
+        Similar to prepare_phrases() but accepts raw text strings instead of Phrase objects.
+        Useful for adding pronunciations before phrase splitting.
+
+        Args:
+            texts: List of text strings to analyze.
+
+        Returns:
+            Number of dictionary entries added.
+        """
+        generator = self._get_furigana_generator()
+        if generator is None:
+            return 0
+
+        try:
+            # Analyze all texts and get combined readings
+            readings = generator.analyze_texts(texts)
+
+            # Add to dictionary (manual entries take precedence due to lower priority)
+            added = self.dictionary.add_from_morphemes(readings)
+
+            return added
+        except Exception as e:
+            # If morphological analysis fails (e.g., MeCab not configured),
+            # silently skip and return 0
+            print(f"Warning: Morphological analysis failed: {e}")
+            return 0
+
     def initialize(
         self,
         dict_dir: Path,

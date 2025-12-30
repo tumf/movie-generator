@@ -214,7 +214,7 @@ def generate(
         task = progress.add_task("Generating audio...", total=None)
         synthesizer = create_synthesizer_from_config(cfg, allow_placeholder=allow_placeholder)
 
-        # Add pronunciations from script to dictionary
+        # Add pronunciations from script to dictionary (LLM-generated, high priority)
         if script.pronunciations:
             for entry in script.pronunciations:
                 synthesizer.dictionary.add_word(
@@ -222,9 +222,15 @@ def generate(
                     reading=entry.reading,
                     accent=entry.accent,
                     word_type=entry.word_type,
-                    priority=10,
+                    priority=10,  # High priority for LLM-generated pronunciations
                 )
-            console.print(f"  Added {len(script.pronunciations)} pronunciations to dictionary")
+            console.print(f"  Added {len(script.pronunciations)} LLM pronunciations to dictionary")
+
+        # Add morphological analysis pronunciations (auto-generated, lower priority)
+        narration_texts = [section.narration for section in script.sections]
+        morpheme_count = synthesizer.prepare_texts(narration_texts)
+        if morpheme_count > 0:
+            console.print(f"  Added {morpheme_count} morphological analysis pronunciations")
 
         # Initialize VOICEVOX if not in placeholder mode
         if not allow_placeholder:
