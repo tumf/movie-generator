@@ -24,6 +24,7 @@ async def generate_slide(
     max_retries: int = 3,
     retry_delay: float = 2.0,
     logo_context: str | None = None,
+    logo_images: list[str] | None = None,
 ) -> Path:
     """Generate a slide image from a prompt with retry logic.
 
@@ -38,6 +39,7 @@ async def generate_slide(
         max_retries: Maximum number of retry attempts on failure.
         retry_delay: Initial delay between retries (exponential backoff).
         logo_context: Optional context about available logos to include in prompt.
+        logo_images: Optional list of base64-encoded logo images for multimodal input.
 
     Returns:
         Path to generated image file.
@@ -54,13 +56,26 @@ async def generate_slide(
 
     # Create prompt for slide generation
     # Simple, direct prompt to maximize image generation success
-    full_prompt = f"""Generate an image: {prompt}
+    text_prompt = f"""Generate an image: {prompt}
 
 Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
 
     # Add logo context if available
     if logo_context:
-        full_prompt += f"\n\n{logo_context}"
+        text_prompt += f"\n\n{logo_context}"
+
+    # Build multimodal content if logos are provided
+    if logo_images:
+        # Multimodal content: text + logo images
+        content_parts = [{"type": "text", "text": text_prompt}]
+
+        for logo_data_url in logo_images:
+            content_parts.append({"type": "image_url", "image_url": {"url": logo_data_url}})
+
+        message_content = content_parts
+    else:
+        # Text-only content
+        message_content = text_prompt
 
     last_error = None
     for attempt in range(max_retries):
@@ -77,7 +92,7 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
                         "messages": [
                             {
                                 "role": "user",
-                                "content": full_prompt,
+                                "content": message_content,
                             }
                         ],
                         "modalities": ["image", "text"],
@@ -169,6 +184,7 @@ async def generate_slides_for_sections(
     max_concurrent: int = 3,
     start_index: int = 0,
     logo_context: str | None = None,
+    logo_images: list[str] | None = None,
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.
 
@@ -181,6 +197,7 @@ async def generate_slides_for_sections(
         max_concurrent: Maximum number of concurrent API requests.
         start_index: Starting section index for file naming (useful for scene ranges).
         logo_context: Optional context about available logos to include in prompts.
+        logo_images: Optional list of base64-encoded logo images for multimodal input.
 
     Returns:
         List of paths to generated slides.
@@ -214,6 +231,7 @@ async def generate_slides_for_sections(
                     api_key=api_key,
                     model=model,
                     logo_context=logo_context,
+                    logo_images=logo_images,
                 )
             )
             task_indices.append(section_idx)

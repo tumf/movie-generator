@@ -85,6 +85,56 @@ async def download_logo_assets(
     return logo_paths
 
 
+def prepare_logo_images_for_multimodal(logo_paths: dict[str, Path]) -> list[str]:
+    """Prepare logo images for multimodal LLM input.
+
+    Args:
+        logo_paths: Dictionary mapping logo names to their file paths.
+
+    Returns:
+        List of base64-encoded data URLs for logo images.
+    """
+    logo_images = []
+
+    for name, path in logo_paths.items():
+        try:
+            encoded = encode_logo_to_base64(path)
+            logo_images.append(encoded)
+            print(f"  ✓ Encoded logo for multimodal input: {name}")
+        except Exception as e:
+            print(f"  ⚠ Failed to encode logo '{name}': {e}")
+            continue
+
+    return logo_images
+
+
+def encode_logo_to_base64(logo_path: Path) -> str:
+    """Encode logo image to base64 data URL.
+
+    Args:
+        logo_path: Path to the logo image file.
+
+    Returns:
+        Base64-encoded data URL (e.g., "data:image/png;base64,...").
+    """
+    import base64
+
+    # Determine MIME type from extension
+    ext = logo_path.suffix.lower()
+    mime_type = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".svg": "image/svg+xml",
+    }.get(ext, "image/png")
+
+    # Read and encode image
+    image_bytes = logo_path.read_bytes()
+    b64_data = base64.b64encode(image_bytes).decode("utf-8")
+
+    return f"data:{mime_type};base64,{b64_data}"
+
+
 def create_logo_context(logo_names: list[str]) -> str:
     """Create context string about available logos for slide generation prompt.
 
