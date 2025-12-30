@@ -29,6 +29,14 @@ class PronunciationEntry:
 
 
 @dataclass
+class LogoAsset:
+    """Product or company logo asset."""
+
+    name: str
+    url: str
+
+
+@dataclass
 class VideoScript:
     """Complete video script with multiple sections."""
 
@@ -36,6 +44,7 @@ class VideoScript:
     description: str
     sections: list[ScriptSection]
     pronunciations: list[PronunciationEntry] | None = None
+    logo_assets: list[LogoAsset] | None = None
 
 
 SCRIPT_GENERATION_PROMPT_JA = """
@@ -62,6 +71,12 @@ JSON形式で以下を出力してください：
 {{
   "title": "動画タイトル",
   "description": "動画の説明",
+  "logo_assets": [
+    {{
+      "name": "製品名またはサービス名",
+      "url": "https://公式サイトの正確なロゴURL"
+    }}
+  ],
   "sections": [
     {{
       "title": "セクションタイトル",
@@ -78,6 +93,13 @@ JSON形式で以下を出力してください：
     }}
   ]
 }}
+
+【ロゴアセット（logo_assets）について】
+- コンテンツ内で言及されている製品やサービスの公式ロゴURLを特定してください
+- 製品・サービス・企業のロゴに限定し、スクリーンショットや図表は含めないでください
+- 公式サイトから正確なロゴURLを推測してください（例: https://example.com/assets/logo.svg）
+- ロゴが不要、またはURLを特定できない場合は空の配列を返してください
+- 著作権的に問題のある画像は避け、公式に公開されているロゴのみを指定してください
 
 【読み方辞書（pronunciations）について】
 - ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
@@ -112,6 +134,12 @@ Output in JSON format:
 {{
   "title": "Video Title",
   "description": "Video Description",
+  "logo_assets": [
+    {{
+      "name": "Product or Service Name",
+      "url": "https://official-site-exact-logo-url"
+    }}
+  ],
   "sections": [
     {{
       "title": "Section Title",
@@ -121,6 +149,13 @@ Output in JSON format:
   ],
   "pronunciations": []
 }}
+
+[About Logo Assets (logo_assets)]
+- Identify official logo URLs for products or services mentioned in the content
+- Limit to product/service/company logos only; exclude screenshots and diagrams
+- Infer accurate logo URLs from official sites (e.g., https://example.com/assets/logo.svg)
+- Return an empty array if no logos are needed or URLs cannot be determined
+- Avoid copyrighted images; specify only officially published logos
 
 Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
 """

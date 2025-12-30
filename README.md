@@ -6,8 +6,9 @@ Generate YouTube slide videos from blog URLs automatically.
 
 - **Content Extraction**: Fetch and parse blog content from URLs
 - **AI Script Generation**: Generate video scripts using LLM (OpenRouter)
+- **Logo Asset Management**: Automatically download product/company logos from official sources
 - **Voice Synthesis**: Text-to-speech using VOICEVOX with pronunciation dictionary
-- **Slide Generation**: Create presentation slides using AI image generation
+- **Slide Generation**: Create presentation slides using AI image generation with logo integration
 - **Video Rendering**: Compose final video with Remotion
 
 ## Installation

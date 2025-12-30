@@ -160,6 +160,7 @@ src/movie_generator/
 ├── cli.py              # Main CLI entry point
 ├── config.py           # Pydantic configuration models
 ├── project.py          # Project management
+├── assets/             # Logo and asset download/conversion
 ├── audio/              # Audio synthesis (VOICEVOX)
 ├── content/            # URL fetching and HTML parsing
 ├── script/             # Script generation and phrase splitting
@@ -172,6 +173,7 @@ src/movie_generator/
 - **Phrase**: Text segment with `section_index` (which section) and `original_index` (global ID)
 - **Section**: A script section with title, narration, and slide prompt
 - **Composition**: JSON data linking phrases, audio files, and slides for Remotion
+- **Logo Asset**: Product/company logo downloaded from LLM-identified URLs, stored in `assets/logos/`
 
 ## Testing
 

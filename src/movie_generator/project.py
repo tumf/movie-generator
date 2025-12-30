@@ -107,6 +107,7 @@ class Project:
         self.assets_dir = self.project_dir / "assets"
         self.audio_dir = self.assets_dir / "audio"
         self.slides_dir = self.assets_dir / "slides"
+        self.logos_dir = self.assets_dir / "logos"
         self.output_dir = self.project_dir / "output"
         self.config_file = self.project_dir / "project.yaml"
         self.phrases_file = self.project_dir / "phrases.json"
@@ -134,6 +135,7 @@ class Project:
         self.assets_dir.mkdir(exist_ok=True)
         self.audio_dir.mkdir(exist_ok=True)
         self.slides_dir.mkdir(exist_ok=True)
+        self.logos_dir.mkdir(exist_ok=True)
         self.output_dir.mkdir(exist_ok=True)
 
         # Write configuration
