@@ -27,6 +27,10 @@ class AudioConfig(BaseModel):
     engine: str = Field(default="voicevox")
     speaker_id: int = Field(default=3, ge=0)
     speed_scale: float = Field(default=1.0, gt=0.0)
+    enable_furigana: bool = Field(
+        default=True,
+        description="Enable automatic furigana generation using morphological analysis",
+    )
 
 
 class NarrationConfig(BaseModel):
@@ -191,6 +195,7 @@ def generate_default_config_yaml() -> str:
         '  engine: "voicevox"  # Audio synthesis engine',
         "  speaker_id: 3  # VOICEVOX speaker ID (3 = Zundamon)",
         "  speed_scale: 1.0  # Speech speed multiplier (1.0 = normal)",
+        "  enable_furigana: true  # Auto-generate furigana using morphological analysis",
         "",
         "# Narration style settings",
         "narration:",

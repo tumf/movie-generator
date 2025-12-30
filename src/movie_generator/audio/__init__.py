@@ -1,6 +1,7 @@
 """Audio synthesis module."""
 
 from .dictionary import DictionaryEntry, PronunciationDictionary
+from .furigana import FuriganaGenerator, MorphemeReading
 from .voicevox import AudioMetadata, VoicevoxSynthesizer, create_synthesizer_from_config
 
 __all__ = [
@@ -9,4 +10,6 @@ __all__ = [
     "VoicevoxSynthesizer",
     "AudioMetadata",
     "create_synthesizer_from_config",
+    "FuriganaGenerator",
+    "MorphemeReading",
 ]

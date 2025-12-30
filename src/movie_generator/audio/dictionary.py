@@ -124,6 +124,39 @@ class PronunciationDictionary:
         self.entries.clear()
         self.add_from_config(data)
 
+    def add_from_morphemes(
+        self,
+        readings: dict[str, str],
+        priority: int = 5,
+        word_type: str = "COMMON_NOUN",
+    ) -> int:
+        """Add entries from morphological analysis results.
+
+        Auto-generated readings have lower priority than manual entries,
+        so manual/LLM-specified readings take precedence.
+
+        Args:
+            readings: Dictionary mapping surface forms to readings.
+            priority: Priority for auto-generated entries (default 5, lower than manual 10).
+            word_type: Word type for auto-generated entries.
+
+        Returns:
+            Number of new entries added.
+        """
+        added = 0
+        for surface, reading in readings.items():
+            # Skip if already registered (manual entries take precedence)
+            if surface in self.entries:
+                continue
+            self.add_word(
+                word=surface,
+                reading=reading,
+                word_type=word_type,
+                priority=priority,
+            )
+            added += 1
+        return added
+
     def apply_to_text(self, text: str) -> str:
         """Apply dictionary to text (simple replacement for testing).
 

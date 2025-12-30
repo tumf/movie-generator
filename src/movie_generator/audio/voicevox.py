@@ -42,6 +42,7 @@ class VoicevoxSynthesizer:
         speed_scale: float = 1.0,
         dictionary: PronunciationDictionary | None = None,
         allow_placeholder: bool = False,
+        enable_furigana: bool = True,
     ) -> None:
         """Initialize synthesizer.
 
@@ -51,6 +52,7 @@ class VoicevoxSynthesizer:
             dictionary: Pronunciation dictionary.
             allow_placeholder: Allow placeholder mode when voicevox_core is not installed.
                               If False (default), raises ImportError when voicevox_core is unavailable.
+            enable_furigana: Enable automatic furigana generation using morphological analysis.
 
         Raises:
             ImportError: If voicevox_core is not installed and allow_placeholder is False.
@@ -67,9 +69,63 @@ class VoicevoxSynthesizer:
         self.speed_scale = speed_scale
         self.dictionary = dictionary or PronunciationDictionary()
         self.allow_placeholder = allow_placeholder
+        self.enable_furigana = enable_furigana
 
         self._synthesizer: Any = None
         self._initialized = False
+        self._furigana_generator: Any = None
+
+    def _get_furigana_generator(self) -> Any:
+        """Get or create FuriganaGenerator instance.
+
+        Returns:
+            FuriganaGenerator instance, or None if furigana is disabled.
+        """
+        if not self.enable_furigana:
+            return None
+
+        if self._furigana_generator is None:
+            try:
+                from .furigana import FuriganaGenerator
+
+                self._furigana_generator = FuriganaGenerator()
+            except ImportError:
+                # fugashi not installed, disable furigana
+                print("Warning: fugashi not installed, furigana generation disabled.")
+                self.enable_furigana = False
+                return None
+
+        return self._furigana_generator
+
+    def prepare_phrases(self, phrases: list[Phrase]) -> int:
+        """Prepare dictionary entries for all phrases using morphological analysis.
+
+        Should be called before initialize() to ensure all auto-generated
+        readings are included in the user dictionary.
+
+        Args:
+            phrases: List of phrases to analyze.
+
+        Returns:
+            Number of dictionary entries added.
+        """
+        generator = self._get_furigana_generator()
+        if generator is None:
+            return 0
+
+        # Collect all texts
+        texts = [p.text for p in phrases if p.text and p.text.strip()]
+
+        # Analyze all texts and get combined readings
+        readings = generator.analyze_texts(texts)
+
+        # Add to dictionary (manual entries take precedence due to lower priority)
+        added = self.dictionary.add_from_morphemes(readings)
+
+        if added > 0:
+            print(f"  📚 Added {added} auto-generated pronunciation entries")
+
+        return added
 
     def initialize(
         self,
@@ -219,9 +275,15 @@ def create_synthesizer_from_config(
     if hasattr(config, "pronunciation") and config.pronunciation.custom:
         dictionary.add_from_config(config.pronunciation.custom)
 
+    # Get enable_furigana from config, default to True
+    enable_furigana = True
+    if hasattr(config, "audio") and hasattr(config.audio, "enable_furigana"):
+        enable_furigana = config.audio.enable_furigana
+
     return VoicevoxSynthesizer(
         speaker_id=config.audio.speaker_id,
         speed_scale=config.audio.speed_scale,
         dictionary=dictionary,
         allow_placeholder=allow_placeholder,
+        enable_furigana=enable_furigana,
     )
