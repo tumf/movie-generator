@@ -4,178 +4,223 @@ Instructions for AI coding assistants working in this repository.
 
 ## Project Overview
 
-Movie Generator - A project for generating movies (details TBD in openspec/project.md).
+Movie Generator is a Python CLI tool that generates YouTube slide videos from blog URLs.
+It fetches content, generates narration scripts with LLM, synthesizes audio with VOICEVOX,
+creates slides, and renders videos using Remotion.
 
 ## Quick Reference
 
 ### Build/Test/Lint Commands
 
 ```bash
-# TODO: Add commands when tech stack is defined
-# Example patterns for common stacks:
+# Install with uv (recommended)
+uv pip install -e ".[dev]"
 
-# Python
-pip install -e ".[dev]"      # Install with dev dependencies
-pytest                        # Run all tests
-pytest tests/test_foo.py      # Run single test file
-pytest tests/test_foo.py::test_bar  # Run single test function
-pytest -k "keyword"           # Run tests matching keyword
-ruff check .                  # Lint
-ruff format .                 # Format
-mypy src/                     # Type check
+# Run all tests
+uv run pytest
 
-# TypeScript/Node.js
-npm install                   # Install dependencies
-npm test                      # Run all tests
-npm test -- --grep "pattern"  # Run tests matching pattern
-npx vitest run tests/foo.test.ts  # Run single test file
-npm run lint                  # Lint
-npm run format                # Format
-npm run typecheck             # Type check
+# Run single test file
+uv run pytest tests/test_scene_range.py -v
 
-# Go
-go build ./...                # Build
-go test ./...                 # Run all tests
-go test ./pkg/foo -run TestBar  # Run single test
-golangci-lint run             # Lint
+# Run single test function
+uv run pytest tests/test_scene_range.py::TestSceneRangeParsing::test_single_scene -v
+
+# Run tests matching keyword
+uv run pytest -k "scene" -v
+
+# Lint
+uv run ruff check .
+
+# Format
+uv run ruff format .
+
+# Type check
+uv run mypy src/
+
+# Run CLI
+uv run movie-generator generate <script.yaml> --scenes 1-3
 ```
 
-### Development Setup
+### Environment Variables
 
 ```bash
-# Start development environment
-tmuxinator start              # Uses .tmuxinator.yml
+export OPENROUTER_API_KEY="..."           # Required for LLM/slides
+export VOICEVOX_DICT_DIR="..."            # VOICEVOX dictionary path
+export VOICEVOX_MODEL_PATH="..."          # VOICEVOX model path
+export VOICEVOX_ONNXRUNTIME_PATH="..."    # VOICEVOX ONNX runtime path
 ```
 
 ## Code Style Guidelines
 
-### General Principles
+### Python Version & Tools
 
-1. **Simplicity First** - Default to <100 lines per file/function
-2. **Single Responsibility** - One purpose per module/class/function
-3. **Explicit over Implicit** - Clear naming, no magic
-4. **Fail Fast** - Validate inputs early, return errors promptly
+- **Python**: 3.13+
+- **Linter/Formatter**: Ruff (line-length: 100)
+- **Type Checker**: mypy (strict mode)
+- **Testing**: pytest
 
 ### Naming Conventions
 
 | Type | Convention | Example |
 |------|------------|---------|
-| Files | kebab-case | `user-service.ts` |
-| Classes | PascalCase | `UserService` |
-| Functions | camelCase (JS/TS), snake_case (Python) | `getUserById`, `get_user_by_id` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
-| Variables | camelCase (JS/TS), snake_case (Python) | `userName`, `user_name` |
+| Files | snake_case | `voicevox.py`, `remotion_renderer.py` |
+| Classes | PascalCase | `VoicevoxSynthesizer`, `VideoScript` |
+| Functions | snake_case | `parse_scene_range`, `create_composition` |
+| Constants | SCREAMING_SNAKE_CASE | `VOICEVOX_AVAILABLE` |
+| Variables | snake_case | `audio_paths`, `section_index` |
 
 ### Import Organization
 
-Order imports in these groups (separated by blank lines):
+```python
+"""Module docstring."""
 
-1. Standard library / built-ins
-2. Third-party packages
-3. Local/project imports
+# 1. Standard library
+import asyncio
+from pathlib import Path
 
-### Error Handling
+# 2. Third-party packages
+import click
+import yaml
+from pydantic import BaseModel
+from rich.console import Console
 
-- Use specific error types, not generic exceptions
-- Include context in error messages
-- Log errors at the point of handling, not throwing
-- Return errors explicitly (prefer Result types when available)
+# 3. Local/project imports
+from .audio.voicevox import create_synthesizer_from_config
+from .config import Config, load_config
+```
 
 ### Type Annotations
 
-- Always use type annotations for function signatures
-- Use strict type checking (mypy strict, TypeScript strict mode)
-- Prefer explicit types over `any` / `Any`
-- Document complex types with comments
+Always use type annotations for function signatures:
+
+```python
+def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
+    """Parse scene range argument."""
+    ...
+
+def create_composition(
+    title: str,
+    phrases: list[Phrase],
+    slide_paths: list[Path],
+    fps: int = 30,
+) -> CompositionData:
+    ...
+```
+
+### Data Classes
+
+Use `@dataclass` for simple data containers:
+
+```python
+@dataclass
+class Phrase:
+    """A single phrase with timing information."""
+    text: str
+    duration: float = 0.0
+    section_index: int = 0
+    original_index: int = 0  # Global index for file naming
+```
+
+### Error Handling
+
+- Raise `ValueError` for invalid inputs with descriptive messages
+- Use `RuntimeError` for system/external failures
+- Include context in error messages
+
+```python
+if start > end:
+    raise ValueError(
+        f"Invalid scene range: start ({start}) > end ({end})"
+    )
+```
 
 ### Documentation
 
-- Public APIs: Required docstrings/JSDoc
-- Internal functions: Brief comment if non-obvious
-- Complex logic: Inline comments explaining "why"
-- No commented-out code in commits
+- Module docstring at top of each file
+- Google-style docstrings for public functions
+- Type hints serve as primary documentation
 
-### Testing
+```python
+def split_into_phrases(text: str, max_chars: int = 50) -> list[Phrase]:
+    """Split text into phrases based on punctuation and length.
 
-- Test file naming: `test_*.py` or `*.test.ts`
-- One assertion concept per test
-- Use descriptive test names: `test_user_creation_fails_with_invalid_email`
-- Arrange-Act-Assert pattern
+    Args:
+        text: Input text to split.
+        max_chars: Maximum characters per phrase.
 
-## Repository Structure
-
-```
-├── AGENTS.md              # This file - AI agent instructions
-├── CLAUDE.md              # Claude-specific instructions (symlink to AGENTS.md content)
-├── openspec/              # Spec-driven development
-│   ├── AGENTS.md          # OpenSpec workflow instructions
-│   ├── project.md         # Project context and conventions
-│   ├── specs/             # Current specifications
-│   └── changes/           # Change proposals
-├── .cursor/commands/      # Cursor IDE commands
-├── .claude/commands/      # Claude Code commands
-└── .opencode/command/     # OpenCode commands
+    Returns:
+        List of Phrase objects.
+    """
 ```
 
-## OpenSpec Integration
+## Project Structure
 
-<!-- OPENSPEC:START -->
-# OpenSpec Instructions
+```
+src/movie_generator/
+├── cli.py              # Main CLI entry point
+├── config.py           # Pydantic configuration models
+├── project.py          # Project management
+├── audio/              # Audio synthesis (VOICEVOX)
+├── content/            # URL fetching and HTML parsing
+├── script/             # Script generation and phrase splitting
+├── slides/             # Slide image generation
+└── video/              # Video rendering (Remotion)
+```
 
-These instructions are for AI assistants working in this project.
+### Key Concepts
 
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
+- **Phrase**: Text segment with `section_index` (which section) and `original_index` (global ID)
+- **Section**: A script section with title, narration, and slide prompt
+- **Composition**: JSON data linking phrases, audio files, and slides for Remotion
 
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
+## Testing
 
-Keep this managed block so 'openspec update' can refresh the instructions.
+### Test Structure
 
-<!-- OPENSPEC:END -->
+```python
+class TestSceneRangeParsing:
+    """Test scene range parsing function."""
 
-### OpenSpec Commands
+    def test_single_scene(self) -> None:
+        """Test parsing single scene number."""
+        start, end = parse_scene_range("2")
+        assert start == 1  # 0-based
+        assert end == 1
+```
 
-| Command | Description |
-|---------|-------------|
-| `/openspec-proposal` | Create a new change proposal |
-| `/openspec-apply` | Implement an approved change |
-| `/openspec-archive` | Archive a deployed change |
+### Test Naming
+
+- Files: `test_<module>.py`
+- Classes: `Test<Feature>`
+- Functions: `test_<behavior>` or `test_<input>_<expected>`
 
 ## Git Workflow
 
-### Commit Messages
-
-Use conventional commits format:
+### Commit Messages (Conventional Commits)
 
 ```
 <type>(<scope>): <description>
 
-[optional body]
+Types: feat, fix, docs, style, refactor, test, chore
 ```
 
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+Examples:
+- `feat(cli): add --scenes option for scene range filtering`
+- `fix(video): always regenerate composition for scene range accuracy`
 
-### Branch Naming
+<!-- OPENSPEC:START -->
+# OpenSpec Instructions
 
-- Feature: `feature/<change-id>` or `feat/<short-description>`
-- Fix: `fix/<issue-id>` or `fix/<short-description>`
-- Chore: `chore/<description>`
+Always open `@/openspec/AGENTS.md` when the request:
+- Mentions planning or proposals (words like proposal, spec, change, plan)
+- Introduces new capabilities, breaking changes, architecture shifts
 
-## Code References
-
-When referencing code locations, use the format: `file_path:line_number`
-
-Example: "The error handler is in `src/handlers/error.ts:42`"
+<!-- OPENSPEC:END -->
 
 ## Important Reminders
 
 1. **Read before editing** - Always read existing files before modification
-2. **Small changes** - Keep PRs focused and reviewable
-3. **Test coverage** - Add tests for new functionality
-4. **No secrets** - Never commit credentials, API keys, or sensitive data
-5. **Check openspec** - For significant changes, create a proposal first
+2. **Use `original_index`** - For file naming across filtered phrase lists
+3. **Use `section_index`** - For mapping phrases to slides
+4. **Regenerate composition** - Always regenerate `composition.json` for scene ranges
+5. **Test with scene ranges** - Verify `--scenes N`, `--scenes N-M`, `--scenes N-`
