@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from movie_generator.audio.dictionary import DictionaryEntry, PronunciationDictionary
 from movie_generator.audio.voicevox import VOICEVOX_AVAILABLE, VoicevoxSynthesizer
+from movie_generator.exceptions import AudioGenerationError
 from movie_generator.script.phrases import Phrase
 
 
@@ -138,5 +139,5 @@ def test_synthesizer_placeholder_mode(tmp_path: Path):
     # Should raise error if not initialized
     output_path = tmp_path / "test.wav"
 
-    with pytest.raises(RuntimeError, match="not initialized"):
+    with pytest.raises(AudioGenerationError, match="not initialized"):
         synth.synthesize_phrase(phrase, output_path)

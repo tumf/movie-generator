@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from ..exceptions import ConfigurationError, MCPError
 from .config import MCPConfig, MCPServerConfig
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class MCPClient:
             ValueError: If specified server is not found in config.
         """
         if server_name not in config.mcpServers:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Server '{server_name}' not found in MCP config. "
                 f"Available servers: {list(config.mcpServers.keys())}"
             )
@@ -75,7 +76,7 @@ class MCPClient:
 
             if self.process.poll() is not None:
                 stderr = self.process.stderr.read().decode() if self.process.stderr else ""
-                raise RuntimeError(f"MCP server process failed to start: {stderr}")
+                raise MCPError(f"MCP server process failed to start: {stderr}")
 
             # Initialize MCP protocol handshake
             await self._initialize()
@@ -84,7 +85,7 @@ class MCPClient:
             await self._list_tools()
 
         except FileNotFoundError as e:
-            raise RuntimeError(f"MCP server command not found: {self.server_config.command}") from e
+            raise MCPError(f"MCP server command not found: {self.server_config.command}") from e
 
     async def _initialize(self) -> None:
         """Initialize MCP protocol handshake.
@@ -145,7 +146,7 @@ class MCPClient:
             RuntimeError: If not connected or request fails.
         """
         if self.process is None or self.process.poll() is not None:
-            raise RuntimeError("Not connected to MCP server")
+            raise MCPError("Not connected to MCP server")
 
         # Send request
         request_json = json.dumps(request) + "\n"
@@ -179,7 +180,7 @@ class MCPClient:
                 response = json.loads(response_line)
                 logger.debug(f"Received message: {response}")
             except json.JSONDecodeError as e:
-                raise RuntimeError(f"Invalid JSON response from MCP server: {response_line}") from e
+                raise MCPError(f"Invalid JSON response from MCP server: {response_line}") from e
 
             # Check if this is a notification (no id field) - skip it
             if "method" in response and "id" not in response:

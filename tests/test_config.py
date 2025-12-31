@@ -116,16 +116,18 @@ def test_invalid_transition_type() -> None:
     """Test that invalid transition type raises validation error."""
 
     from movie_generator.config import TransitionConfig
+    from movie_generator.exceptions import ConfigurationError
 
-    with pytest.raises(ValueError, match="Invalid transition type"):
+    with pytest.raises(ConfigurationError, match="Invalid transition type"):
         TransitionConfig(type="invalid_type")
 
 
 def test_invalid_timing_function() -> None:
     """Test that invalid timing function raises validation error."""
     from movie_generator.config import TransitionConfig
+    from movie_generator.exceptions import ConfigurationError
 
-    with pytest.raises(ValueError, match="Invalid timing function"):
+    with pytest.raises(ConfigurationError, match="Invalid timing function"):
         TransitionConfig(timing="invalid_timing")
 
 

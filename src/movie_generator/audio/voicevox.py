@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..exceptions import AudioGenerationError, ConfigurationError
 from ..script.phrases import Phrase
-from ..utils.filesystem import is_valid_file  # type: ignore[import]
+from ..utils.filesystem import is_valid_file
 from .dictionary import PronunciationDictionary
 
 try:
@@ -56,7 +57,7 @@ class VoicevoxSynthesizer:
             ImportError: If voicevox_core is not installed.
         """
         if not VOICEVOX_AVAILABLE:
-            raise ImportError(
+            raise ConfigurationError(
                 "VOICEVOX Core is not installed and is required for audio synthesis.\n"
                 "Please install voicevox_core or see docs/VOICEVOX_SETUP.md for instructions."
             )
@@ -203,7 +204,7 @@ class VoicevoxSynthesizer:
             RuntimeError: If synthesizer not initialized.
         """
         if not self._initialized:
-            raise RuntimeError("Synthesizer not initialized. Call initialize() first.")
+            raise AudioGenerationError("Synthesizer not initialized. Call initialize() first.")
 
         # Skip empty or whitespace-only text
         if not phrase.text or not phrase.text.strip():

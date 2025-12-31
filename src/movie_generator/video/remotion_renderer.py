@@ -12,6 +12,7 @@ from typing import Any
 
 from rich.console import Console
 
+from ..exceptions import RenderingError
 from ..script.phrases import Phrase
 
 console = Console()
@@ -133,7 +134,7 @@ def ensure_pnpm_dependencies(remotion_root: Path) -> None:
     except subprocess.CalledProcessError as e:
         console.print("[red]Failed to install dependencies:[/red]")
         console.print(f"[red]{e.stderr}[/red]")
-        raise RuntimeError("pnpm install failed") from e
+        raise RenderingError("pnpm install failed") from e
 
 
 def update_composition_json(
@@ -261,4 +262,4 @@ def render_video_with_remotion(
         else:
             error_msg = f"Remotion rendering failed:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"
             console.print(f"[red]{error_msg}[/red]")
-        raise RuntimeError(f"Remotion rendering failed with exit code {e.returncode}") from e
+        raise RenderingError(f"Remotion rendering failed with exit code {e.returncode}") from e

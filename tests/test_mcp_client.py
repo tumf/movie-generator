@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from movie_generator.exceptions import ConfigurationError, MCPError
 from movie_generator.mcp.client import MCPClient
 from movie_generator.mcp.config import MCPConfig, MCPServerConfig
 
@@ -34,7 +35,7 @@ def test_mcp_client_init_success(mock_config):
 
 def test_mcp_client_init_invalid_server(mock_config):
     """Test MCPClient initialization with invalid server name."""
-    with pytest.raises(ValueError, match="Server 'nonexistent' not found"):
+    with pytest.raises(ConfigurationError, match="Server 'nonexistent' not found"):
         MCPClient(mock_config, "nonexistent")
 
 
@@ -50,7 +51,7 @@ async def test_mcp_client_connect_failure(mock_config):
         mock_process.stderr.read.return_value = b"Error message"
         mock_popen.return_value = mock_process
 
-        with pytest.raises(RuntimeError, match="MCP server process failed to start"):
+        with pytest.raises(MCPError, match="MCP server process failed to start"):
             await client.connect()
 
 
@@ -60,7 +61,7 @@ async def test_mcp_client_connect_command_not_found(mock_config):
     client = MCPClient(mock_config, "firecrawl")
 
     with patch("subprocess.Popen", side_effect=FileNotFoundError()):
-        with pytest.raises(RuntimeError, match="MCP server command not found"):
+        with pytest.raises(MCPError, match="MCP server command not found"):
             await client.connect()
 
 

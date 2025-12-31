@@ -10,6 +10,8 @@ import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+from .exceptions import ConfigurationError
+
 
 class StyleConfig(BaseModel):
     """Visual style configuration."""
@@ -86,14 +88,14 @@ class TransitionConfig(BaseModel):
         """Validate transition type."""
         valid_types = {"fade", "slide", "wipe", "flip", "clockWipe", "none"}
         if self.type not in valid_types:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Invalid transition type '{self.type}'. "
                 f"Must be one of: {', '.join(sorted(valid_types))}"
             )
 
         valid_timings = {"linear", "spring"}
         if self.timing not in valid_timings:
-            raise ValueError(
+            raise ConfigurationError(
                 f"Invalid timing function '{self.timing}'. "
                 f"Must be one of: {', '.join(sorted(valid_timings))}"
             )

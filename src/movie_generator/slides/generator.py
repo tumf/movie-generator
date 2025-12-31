@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-from ..utils.filesystem import is_valid_file, skip_if_exists  # type: ignore[import]
+from ..utils.filesystem import is_valid_file, skip_if_exists
 
 
 async def download_and_process_image(
@@ -227,7 +227,8 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
             error_detail = ""
             try:
                 error_detail = f"\n    Response: {e.response.text[:500]}"
-            except:
+            except (AttributeError, Exception):
+                # response may not have text attribute or may fail to access
                 pass
             print(f"⚠ HTTP error on attempt {attempt + 1}/{max_retries}: {e}{error_detail}")
         except httpx.HTTPError as e:
