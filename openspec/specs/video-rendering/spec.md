@@ -3,9 +3,7 @@
 ## Purpose
 
 This specification defines the video rendering system for the movie generator application. The system manages composition data generation and Remotion-based video rendering with support for per-persona subtitle styling. This enables multi-speaker videos with distinct visual styling for each character's dialogue.
-
 ## Requirements
-
 ### Requirement: Add Speaker Information to composition.json
 
 The generated composition.json SHALL include speaker information for each phrase.
@@ -105,3 +103,40 @@ The system SHALL work with composition.json files that lack speaker information.
 
 **Note**: This specification was created by archiving the change `add-multi-speaker-dialogue`.
 Original Japanese version archived in `openspec/changes/archive/2025-12-31-add-multi-speaker-dialogue/specs/video-rendering/spec.md`.
+
+### Requirement: トランジション使用時の音声同期
+
+スライド間トランジションを使用する場合、音声/字幕シーケンスはトランジションによるフレームオーバーラップを考慮して配置されなければならない（SHALL）。
+
+#### Scenario: トランジションありで音声が最後まで再生される
+
+- **GIVEN** 以下のフレーズデータがある:
+  - フレーズ1: duration=2.0秒（60フレーム）、スライドA
+  - フレーズ2: duration=2.0秒（60フレーム）、スライドA
+  - フレーズ3: duration=2.0秒（60フレーム）、スライドB
+  - フレーズ4: duration=2.0秒（60フレーム）、スライドB
+- **AND** トランジション設定が `duration_frames: 15` である
+- **WHEN** 動画がレンダリングされる
+- **THEN** 動画総フレーム数は `240 - 15 = 225`フレームである（トランジション1回分のオーバーラップ）
+- **AND** フレーズ1の音声は0フレームから開始する
+- **AND** フレーズ2の音声は60フレームから開始する
+- **AND** フレーズ3の音声は `120 - 15 = 105`フレームから開始する（トランジション後）
+- **AND** フレーズ4の音声は `180 - 15 = 165`フレームから開始する
+- **AND** すべての音声が完全に再生される
+
+#### Scenario: トランジションなしの場合の互換性
+
+- **GIVEN** トランジション設定が `type: none` または `duration_frames: 0` である
+- **WHEN** 動画がレンダリングされる
+- **THEN** 音声シーケンスの開始位置は元のタイミング通りである
+- **AND** 動画総フレーム数はフレーズ総フレーム数と一致する
+
+#### Scenario: 複数トランジションがある場合
+
+- **GIVEN** 3つの異なるスライドがあり、トランジションが2回発生する
+- **AND** トランジション設定が `duration_frames: 15` である
+- **WHEN** 動画がレンダリングされる
+- **THEN** 最初のスライドグループの音声はオフセットなし
+- **AND** 2番目のスライドグループの音声は15フレーム前にシフト
+- **AND** 3番目のスライドグループの音声は30フレーム前にシフト
+- **AND** すべての音声が完全に再生される
