@@ -2,6 +2,7 @@
 
 from movie_generator.script.generator import (
     Narration,
+    RoleAssignment,
     ScriptSection,
     VideoScript,
 )
@@ -110,3 +111,61 @@ def test_video_script_basic():
     assert len(script.sections) == 1
     assert script.sections[0].narrations[0].text == "こんにちは！"
     assert script.sections[0].narrations[0].reading == "コンニチワ！"
+
+
+def test_role_assignment_basic():
+    """Test RoleAssignment basic creation."""
+    role = RoleAssignment(
+        persona_id="zundamon", role="解説役", description="主に技術的な説明を担当するキャラクター"
+    )
+    assert role.persona_id == "zundamon"
+    assert role.role == "解説役"
+    assert role.description == "主に技術的な説明を担当するキャラクター"
+
+
+def test_video_script_with_role_assignments():
+    """Test VideoScript with role_assignments."""
+    script = VideoScript(
+        title="テスト動画",
+        description="テストの説明",
+        sections=[
+            ScriptSection(
+                title="セクション1",
+                narrations=[
+                    Narration(text="こんにちは！", reading="コンニチワ！", persona_id="zundamon"),
+                    Narration(text="よろしく！", reading="ヨロシク！", persona_id="metan"),
+                ],
+                slide_prompt="A test slide",
+            )
+        ],
+        role_assignments=[
+            RoleAssignment(persona_id="zundamon", role="解説役", description="技術的な説明を担当"),
+            RoleAssignment(persona_id="metan", role="質問役", description="視聴者の疑問を代弁"),
+        ],
+    )
+    assert script.title == "テスト動画"
+    assert len(script.sections) == 1
+    assert script.role_assignments is not None
+    assert len(script.role_assignments) == 2
+    assert script.role_assignments[0].persona_id == "zundamon"
+    assert script.role_assignments[0].role == "解説役"
+    assert script.role_assignments[1].persona_id == "metan"
+    assert script.role_assignments[1].role == "質問役"
+
+
+def test_video_script_without_role_assignments():
+    """Test VideoScript without role_assignments (backward compatibility)."""
+    script = VideoScript(
+        title="テスト動画",
+        description="テストの説明",
+        sections=[
+            ScriptSection(
+                title="セクション1",
+                narrations=[Narration(text="こんにちは！", reading="コンニチワ！")],
+                slide_prompt="A test slide",
+            )
+        ],
+    )
+    assert script.title == "テスト動画"
+    assert len(script.sections) == 1
+    assert script.role_assignments is None

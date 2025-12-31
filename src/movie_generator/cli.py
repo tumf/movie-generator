@@ -377,12 +377,10 @@ def generate(
                 # Save narrations in unified format
                 section_dict["narrations"] = []
                 for n in section.narrations:
+                    narr_dict = {"text": n.text, "reading": n.reading}
                     if n.persona_id:
-                        section_dict["narrations"].append(
-                            {"persona_id": n.persona_id, "text": n.text}
-                        )
-                    else:
-                        section_dict["narrations"].append({"text": n.text})
+                        narr_dict["persona_id"] = n.persona_id
+                    section_dict["narrations"].append(narr_dict)
                 script_dict["sections"].append(section_dict)
             # Add pronunciations if available
             if script.pronunciations:

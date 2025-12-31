@@ -35,6 +35,14 @@ class PronunciationEntry(BaseModel):
     accent: int = 0  # 0=auto
 
 
+class RoleAssignment(BaseModel):
+    """Role assignment for a persona in the video script."""
+
+    persona_id: str
+    role: str
+    description: str
+
+
 class VideoScript(BaseModel):
     """Complete video script with multiple sections."""
 
@@ -42,6 +50,7 @@ class VideoScript(BaseModel):
     description: str
     sections: list[ScriptSection]
     pronunciations: list[PronunciationEntry] | None = None
+    role_assignments: list[RoleAssignment] | None = None
 
 
 SCRIPT_GENERATION_PROMPT_JA = """
@@ -187,6 +196,11 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 【登場キャラクター】
 {personas_description}
 
+【役割割り当て】
+このスクリプトでは、各キャラクターに明確な役割を割り当ててください。
+役割は対話の一貫性と視聴者の理解を助けるために重要です。
+各キャラクターの役割（例: 解説役、質問役、ツッコミ役など）を自由に設定してください。
+
 【要件】
 - 各キャラクターの個性を活かした自然な会話形式で台本を作成してください
 - スタイル: {style}
@@ -227,6 +241,13 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
 {{
   "title": "動画タイトル",
   "description": "動画の説明",
+  "role_assignments": [
+    {{
+      "persona_id": "キャラクターID（例: zundamon, metan）",
+      "role": "役割（例: 解説役、質問役）",
+      "description": "役割の詳細説明"
+    }}
+  ],
   "sections": [
     {{
       "title": "セクションタイトル",
@@ -274,6 +295,11 @@ Create a video script with multiple characters having a dialogue-style conversat
 [Characters]
 {personas_description}
 
+[Role Assignments]
+In this script, assign clear roles to each character.
+Roles are important for dialogue consistency and viewer understanding.
+Define each character's role freely (e.g., explainer, questioner, commentator, etc.).
+
 [Requirements]
 - Create natural dialogue that leverages each character's personality
 - Style: {style}
@@ -313,6 +339,13 @@ Output in JSON format. **MUST include reading field for each narration**:
 {{
   "title": "Video Title",
   "description": "Video Description",
+  "role_assignments": [
+    {{
+      "persona_id": "Character ID (e.g., zundamon, metan)",
+      "role": "Role (e.g., explainer, questioner)",
+      "description": "Detailed role description"
+    }}
+  ],
   "sections": [
     {{
       "title": "Section Title",
@@ -546,9 +579,22 @@ async def generate_script(
             for entry in script_data["pronunciations"]
         ]
 
+    # Parse role_assignments if provided (for backward compatibility)
+    role_assignments = None
+    if "role_assignments" in script_data and script_data["role_assignments"]:
+        role_assignments = [
+            RoleAssignment(
+                persona_id=entry["persona_id"],
+                role=entry["role"],
+                description=entry["description"],
+            )
+            for entry in script_data["role_assignments"]
+        ]
+
     return VideoScript(
         title=script_data["title"],
         description=script_data["description"],
         sections=sections,
         pronunciations=pronunciations,
+        role_assignments=role_assignments,
     )
