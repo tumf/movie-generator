@@ -84,7 +84,15 @@ const getScenesWithTiming = (phrases: PhraseData[]) => {
 };
 
 // Helper to group consecutive scenes with the same slide
-const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
+// Build slide groups with transition compensation
+// TransitionSeries causes slides to overlap during transitions, so we need to
+// extend each slide's duration to compensate for the transition time that gets
+// "consumed" by the overlap. Without this, slides appear to change before
+// the audio for that section finishes.
+const getSlideGroups = (
+  scenes: ReturnType<typeof getScenesWithTiming>,
+  transitionDurationFrames: number = 0
+) => {
   const groups: Array<{
     slideFile?: string;
     scenes: ReturnType<typeof getScenesWithTiming>;
@@ -121,7 +129,20 @@ const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
     }
   });
 
-  return groups;
+  // Add transition duration compensation to all groups except the last one.
+  // In TransitionSeries, the transition duration is shared between adjacent slides,
+  // effectively shortening each slide's visible time. By adding the full transition
+  // duration to each non-final slide, we ensure the slide remains visible for the
+  // full duration of its associated audio.
+  return groups.map((group, index) => {
+    if (index < groups.length - 1) {
+      return {
+        ...group,
+        durationFrames: group.durationFrames + transitionDurationFrames,
+      };
+    }
+    return group;
+  });
 };
 
 // Get transition presentation based on type
@@ -206,8 +227,8 @@ const AudioSubtitleLayer: React.FC<{
   const fadeInDuration = fps * 0.3;
   const opacity = Math.min(1, frame / fadeInDuration);
 
-  // Stroke color from persona, default to green
-  const strokeColor = subtitleColor || '#8FCF4F';
+  // Stroke color from persona, default to white
+  const strokeColor = subtitleColor || '#FFFFFF';
 
   return (
     <>
@@ -244,7 +265,6 @@ const AudioSubtitleLayer: React.FC<{
 
 export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
   const scenes = getScenesWithTiming(phrases);
-  const slideGroups = getSlideGroups(scenes);
   const { fps } = useVideoConfig();
 
   // Get transition configuration from composition data
@@ -257,6 +277,10 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
 
   // Calculate actual transition duration for slide sequences
   const transitionDurationFrames = timing.getDurationInFrames({ fps });
+
+  // Build slide groups with transition compensation
+  // This ensures slides stay visible for the full duration of their audio
+  const slideGroups = getSlideGroups(scenes, transitionDurationFrames);
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#1a1a1a' }}>
