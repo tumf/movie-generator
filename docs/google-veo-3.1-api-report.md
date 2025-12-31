@@ -1,6 +1,6 @@
 # Google Veo 3.1 API 利用ガイド
 
-**作成日**: 2025年12月29日  
+**作成日**: 2025年12月29日
 **対象**: Google Veo 3.1 API（Vertex AI / Gemini API）
 
 ---
@@ -403,7 +403,7 @@ Veo 3.1とVeo 3は同一料金体系です。最新の料金は以下を参照:
 
 ```
 良い例:
-"A fast-tracking shot through a bustling dystopian sprawl with bright neon signs, 
+"A fast-tracking shot through a bustling dystopian sprawl with bright neon signs,
 flying cars and mist, night, lens flare, volumetric lighting"
 
 避けるべき例:

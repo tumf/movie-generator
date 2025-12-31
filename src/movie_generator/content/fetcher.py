@@ -3,7 +3,6 @@
 Fetches HTML/Markdown content from web URLs.
 """
 
-from typing import Any
 
 import httpx
 

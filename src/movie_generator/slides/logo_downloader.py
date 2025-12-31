@@ -67,18 +67,18 @@ async def download_logo_assets(
                         temp_path.unlink()
                     except Exception as e:
                         print(f"⚠ SVG conversion failed for {name}: {e}")
-                        print(f"  → Using original SVG file (may not work for slide generation)")
+                        print("  → Using original SVG file (may not work for slide generation)")
                         final_path = temp_path
                 else:
                     print(f"⚠ SVG converter not available (cairo library missing) for {name}")
-                    print(f"  → Using original SVG file (may not work for slide generation)")
+                    print("  → Using original SVG file (may not work for slide generation)")
                     final_path = temp_path
 
             logo_paths[name] = final_path
 
         except Exception as e:
             print(f"⚠ Failed to download logo '{name}' from {url}: {e}")
-            print(f"  → Continuing without this logo")
+            print("  → Continuing without this logo")
             continue
 
     print(f"✓ Downloaded {len(logo_paths)}/{len(logo_assets)} logo(s)\n")

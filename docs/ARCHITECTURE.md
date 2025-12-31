@@ -119,13 +119,13 @@ video:
 project:
   title: "TUI Evolution 2023-2024"
   description: "Evolution of TUI applications"
-  
+
 audio:
   speaker_id: 3  # Zundamon
 
 style:
   background_color: "#1a1a1a"
-  
+
 pronunciation:
   custom:
     "Bubble Tea": "バブルティー"
@@ -184,7 +184,7 @@ Generated automatically from phrases.json + measured audio durations:
 interface VideoGeneratorProps {
   // Path to project metadata (relative to public/)
   projectPath: string;
-  
+
   // Optional style overrides
   style?: Partial<VideoStyle>;
 }
@@ -225,7 +225,7 @@ Automatically discover and register all projects:
 ```typescript
 export const RemotionRoot: React.FC = () => {
   const projects = discoverProjects(); // Read from public/projects/
-  
+
   return (
     <>
       {projects.map(project => (

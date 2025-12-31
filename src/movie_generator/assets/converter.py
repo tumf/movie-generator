@@ -64,5 +64,5 @@ def convert_svg_to_png(svg_path: Path, png_path: Path, width: int = 512) -> Path
     error_msg = "SVG conversion failed: No converter available (cairosvg or ImageMagick)"
     print(f"✗ {error_msg}")
     print(f"  → Keeping original SVG file: {svg_path}")
-    print(f"  💡 Tip: Install ImageMagick (brew install imagemagick) or use a PNG logo URL")
+    print("  💡 Tip: Install ImageMagick (brew install imagemagick) or use a PNG logo URL")
     raise RuntimeError(error_msg)

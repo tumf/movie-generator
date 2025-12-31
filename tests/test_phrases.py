@@ -1,6 +1,5 @@
 """Tests for phrase splitting and subtitle text generation."""
 
-import pytest
 
 from movie_generator.script.phrases import Phrase, split_into_phrases
 

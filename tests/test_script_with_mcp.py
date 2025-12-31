@@ -5,9 +5,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from movie_generator.mcp import fetch_content_with_mcp
-from movie_generator.mcp.config import MCPConfig, MCPServerConfig
 
 
 @pytest.fixture

@@ -1,8 +1,7 @@
 """Tests for content parser."""
 
-import pytest
 
-from movie_generator.content.parser import ImageInfo, parse_html
+from movie_generator.content.parser import parse_html
 
 
 def test_parse_html_basic():

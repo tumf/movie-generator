@@ -44,7 +44,7 @@ async def main():
         return 1
 
     print(f"📊 Found {len(script_files)} language(s) to generate slides for")
-    print(f"   Model: google/gemini-3-pro-image-preview")
+    print("   Model: google/gemini-3-pro-image-preview")
     print()
 
     total_successful = 0
@@ -57,7 +57,7 @@ async def main():
         print(f"Script file: {script_path}")
         print(f"{'=' * 60}\n")
 
-        with open(script_path, "r", encoding="utf-8") as f:
+        with open(script_path, encoding="utf-8") as f:
             script = yaml.safe_load(f)
 
         # Extract sections

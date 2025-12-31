@@ -97,7 +97,7 @@ audio:
   engine: "voicevox"
   speaker_id: 3  # Zundamon
   speed_scale: 1.0
-  
+
   # Paths (can also be set via environment variables)
   dict_dir: "~/.local/share/voicevox/dict/open_jtalk_dic_utf_8-1.11"
   model_path: "~/.local/share/voicevox/models/0.vvm"
@@ -124,13 +124,13 @@ pronunciation:
       accent: 4           # Accent position (0=auto)
       word_type: "PROPER_NOUN"  # PROPER_NOUN, COMMON_NOUN, VERB, ADJECTIVE, SUFFIX
       priority: 10        # Priority (1-10, higher = more priority)
-    
+
     "Ratatui":
       reading: "ラタトゥイ"
       accent: 4
       word_type: "PROPER_NOUN"
       priority: 10
-    
+
     # Simple format (uses defaults)
     "人月": "ニンゲツ"
 ```
@@ -187,7 +187,7 @@ FileNotFoundError: OpenJTalk dictionary not found
 OSError: cannot load library 'libonnxruntime.dylib'
 ```
 
-**Solution**: 
+**Solution**:
 ```bash
 # Allow unsigned library
 xattr -d com.apple.quarantine ~/.local/share/voicevox/libonnxruntime.dylib

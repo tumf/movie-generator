@@ -3,14 +3,12 @@
 Handles script and slide generation for multiple languages.
 """
 
-import asyncio
-import os
 from pathlib import Path
 
 import yaml
 
 from .config import Config
-from .script.generator import generate_script, VideoScript
+from .script.generator import VideoScript, generate_script
 from .slides.generator import generate_slides_for_sections
 
 
@@ -118,7 +116,7 @@ async def generate_multilang_content(
         results[lang_code] = script
 
     print(f"\n{'=' * 60}")
-    print(f"✅ Completed content generation for all languages")
+    print("✅ Completed content generation for all languages")
     print(f"{'=' * 60}\n")
 
     return results

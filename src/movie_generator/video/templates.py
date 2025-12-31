@@ -57,7 +57,7 @@ export interface VideoGeneratorProps {
 const getScenesWithTiming = (phrases: PhraseData[]) => {
   let currentFrame = 0;
   const fps = 30;
-  
+
   return phrases.map((phrase, index) => {
     const durationFrames = Math.round(phrase.duration * fps);
     const scene = {
@@ -100,7 +100,7 @@ const getSlideGroups = (scenes: ReturnType<typeof getScenesWithTiming>) => {
       currentSlide = scene.slideFile;
     }
     currentScenes.push(scene);
-    
+
     // Last scene
     if (index === scenes.length - 1) {
       const duration = currentScenes.reduce((sum, s) => sum + s.durationFrames, 0);
@@ -199,7 +199,7 @@ const AudioSubtitleLayer: React.FC<{
   return (
     <>
       <Audio src={staticFile(audioFile)} />
-      
+
       {subtitle && (
         <div
           style={{
@@ -287,18 +287,18 @@ export const calculateTotalFrames = (phrases: PhraseData[]): number => {
   const fps = 30;
   const scenes = getScenesWithTiming(phrases);
   const slideGroups = getSlideGroups(scenes);
-  
+
   // Get transition configuration
   const transitionTiming = (compositionData as any).transition?.timing || 'linear';
   const transitionDuration = (compositionData as any).transition?.duration_frames || 15;
   const timing = getTransitionTiming(transitionTiming, transitionDuration);
   const transitionDurationFrames = timing.getDurationInFrames({ fps });
-  
+
   // Calculate total: sum of all slide durations minus transition overlaps
   const totalSlideFrames = slideGroups.reduce((sum, group) => sum + group.durationFrames, 0);
   const numTransitions = Math.max(0, slideGroups.length - 1);
   const totalTransitionOverlap = numTransitions * transitionDurationFrames;
-  
+
   return totalSlideFrames - totalTransitionOverlap;
 };
 """

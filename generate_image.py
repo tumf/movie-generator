@@ -10,11 +10,12 @@ Usage:
     python scripts/generate_image.py "プロンプト" --size 1024x1024 --output image.png
 """
 
-import os
-import sys
 import argparse
 import base64
+import os
+import sys
 from pathlib import Path
+
 import requests
 
 
@@ -249,9 +250,7 @@ class ImageGenerator:
             for ref_img in self.reference_images:
                 if ref_img.exists():
                     image_data_url = self.encode_image_to_base64(ref_img)
-                    content.append(
-                        {"type": "image_url", "image_url": {"url": image_data_url}}
-                    )
+                    content.append({"type": "image_url", "image_url": {"url": image_data_url}})
                     print(f"  Reference image: {ref_img}")
                 else:
                     print(f"  ⚠ Warning: Reference image not found: {ref_img}")
@@ -267,16 +266,14 @@ class ImageGenerator:
         }
 
         try:
-            print(f"Generating image...")
+            print("Generating image...")
             print(f"  Model: {self.model}")
             print(f"  Aspect ratio: {aspect_ratio}")
             if style:
                 print(f"  Style: {style}")
             print(f"  Prompt: {prompt}\n")
 
-            response = requests.post(
-                self.api_url, headers=headers, json=payload, timeout=120
-            )
+            response = requests.post(self.api_url, headers=headers, json=payload, timeout=120)
             response.raise_for_status()
 
             result = response.json()
@@ -309,10 +306,10 @@ class ImageGenerator:
                         print(f"✗ Unexpected image URL format: {data_url[:100]}...")
                         return False
                 else:
-                    print(f"✗ No images in response")
+                    print("✗ No images in response")
                     return False
             else:
-                print(f"✗ No choices in response")
+                print("✗ No choices in response")
                 return False
 
         except requests.exceptions.RequestException as e:
@@ -456,7 +453,7 @@ Supported aspect ratios:
     if args.output.exists() and not args.overwrite:
         file_size = args.output.stat().st_size
         print(f"ℹ File already exists: {args.output} ({file_size:,} bytes)")
-        print(f"  Use --overwrite option to regenerate.")
+        print("  Use --overwrite option to regenerate.")
         sys.exit(0)
 
     # 上書き警告
@@ -476,16 +473,12 @@ Supported aspect ratios:
     # スタイルの検証
     if args.style and args.style not in ImageGenerator.STYLES:
         print(f"Error: Unknown style '{args.style}'")
-        print(
-            f"Run 'python scripts/generate_image.py --list-styles' to see available styles."
-        )
+        print("Run 'python scripts/generate_image.py --list-styles' to see available styles.")
         sys.exit(1)
 
     # 画像生成
     try:
-        generator = ImageGenerator(
-            api_key=args.api_key, reference_images=reference_images
-        )
+        generator = ImageGenerator(api_key=args.api_key, reference_images=reference_images)
 
         # サイズをアスペクト比に変換
         aspect_ratio = generator.parse_size(args.size)
@@ -496,10 +489,10 @@ Supported aspect ratios:
         )
 
         if success:
-            print(f"\n✓ Image generation completed successfully!")
+            print("\n✓ Image generation completed successfully!")
             sys.exit(0)
         else:
-            print(f"\n✗ Image generation failed.")
+            print("\n✗ Image generation failed.")
             sys.exit(1)
 
     except ValueError as e:

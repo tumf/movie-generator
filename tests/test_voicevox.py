@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 from movie_generator.audio.dictionary import DictionaryEntry, PronunciationDictionary
 from movie_generator.audio.voicevox import VOICEVOX_AVAILABLE, VoicevoxSynthesizer
 from movie_generator.script.phrases import Phrase

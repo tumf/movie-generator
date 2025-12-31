@@ -57,7 +57,7 @@ When generating slides for multiple languages, the slide prompts are written in 
 ## Best Practices
 
 1. **Keep text short**: Limit slide text to 3-5 words for better readability
-2. **Use native script**: 
+2. **Use native script**:
    - Japanese: Use hiragana/katakana/kanji as appropriate
    - English: Use proper capitalization
 3. **Consistent style**: Maintain visual consistency across all language versions

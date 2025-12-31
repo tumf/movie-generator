@@ -1,6 +1,5 @@
 """Tests for script generator."""
 
-import pytest
 
 from movie_generator.script.generator import ScriptSection
 

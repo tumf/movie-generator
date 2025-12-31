@@ -1,7 +1,6 @@
 """Tests for furigana generation using morphological analysis."""
 
 import pytest
-
 from movie_generator.audio.furigana import FuriganaGenerator, MorphemeReading
 
 

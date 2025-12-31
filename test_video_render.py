@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Test video rendering with existing audio files."""
-import json
 from pathlib import Path
-from movie_generator.video.renderer import render_video, create_composition, save_composition
+
 from movie_generator.script.phrases import Phrase
+from movie_generator.video.renderer import create_composition, render_video, save_composition
 
 # Use existing audio files
 audio_dir = Path("output/audio")
@@ -37,6 +37,7 @@ test_slide = Path("output/test_slide.png")
 for slide_path in slides:
     if test_slide.exists():
         import shutil
+
         shutil.copy(test_slide, slide_path)
     else:
         slide_path.write_bytes(b"")  # Empty for now
@@ -62,6 +63,8 @@ print(f"Rendering video to {output_video}...")
 render_video(comp_path, output_video)
 
 if output_video.exists() and output_video.stat().st_size > 0:
-    print(f"✓ Success! Video generated: {output_video} ({output_video.stat().st_size / 1024 / 1024:.2f} MB)")
+    print(
+        f"✓ Success! Video generated: {output_video} ({output_video.stat().st_size / 1024 / 1024:.2f} MB)"
+    )
 else:
     print("✗ Failed: Empty or missing video file")

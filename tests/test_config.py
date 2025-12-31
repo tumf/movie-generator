@@ -8,7 +8,7 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from movie_generator.config import Config, TransitionConfig, load_config, merge_configs
+from movie_generator.config import Config, load_config, merge_configs
 
 
 def test_default_config() -> None:
@@ -114,7 +114,6 @@ video:
 
 def test_invalid_transition_type() -> None:
     """Test that invalid transition type raises validation error."""
-    from pydantic import ValidationError
 
     from movie_generator.config import TransitionConfig
 

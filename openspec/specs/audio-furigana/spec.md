@@ -109,10 +109,10 @@ The VoicevoxSynthesizer SHALL provide a method to prepare pronunciations from ra
 class FuriganaGenerator:
     def analyze(self, text: str) -> list[MorphemeReading]:
         """Analyze text and return morphemes with readings."""
-    
+
     def get_readings_dict(self, text: str) -> dict[str, str]:
         """Get dictionary mapping surface forms to readings."""
-    
+
     def analyze_texts(self, texts: list[str]) -> dict[str, str]:
         """Analyze multiple texts and return combined readings."""
 ```
@@ -140,13 +140,13 @@ class VoicevoxSynthesizer:
         enable_furigana: bool = True,
     ):
         """Initialize with optional furigana generation."""
-    
+
     def prepare_phrases(self, phrases: list[Phrase]) -> int:
         """Prepare dictionary entries for all phrases."""
-    
+
     def prepare_texts(self, texts: list[str]) -> int:
         """Prepare dictionary entries from raw text strings.
-        
+
         Similar to prepare_phrases() but accepts raw text strings.
         Returns the number of dictionary entries added.
         """

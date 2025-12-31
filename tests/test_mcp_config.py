@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from movie_generator.mcp.config import (
     MCPConfig,
     _replace_env_vars,

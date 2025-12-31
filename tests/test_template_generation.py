@@ -1,6 +1,5 @@
 """Tests for TypeScript template generation with transitions."""
 
-import pytest
 from movie_generator.video.templates import get_video_generator_tsx
 
 
@@ -76,8 +75,9 @@ def test_calculate_total_frames_considers_transitions():
 def test_template_parameters_are_documented():
     """Test that template function parameters are properly documented."""
     # The function signature should still accept parameters even though config comes from JSON
-    from movie_generator.video.templates import get_video_generator_tsx
     import inspect
+
+    from movie_generator.video.templates import get_video_generator_tsx
 
     sig = inspect.signature(get_video_generator_tsx)
     params = list(sig.parameters.keys())

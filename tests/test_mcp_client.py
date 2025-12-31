@@ -4,7 +4,6 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from movie_generator.mcp.client import MCPClient
 from movie_generator.mcp.config import MCPConfig, MCPServerConfig
 

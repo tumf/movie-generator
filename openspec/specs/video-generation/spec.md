@@ -220,7 +220,7 @@ The system SHALL execute batch video generation from command line.
 
 ---
 
-**Note**: This specification was translated from the original Japanese version  
+**Note**: This specification was translated from the original Japanese version
 archived in `openspec-archive/changes/add-video-generator/specs/video-generation/spec.md`.
 
 ### Requirement: Multi-Language Content Integration
@@ -618,4 +618,3 @@ The system SHALL apply different regeneration policies based on asset type to ba
 - **WHEN** video is re-rendered after configuration change
 - **THEN** the new transition settings are reflected in the output video
 - **AND** no manual intervention is required to apply new settings
-

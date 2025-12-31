@@ -118,7 +118,7 @@ The system SHALL manage Remotion video rendering configuration.
 
 ---
 
-**Note**: This specification was translated from the original Japanese version  
+**Note**: This specification was translated from the original Japanese version
 archived in `openspec-archive/changes/add-video-generator/specs/config-management/spec.md`.
 
 ### Requirement: Configuration File Initialization Command
@@ -213,4 +213,3 @@ The system SHALL organize generated content by language code.
 - **WHEN** only one language is configured OR languages field is omitted
 - **THEN** script is saved as `script.yaml` (without language suffix)
 - **AND** slides are saved directly in `slides/` (without language subdirectory)
-

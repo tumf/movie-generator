@@ -65,7 +65,7 @@ from movie_generator.multilang import generate_multilang_content
 async def main():
     # Load configuration
     config = load_config(Path("config.yaml"))
-    
+
     # Generate content for all configured languages
     results = await generate_multilang_content(
         content="Your source content here...",
@@ -75,7 +75,7 @@ async def main():
         output_dir=Path("output"),
         api_key="your-api-key",
     )
-    
+
     # Results is a dict mapping language codes to VideoScript objects
     for lang_code, script in results.items():
         print(f"Generated script for {lang_code}: {script.title}")

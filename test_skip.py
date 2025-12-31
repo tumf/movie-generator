@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test skip functionality."""
-from pathlib import Path
 import wave
+from pathlib import Path
 
 # Check existing audio files
 audio_dir = Path("output/audio")
@@ -21,7 +21,7 @@ print(f"  Empty: {len(empty_files)} files")
 total_duration = 0.0
 for audio_file in valid_files[:10]:
     try:
-        with wave.open(str(audio_file), 'rb') as wf:
+        with wave.open(str(audio_file), "rb") as wf:
             frames = wf.getnframes()
             rate = wf.getframerate()
             duration = frames / rate

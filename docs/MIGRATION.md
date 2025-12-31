@@ -297,7 +297,7 @@ if actual_slides:
     # Get actual subdirectory structure
     rel_path = actual_slides[0].relative_to(slides_dir.parent)
     slide_dir = str(rel_path.parent)
-    
+
     # Update all slide paths
     for phrase in comp["phrases"]:
         if phrase.get("slideFile"):

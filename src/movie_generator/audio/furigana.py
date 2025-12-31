@@ -33,7 +33,7 @@ class FuriganaGenerator:
 
         The tagger is lazily initialized on first use.
         """
-        self._tagger: "Tagger | None" = None
+        self._tagger: Tagger | None = None
 
     @property
     def tagger(self) -> "Tagger":

@@ -111,8 +111,8 @@ def render_video(
         RuntimeError: If video rendering fails.
     """
     import json
-    import subprocess
     import shutil
+    import subprocess
     from pathlib import Path
 
     # Skip if video already exists and is not empty

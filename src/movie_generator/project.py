@@ -14,7 +14,6 @@ import yaml
 from rich.console import Console
 
 from .config import Config
-from . import video
 
 console = Console()
 
@@ -83,10 +82,10 @@ def _create_symlink_safe(target: Path, link: Path) -> None:
     # Create symlink (relative path for portability)
     try:
         link.symlink_to(os.path.relpath(target, link.parent), target_is_directory=True)
-    except OSError as e:
+    except OSError:
         # Fallback to absolute path on Windows if relative fails
         console.print(
-            f"[yellow]Warning: Could not create relative symlink, using absolute path[/yellow]"
+            "[yellow]Warning: Could not create relative symlink, using absolute path[/yellow]"
         )
         link.symlink_to(target.absolute(), target_is_directory=True)
 
@@ -310,7 +309,7 @@ class Project:
                 text=True,
             )
         except subprocess.CalledProcessError as e:
-            console.print(f"[red]Failed to install Remotion packages:[/red]")
+            console.print("[red]Failed to install Remotion packages:[/red]")
             console.print(f"[red]{e.stderr}[/red]")
             raise
 
@@ -392,7 +391,7 @@ class Project:
         remotion_dir = self.project_dir / "remotion"
         if not remotion_dir.exists():
             raise FileNotFoundError(
-                f"Remotion project not initialized. Run setup_remotion_project() first."
+                "Remotion project not initialized. Run setup_remotion_project() first."
             )
 
         # Load project config to get transition settings

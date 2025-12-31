@@ -40,7 +40,7 @@ The `modalities` order should be `["image", "text"]`:
 
 ## Root Cause of CLI Bug (Fixed)
 
-The CLI was using `Config()` without loading `config/default.yaml`, so it used the 
+The CLI was using `Config()` without loading `config/default.yaml`, so it used the
 default `LLMConfig.model` which was `openai/gpt-5.2` (not an image model).
 
 Fixed by creating `SlidesLLMConfig` with the correct default model.

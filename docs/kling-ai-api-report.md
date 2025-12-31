@@ -1,6 +1,6 @@
 # Kling AI API 利用ガイド
 
-**作成日**: 2025年12月29日  
+**作成日**: 2025年12月29日
 **対象**: Kling AI API（Kuaishou Technology）
 
 ---
@@ -318,7 +318,7 @@ def create_video_task(prompt: str, duration: int = 5, version: str = "2.6"):
             "cfg_scale": 0.5
         }
     }
-    
+
     response = requests.post(url, json=data, headers=headers)
     return response.json()
 
@@ -326,7 +326,7 @@ def get_task_result(task_id: str):
     """タスク結果を取得"""
     url = f"{BASE_URL}/api/v1/task/{task_id}"
     headers = {"x-api-key": API_KEY}
-    
+
     response = requests.get(url, headers=headers)
     return response.json()
 
@@ -336,18 +336,18 @@ def generate_video(prompt: str):
     result = create_video_task(prompt)
     task_id = result["data"]["task_id"]
     print(f"Task ID: {task_id}")
-    
+
     # ポーリング
     while True:
         status = get_task_result(task_id)
         current_status = status["data"]["status"]
         print(f"Status: {current_status}")
-        
+
         if current_status == "Completed":
             return status["data"]["output"]
         elif current_status == "Failed":
             raise Exception(status["data"]["error"]["message"])
-        
+
         time.sleep(10)
 
 # 使用例
@@ -377,7 +377,7 @@ def generate_video(prompt: str, model: str = "klingai/v2.1-master-text-to-video"
         "aspect_ratio": "16:9",
         "duration": 5
     }
-    
+
     response = requests.post(url, json=data, headers=headers)
     return response.json()
 
@@ -386,7 +386,7 @@ def get_video_result(generation_id: str):
     url = f"{BASE_URL}/video/generations"
     headers = {"Authorization": f"Bearer {API_KEY}"}
     params = {"generation_id": generation_id}
-    
+
     response = requests.get(url, params=params, headers=headers)
     return response.json()
 
@@ -396,21 +396,21 @@ def create_video_with_polling(prompt: str, timeout: int = 600):
     result = generate_video(prompt)
     generation_id = result["id"]
     print(f"Generation ID: {generation_id}")
-    
+
     # ポーリング
     start_time = time.time()
     while time.time() - start_time < timeout:
         status = get_video_result(generation_id)
         current_status = status.get("status")
         print(f"Status: {current_status}")
-        
+
         if current_status == "completed":
             return status["video"]["url"]
         elif current_status == "failed":
             raise Exception(status.get("error", {}).get("message", "Unknown error"))
-        
+
         time.sleep(10)
-    
+
     raise TimeoutError("Video generation timed out")
 
 # 使用例
@@ -440,7 +440,7 @@ def create_image_to_video(image_url: str, prompt: str):
             "version": "2.6"
         }
     }
-    
+
     response = requests.post(url, json=data, headers=headers)
     return response.json()
 
@@ -476,7 +476,7 @@ def create_video_with_camera(prompt: str, camera_settings: dict):
             }
         }
     }
-    
+
     response = requests.post(url, json=data, headers=headers)
     return response.json()
 
@@ -579,7 +579,7 @@ curl --location 'https://api.piapi.ai/api/v1/task/YOUR_TASK_ID' \
 
 ```
 良い例:
-"A majestic eagle soaring over snow-capped mountains, 
+"A majestic eagle soaring over snow-capped mountains,
 golden hour lighting, cinematic wide shot, smooth gliding motion"
 
 避けるべき例:
@@ -621,20 +621,20 @@ def safe_generate_video(prompt: str, max_retries: int = 3):
             result = create_video_task(prompt)
             if result.get("code") == 200:
                 return result
-            
+
             error_msg = result.get("message", "Unknown error")
             if "rate limit" in error_msg.lower():
                 time.sleep(60)  # レート制限時は1分待機
                 continue
-            
+
             raise Exception(error_msg)
-        
+
         except requests.RequestException as e:
             if attempt < max_retries - 1:
                 time.sleep(5 * (attempt + 1))
                 continue
             raise
-    
+
     raise Exception("Max retries exceeded")
 ```
 
@@ -672,18 +672,18 @@ def handle_webhook():
         payload,
         "sha256"
     ).hexdigest()
-    
+
     if signature != expected:
         return "Invalid signature", 401
-    
+
     data = request.json
     task_id = data["task_id"]
     status = data["status"]
-    
+
     if status == "Completed":
         video_url = data["output"]["video_url"]
         # 動画処理ロジック
-    
+
     return "OK", 200
 ```
 

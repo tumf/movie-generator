@@ -13,7 +13,6 @@ import os
 from pathlib import Path
 
 import pytest
-
 from movie_generator.mcp.client import MCPClient, fetch_content_with_mcp
 from movie_generator.mcp.config import load_mcp_config
 
