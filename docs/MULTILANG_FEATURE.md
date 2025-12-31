@@ -34,6 +34,10 @@ When multiple languages are configured, the output directory structure will be:
 output/
 ├── script_ja.yaml          # Japanese script
 ├── script_en.yaml          # English script
+├── output_ja.mp4           # Japanese video (full)
+├── output_en.mp4           # English video (full)
+├── output_ja_1-3.mp4       # Japanese video (scenes 1-3, if scene range specified)
+├── output_en_2.mp4         # English video (scene 2 only, if scene range specified)
 └── slides/
     ├── ja/                 # Japanese slides
     │   ├── slide_0000.png
@@ -45,12 +49,30 @@ output/
         └── ...
 ```
 
+### Video Output Naming Convention
+
+Video filenames include the language identifier to prevent overwriting when generating multiple language versions:
+
+- **Full video**: `output_{lang}.mp4`
+  - Example: `output_ja.mp4`, `output_en.mp4`
+
+- **Single scene**: `output_{lang}_{scene}.mp4`
+  - Example: `output_ja_2.mp4` (Japanese, scene 2 only)
+  - Example: `output_en_5.mp4` (English, scene 5 only)
+
+- **Scene range**: `output_{lang}_{start}-{end}.mp4`
+  - Example: `output_ja_1-3.mp4` (Japanese, scenes 1-3)
+  - Example: `output_en_2-5.mp4` (English, scenes 2-5)
+
+This naming scheme ensures that videos in different languages can coexist in the same output directory without conflicts.
+
 ### Legacy Compatibility
 
 For backward compatibility, if only one language is configured or if `languages` is not specified:
 - Defaults to `["ja"]` (Japanese)
 - Script is saved as `script.yaml` (without language suffix)
 - Slides are saved directly in `output/slides/` (without language subdirectory)
+- Videos are named with language ID: `output_ja.mp4` (not `output.mp4`)
 
 ## Usage
 

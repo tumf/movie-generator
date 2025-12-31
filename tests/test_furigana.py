@@ -73,6 +73,89 @@ class TestFuriganaGenerator:
         assert len(morphemes) > 0
         # Should have some reading
 
+    def test_english_word_in_readings_dict(self, generator: FuriganaGenerator) -> None:
+        """Test English words are included in readings dict.
+
+        Words like 'markdown', 'Excel', 'Python' should be candidates
+        for pronunciation dictionary entries.
+        """
+        readings = generator.get_readings_dict("markdownで書く")
+        assert "markdown" in readings
+
+        readings = generator.get_readings_dict("Pythonコード")
+        assert "Python" in readings
+
+    def test_get_unknown_readings_basic(self, generator: FuriganaGenerator) -> None:
+        """Test get_unknown_readings identifies words without katakana readings."""
+        texts = ["markdownで書く", "Pythonコード"]
+        unknown = generator.get_unknown_readings(texts)
+
+        # markdown and Python should be in unknown (no UniDic reading)
+        assert "markdown" in unknown
+        assert "Python" in unknown
+
+    def test_get_unknown_readings_excludes_known(self, generator: FuriganaGenerator) -> None:
+        """Test get_unknown_readings excludes words with known readings."""
+        texts = ["Excelの表計算"]
+        unknown = generator.get_unknown_readings(texts)
+
+        # Excel has a UniDic reading (エクセル), should NOT be in unknown
+        assert "Excel" not in unknown
+
+    def test_get_unknown_readings_excludes_short(self, generator: FuriganaGenerator) -> None:
+        """Test get_unknown_readings excludes very short words."""
+        texts = ["a, b, c are variables"]
+        unknown = generator.get_unknown_readings(texts)
+
+        # Single letter words should be excluded
+        assert "a" not in unknown
+        assert "b" not in unknown
+        assert "c" not in unknown
+
+    def test_get_words_needing_pronunciation_includes_kanji(
+        self, generator: FuriganaGenerator
+    ) -> None:
+        """Test get_words_needing_pronunciation includes kanji words."""
+        texts = ["軽めの設定"]
+        words = generator.get_words_needing_pronunciation(texts)
+
+        # Kanji words should be included
+        assert "軽め" in words
+        assert "設定" in words
+        # Particle should be excluded
+        assert "の" not in words
+
+    def test_get_words_needing_pronunciation_includes_english(
+        self, generator: FuriganaGenerator
+    ) -> None:
+        """Test get_words_needing_pronunciation includes English words."""
+        texts = ["markdownで書く"]
+        words = generator.get_words_needing_pronunciation(texts)
+
+        assert "markdown" in words
+        assert "書く" in words
+
+    def test_get_words_needing_pronunciation_excludes_kana_only(
+        self, generator: FuriganaGenerator
+    ) -> None:
+        """Test get_words_needing_pronunciation excludes kana-only words."""
+        texts = ["これはテストです"]
+        words = generator.get_words_needing_pronunciation(texts)
+
+        # Hiragana/katakana only words should not be included
+        assert "これ" not in words
+        assert "テスト" not in words
+        assert "です" not in words
+
+    def test_is_only_kana(self, generator: FuriganaGenerator) -> None:
+        """Test _is_only_kana helper method."""
+        assert generator._is_only_kana("ひらがな") is True
+        assert generator._is_only_kana("カタカナ") is True
+        assert generator._is_only_kana("ひらカタ") is True
+        assert generator._is_only_kana("漢字") is False
+        assert generator._is_only_kana("English") is False
+        assert generator._is_only_kana("混合テスト") is False
+
     def test_mixed_japanese_english(self, generator: FuriganaGenerator) -> None:
         """Test mixed Japanese and English text."""
         readings = generator.get_readings_dict("Excelの表計算機能")

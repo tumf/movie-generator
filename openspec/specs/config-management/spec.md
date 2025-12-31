@@ -213,3 +213,134 @@ The system SHALL organize generated content by language code.
 - **WHEN** only one language is configured OR languages field is omitted
 - **THEN** script is saved as `script.yaml` (without language suffix)
 - **AND** slides are saved directly in `slides/` (without language subdirectory)
+
+### Requirement: Persona Configuration
+
+The system SHALL allow defining multiple speakers (personas) in the configuration file.
+
+#### Scenario: Define Multiple Personas
+- **WHEN** the following configuration is defined in the `personas` array:
+  ```yaml
+  personas:
+    - id: "zundamon"
+      name: "ずんだもん"
+      character: "元気で明るい東北の妖精"
+      synthesizer:
+        engine: "voicevox"
+        speaker_id: 3
+        speed_scale: 1.0
+      subtitle_color: "#8FCF4F"
+    - id: "metan"
+      name: "四国めたん"
+      character: "優しくて落ち着いた四国の妖精"
+      synthesizer:
+        engine: "voicevox"
+        speaker_id: 2
+        speed_scale: 1.0
+      subtitle_color: "#FF69B4"
+  ```
+- **THEN** 2 personas are registered
+- **AND** each persona has a unique `id`
+- **AND** each persona has audio synthesis settings
+
+#### Scenario: Define Single Persona
+- **WHEN** only one persona is defined in the `personas` array
+- **THEN** the system operates as a single speaker
+- **AND** behaves identically to existing single-speaker videos
+
+#### Scenario: Duplicate Persona ID Error
+- **WHEN** the same `id` is defined multiple times in the `personas` array
+- **THEN** a configuration validation error occurs
+- **AND** the error message displays the duplicate `id`
+
+#### Scenario: Required Field Validation
+- **WHEN** a persona does not include `id`, `name`, or `synthesizer`
+- **THEN** a configuration validation error occurs
+- **AND** the missing field name is displayed
+
+### Requirement: Speech Synthesis Engine Abstraction Configuration
+
+Each persona SHALL be able to specify the speech synthesis engine and its parameters via the `synthesizer` field.
+
+#### Scenario: VOICEVOX Speech Synthesis Configuration
+- **WHEN** the following `synthesizer` configuration is defined:
+  ```yaml
+  synthesizer:
+    engine: "voicevox"
+    speaker_id: 3
+    speed_scale: 1.0
+  ```
+- **THEN** the VOICEVOX speech synthesis engine is used
+- **AND** audio is generated with speaker_id=3
+- **AND** audio is generated with speed_scale=1.0
+
+#### Scenario: Future Support for Other Engines (Design Only)
+- **WHEN** `synthesizer.engine` is set to a value other than `"voicevox"` (e.g., `"coefont"`)
+- **THEN** an error occurs indicating the engine is not supported
+- **AND** the error message displays "unsupported engine"
+
+### Requirement: Subtitle Style Configuration
+
+Each persona SHALL be able to specify the subtitle color via the `subtitle_color` field.
+
+#### Scenario: Configure Subtitle Color
+- **WHEN** a persona has `subtitle_color: "#8FCF4F"`
+- **THEN** that persona's dialogue subtitles are displayed in green (#8FCF4F)
+
+#### Scenario: Default Subtitle Color
+- **WHEN** `subtitle_color` is omitted
+- **THEN** the default color (#FFFFFF) is used
+
+#### Scenario: Invalid Color Code
+- **WHEN** `subtitle_color` is set to an invalid color code (e.g., "invalid")
+- **THEN** a configuration validation error occurs
+- **OR** the default color is used
+
+### Requirement: Avatar Image Field (Future Use)
+
+Each persona SHALL support having an `avatar_image` field, but it is not used in the current version.
+
+#### Scenario: Define Avatar Image Path
+- **WHEN** a persona has `avatar_image: "assets/zundamon.png"`
+- **THEN** the configuration is loaded successfully
+- **AND** the image is not used in the current version
+- **AND** it can be used in future versions
+
+### Requirement: Narration Configuration
+
+The system SHALL allow configuring narration mode (single speaker or dialogue format).
+
+#### Scenario: Enable Dialogue Mode
+- **WHEN** the configuration includes `narration.mode: "dialogue"`
+- **THEN** a multi-speaker dialogue format script is generated
+- **AND** a dialogue format prompt is used for the LLM
+
+#### Scenario: Single Speaker Mode
+- **WHEN** the configuration includes `narration.mode: "single"`
+- **THEN** a single-speaker script is generated
+- **AND** the traditional single-speaker prompt is used
+
+#### Scenario: Default Mode Value
+- **WHEN** `narration.mode` is omitted
+- **AND** 2 or more personas are defined in the `personas` array
+- **THEN** `"dialogue"` mode is used
+
+#### Scenario: Default Mode Value (Single Persona)
+- **WHEN** `narration.mode` is omitted
+- **AND** only one persona is defined in the `personas` array
+- **THEN** `"single"` mode is used
+
+#### Scenario: Remove Character Configuration
+- **WHEN** dialogue mode is enabled
+- **THEN** the `narration.character` field is ignored
+- **AND** each persona's `character` field is used
+
+#### Scenario: Maintain Style Configuration
+- **WHEN** `narration.style` is configured
+- **THEN** it is used for both single-speaker and dialogue formats
+- **AND** the style is reflected in the LLM prompt
+
+---
+
+**Note**: Requirements added by archiving the change `add-multi-speaker-dialogue`.
+Original Japanese version archived in `openspec/changes/archive/2025-12-31-add-multi-speaker-dialogue/specs/config-management/spec.md`.

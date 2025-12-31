@@ -17,8 +17,8 @@ from .config import Config, load_config, print_default_config, write_config_to_f
 from .content.fetcher import fetch_url_sync
 from .content.parser import parse_html
 from .project import Project
-from .script.generator import generate_script
-from .script.phrases import calculate_phrase_timings, split_into_phrases
+from .script.generator import PronunciationEntry, generate_script
+from .script.phrases import Phrase, calculate_phrase_timings
 from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
 from .utils.text import clean_katakana_reading  # type: ignore[import]
@@ -144,12 +144,6 @@ def cli() -> None:
     default=False,
     help="Show real-time rendering progress (default: hide)",
 )
-@click.option(
-    "--allow-placeholder",
-    is_flag=True,
-    default=False,
-    help="Allow running without VOICEVOX (generates placeholder audio for testing)",
-)
 def generate(
     url_or_script: str | None,
     config: Path | None,
@@ -158,7 +152,6 @@ def generate(
     scenes: str | None,
     mcp_config: Path | None,
     show_progress: bool,
-    allow_placeholder: bool,
 ) -> None:
     """Generate video from URL or existing script.yaml.
 
@@ -170,7 +163,6 @@ def generate(
         scenes: Scene range to render (e.g., "1-3" or "2").
         mcp_config: Path to MCP configuration file for enhanced web scraping.
         show_progress: Show real-time rendering progress.
-        allow_placeholder: Allow running without VOICEVOX (testing only).
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -197,6 +189,14 @@ def generate(
     output_dir.mkdir(parents=True, exist_ok=True)
     script_path = script_path_input if script_path_input else (output_dir / "script.yaml")
 
+    # Extract language ID from script filename (e.g., "script_ja.yaml" -> "ja")
+    language_id = "ja"  # Default language
+    if script_path.stem.startswith("script_"):
+        # Extract language code from filename like "script_ja" or "script_en"
+        potential_lang = script_path.stem.replace("script_", "")
+        if potential_lang:  # Ensure we got a language code
+            language_id = potential_lang
+
     console.print(f"[bold]Output directory:[/bold] {output_dir}")
 
     with Progress(
@@ -211,7 +211,6 @@ def generate(
                 script_dict = yaml.safe_load(f)
             from .script.generator import (
                 Narration,
-                PronunciationEntry,
                 ScriptSection,
                 VideoScript,
             )
@@ -405,26 +404,26 @@ def generate(
             elif scene_end is not None:
                 console.print(f"[cyan]Filtering to scenes 1-{scene_end + 1}[/cyan]")
 
-        # Step 4: Split into phrases
-        task = progress.add_task("Splitting into phrases...", total=None)
+        # Step 4: Convert narrations to phrases (pre-split by LLM)
+        task = progress.add_task("Converting narrations to phrases...", total=None)
 
         # First pass: generate all phrases to determine original_index
         all_sections_phrases = []
         for section_idx, section in enumerate(script.sections):
             section_phrases = []
             for narration in section.narrations:
-                narration_phrases = split_into_phrases(narration.text)
-                for phrase in narration_phrases:
-                    phrase.section_index = section_idx
-                    if narration.persona_id:
-                        phrase.persona_id = narration.persona_id
-                        # Look up persona name from config
-                        if cfg.personas:
-                            for p in cfg.personas:
-                                if p.id == narration.persona_id:
-                                    phrase.persona_name = p.name
-                                    break
-                section_phrases.extend(narration_phrases)
+                # Each narration is already split by LLM (~40 chars)
+                phrase = Phrase(text=narration.text)
+                phrase.section_index = section_idx
+                if narration.persona_id:
+                    phrase.persona_id = narration.persona_id
+                    # Look up persona name from config
+                    if cfg.personas:
+                        for p in cfg.personas:
+                            if p.id == narration.persona_id:
+                                phrase.persona_name = p.name
+                                break
+                section_phrases.append(phrase)
             all_sections_phrases.append((section_idx, section_phrases))
 
         # Set original_index for all phrases globally
@@ -445,7 +444,20 @@ def generate(
             all_phrases.extend(phrases)
 
         progress.update(task, completed=True)
-        console.print(f"✓ Split into {len(all_phrases)} phrases")
+        console.print(f"✓ Converted {len(all_phrases)} phrases")
+
+        # Validate that we have phrases to process
+        if len(all_phrases) == 0:
+            total_sections = len(script.sections)
+            if scenes:
+                raise click.ClickException(
+                    f"No phrases found for scene range '{scenes}'. "
+                    f"Script has {total_sections} sections (use --scenes 1-{total_sections})."
+                )
+            else:
+                raise click.ClickException(
+                    "No phrases found in script. Please check that sections have narrations."
+                )
 
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
@@ -480,32 +492,81 @@ def generate(
                     f"  Added {len(script.pronunciations)} LLM pronunciations to dictionaries"
                 )
 
-            # Add morphological analysis pronunciations to all synthesizers
+            # Add pronunciations using LLM for context-aware reading generation
             narration_texts = [n.text for section in script.sections for n in section.narrations]
-            morpheme_count = 0
+            new_readings: dict[str, str] = {}
             for persona_synthesizer in synthesizers.values():
-                morpheme_count = persona_synthesizer.prepare_texts(narration_texts)
+                new_readings = asyncio.run(
+                    persona_synthesizer.prepare_texts_with_llm(narration_texts)
+                )
                 break  # Only count once, same for all synthesizers
-            if morpheme_count > 0:
-                console.print(f"  Added {morpheme_count} morphological analysis pronunciations")
+            if new_readings:
+                console.print(f"  Added {len(new_readings)} LLM-verified pronunciations")
 
-            # Initialize VOICEVOX for all synthesizers if not in placeholder mode
-            if not allow_placeholder:
-                import os
+                # Save new pronunciations to script.yaml
+                existing_words = set()
+                if script.pronunciations:
+                    existing_words = {e.word for e in script.pronunciations}
 
-                dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-                model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-                onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
-
-                if dict_dir_str and model_path_str:
-                    for persona_synthesizer in synthesizers.values():
-                        persona_synthesizer.initialize(
-                            dict_dir=Path(dict_dir_str),
-                            model_path=Path(model_path_str),
-                            onnxruntime_path=Path(onnxruntime_path_str)
-                            if onnxruntime_path_str
-                            else None,
+                new_entries = []
+                for word, reading in new_readings.items():
+                    if word not in existing_words:
+                        new_entries.append(
+                            PronunciationEntry(
+                                word=word,
+                                reading=reading,
+                                word_type="COMMON_NOUN",
+                                accent=0,
+                            )
                         )
+
+                if new_entries:
+                    # Update script object
+                    if script.pronunciations is None:
+                        script.pronunciations = []
+                    script.pronunciations.extend(new_entries)
+
+                    # Save updated script.yaml
+                    with open(script_path, "r", encoding="utf-8") as f:
+                        script_dict = yaml.safe_load(f)
+
+                    script_dict["pronunciations"] = [
+                        {
+                            "word": entry.word,
+                            "reading": entry.reading,
+                            "word_type": entry.word_type,
+                            "accent": entry.accent,
+                        }
+                        for entry in script.pronunciations
+                    ]
+
+                    with open(script_path, "w", encoding="utf-8") as f:
+                        yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
+
+                    console.print(
+                        f"  💾 Saved {len(new_entries)} new pronunciations to script.yaml"
+                    )
+
+            # Initialize VOICEVOX for all synthesizers
+            import os
+
+            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+
+            if not dict_dir_str or not model_path_str:
+                raise click.ClickException(
+                    "VOICEVOX environment variables not set.\n"
+                    "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
+                    "See docs/VOICEVOX_SETUP.md for instructions."
+                )
+
+            for persona_synthesizer in synthesizers.values():
+                persona_synthesizer.initialize(
+                    dict_dir=Path(dict_dir_str),
+                    model_path=Path(model_path_str),
+                    onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
+                )
 
             # Synthesize audio per persona
             audio_dir = output_dir / "audio"
@@ -569,28 +630,75 @@ def generate(
                     f"  Added {len(script.pronunciations)} LLM pronunciations to dictionary"
                 )
 
-            # Add morphological analysis pronunciations (auto-generated, lower priority)
+            # Add pronunciations using LLM for context-aware reading generation
             narration_texts = [n.text for section in script.sections for n in section.narrations]
-            morpheme_count = synthesizer.prepare_texts(narration_texts)
-            if morpheme_count > 0:
-                console.print(f"  Added {morpheme_count} morphological analysis pronunciations")
+            new_readings = asyncio.run(synthesizer.prepare_texts_with_llm(narration_texts))
+            if new_readings:
+                console.print(f"  Added {len(new_readings)} LLM-verified pronunciations")
 
-            # Initialize VOICEVOX if not in placeholder mode
-            if not allow_placeholder:
-                import os
+                # Save new pronunciations to script.yaml
+                existing_words = set()
+                if script.pronunciations:
+                    existing_words = {e.word for e in script.pronunciations}
 
-                dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-                model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-                onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+                new_entries = []
+                for word, reading in new_readings.items():
+                    if word not in existing_words:
+                        new_entries.append(
+                            PronunciationEntry(
+                                word=word,
+                                reading=reading,
+                                word_type="COMMON_NOUN",
+                                accent=0,
+                            )
+                        )
 
-                if dict_dir_str and model_path_str:
-                    synthesizer.initialize(
-                        dict_dir=Path(dict_dir_str),
-                        model_path=Path(model_path_str),
-                        onnxruntime_path=Path(onnxruntime_path_str)
-                        if onnxruntime_path_str
-                        else None,
+                if new_entries:
+                    # Update script object
+                    if script.pronunciations is None:
+                        script.pronunciations = []
+                    script.pronunciations.extend(new_entries)
+
+                    # Save updated script.yaml
+                    with open(script_path, "r", encoding="utf-8") as f:
+                        script_dict = yaml.safe_load(f)
+
+                    script_dict["pronunciations"] = [
+                        {
+                            "word": entry.word,
+                            "reading": entry.reading,
+                            "word_type": entry.word_type,
+                            "accent": entry.accent,
+                        }
+                        for entry in script.pronunciations
+                    ]
+
+                    with open(script_path, "w", encoding="utf-8") as f:
+                        yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
+
+                    console.print(
+                        f"  💾 Saved {len(new_entries)} new pronunciations to script.yaml"
                     )
+
+            # Initialize VOICEVOX
+            import os
+
+            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+
+            if not dict_dir_str or not model_path_str:
+                raise click.ClickException(
+                    "VOICEVOX environment variables not set.\n"
+                    "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
+                    "See docs/VOICEVOX_SETUP.md for instructions."
+                )
+
+            synthesizer.initialize(
+                dict_dir=Path(dict_dir_str),
+                model_path=Path(model_path_str),
+                onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
+            )
 
             audio_dir = output_dir / "audio"
             # Count existing audio files before generation (use original_index)
@@ -692,21 +800,22 @@ def generate(
         }
 
         # Step 7: Setup Remotion project and render video
-        # Generate output filename based on scene range
+        # Generate output filename based on scene range and language
         if scenes:
             # Convert None values to actual scene numbers for filename
             start_num = 1 if scene_start is None else scene_start + 1
             end_num = len(script.sections) if scene_end is None else scene_end + 1
 
             if start_num == end_num:
-                # Single scene: "output_2.mp4"
-                video_filename = f"output_{start_num}.mp4"
+                # Single scene with language: "output_ja_2.mp4"
+                video_filename = f"output_{language_id}_{start_num}.mp4"
             else:
-                # Range: "output_1-3.mp4"
-                video_filename = f"output_{start_num}-{end_num}.mp4"
+                # Range with language: "output_ja_1-3.mp4"
+                video_filename = f"output_{language_id}_{start_num}-{end_num}.mp4"
             video_path = output_dir / video_filename
         else:
-            video_path = output_dir / "output.mp4"
+            # Full video with language: "output_ja.mp4"
+            video_path = output_dir / f"output_{language_id}.mp4"
         # Create/load project
         project_name = output_dir.name
         project = Project(project_name, output_dir.parent)

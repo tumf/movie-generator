@@ -2,6 +2,17 @@
 
 Instructions for AI coding assistants working in this repository.
 
+## Critical Rules
+
+**NEVER use low-quality fallbacks.** When a primary approach fails:
+
+- Do NOT silently degrade to a worse alternative
+- Do NOT use placeholder values or dummy data
+- Do NOT skip steps that are essential for quality
+- Do NOT substitute with inferior implementations
+
+Instead: Report the failure clearly and ask for guidance, or find a proper solution.
+
 ## Project Overview
 
 Movie Generator is a Python CLI tool that generates YouTube slide videos from blog URLs.
@@ -216,6 +227,20 @@ Examples:
 Always open `@/openspec/AGENTS.md` when the request:
 - Mentions planning or proposals (words like proposal, spec, change, plan)
 - Introduces new capabilities, breaking changes, architecture shifts
+
+## OpenSpec Archive Rules
+
+**CRITICAL**: When archiving OpenSpec changes:
+
+1. **Always use the CLI command**: `openspec archive <id> --yes`
+2. **Never create directories manually** - The CLI handles all file operations
+3. **Correct archive path**: `openspec/changes/archive/YYYY-MM-DD-<id>/`
+4. **Wrong path (DO NOT USE)**: `openspec-archive/` - This is incorrect!
+
+The `openspec archive` command automatically:
+- Moves change files to the correct archive location
+- Updates spec files with new requirements
+- Validates the archive structure
 
 <!-- OPENSPEC:END -->
 

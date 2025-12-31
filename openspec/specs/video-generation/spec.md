@@ -618,3 +618,20 @@ The system SHALL apply different regeneration policies based on asset type to ba
 - **WHEN** video is re-rendered after configuration change
 - **THEN** the new transition settings are reflected in the output video
 - **AND** no manual intervention is required to apply new settings
+
+#### Scenario: Language-Specific Video Output Filename
+
+- **WHEN** video generation is executed
+- **THEN** the output video filename includes the language identifier
+- **AND** the filename follows the pattern `output_{lang}.mp4` (e.g., `output_ja.mp4`, `output_en.mp4`)
+- **AND** when scene range is specified, the filename follows `output_{lang}_{range}.mp4`
+  - Example: `output_ja_2.mp4` for single scene
+  - Example: `output_en_1-3.mp4` for scene range
+
+#### Scenario: Multi-Language Video Output Without Collision
+
+- **WHEN** multiple languages are configured (e.g., `["ja", "en"]`)
+- **AND** video generation is executed for each language
+- **THEN** each language produces a separate video file
+- **AND** video files do not overwrite each other
+- **AND** all language-specific videos coexist in the same output directory

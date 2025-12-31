@@ -55,7 +55,7 @@ class PronunciationDictionary:
         accent: int = 0,
         word_type: str = "COMMON_NOUN",
         priority: int = 10,
-    ) -> None:
+    ) -> bool:
         """Add a single word to the dictionary.
 
         Args:
@@ -64,6 +64,9 @@ class PronunciationDictionary:
             accent: Accent position (0=auto).
             word_type: Word type (PROPER_NOUN, COMMON_NOUN, etc).
             priority: Priority (1-10, higher = more priority).
+
+        Returns:
+            True if entry was added, False if skipped due to invalid reading.
         """
         # Remove spaces from reading (VOICEVOX requires katakana-only)
         entry = DictionaryEntry(
@@ -73,7 +76,7 @@ class PronunciationDictionary:
             word_type=word_type,
             priority=priority,
         )
-        self.add_entry(entry)
+        return self.add_entry(entry)
 
     def add_from_config(self, config_dict: dict[str, Any]) -> None:
         """Add entries from configuration dictionary.
@@ -147,20 +150,21 @@ class PronunciationDictionary:
             word_type: Word type for auto-generated entries.
 
         Returns:
-            Number of new entries added.
+            Number of new entries actually added.
         """
         added = 0
         for surface, reading in readings.items():
             # Skip if already registered (manual entries take precedence)
             if surface in self.entries:
                 continue
-            self.add_word(
+            success = self.add_word(
                 word=surface,
                 reading=reading,
                 word_type=word_type,
                 priority=priority,
             )
-            added += 1
+            if success:
+                added += 1
         return added
 
     def apply_to_text(self, text: str) -> str:

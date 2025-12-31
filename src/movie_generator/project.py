@@ -79,6 +79,9 @@ def _create_symlink_safe(target: Path, link: Path) -> None:
     # Create parent directory if needed
     link.parent.mkdir(parents=True, exist_ok=True)
 
+    # Ensure target directory exists (create if not)
+    target.mkdir(parents=True, exist_ok=True)
+
     # Create symlink (relative path for portability)
     try:
         link.symlink_to(os.path.relpath(target, link.parent), target_is_directory=True)

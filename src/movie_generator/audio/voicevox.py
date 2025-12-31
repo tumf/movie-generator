@@ -99,6 +99,9 @@ class VoicevoxSynthesizer:
         Should be called before initialize() to ensure all auto-generated
         readings are included in the user dictionary.
 
+        Note: This method does NOT use LLM for unknown words. Use
+        prepare_phrases_with_llm() for LLM-based pronunciation generation.
+
         Args:
             phrases: List of phrases to analyze.
 
@@ -123,11 +126,45 @@ class VoicevoxSynthesizer:
 
         return added
 
+    async def prepare_phrases_with_llm(
+        self,
+        phrases: list[Phrase],
+        api_key: str | None = None,
+        model: str = "openai/gpt-4o-mini",
+    ) -> dict[str, str]:
+        """Prepare dictionary entries using morphological analysis and LLM.
+
+        First uses morphological analysis to get readings for known words,
+        then uses LLM to generate readings for unknown English words.
+
+        Should be called before initialize() to ensure all readings are
+        included in the user dictionary.
+
+        Args:
+            phrases: List of phrases to analyze.
+            api_key: OpenRouter API key (uses env var if not provided).
+            model: LLM model to use for pronunciation generation.
+
+        Returns:
+            Dictionary of {word: reading} pairs that were added.
+        """
+        generator = self._get_furigana_generator()
+        if generator is None:
+            return {}
+
+        # Collect all texts
+        texts = [p.text for p in phrases if p.text and p.text.strip()]
+
+        return await self._prepare_texts_with_llm_internal(texts, api_key, model)
+
     def prepare_texts(self, texts: list[str]) -> int:
         """Prepare dictionary entries from texts using morphological analysis.
 
         Similar to prepare_phrases() but accepts raw text strings instead of Phrase objects.
         Useful for adding pronunciations before phrase splitting.
+
+        Note: This method does NOT use LLM for unknown words. Use
+        prepare_texts_with_llm() for LLM-based pronunciation generation.
 
         Args:
             texts: List of text strings to analyze.
@@ -152,6 +189,104 @@ class VoicevoxSynthesizer:
             # silently skip and return 0
             print(f"Warning: Morphological analysis failed: {e}")
             return 0
+
+    async def prepare_texts_with_llm(
+        self,
+        texts: list[str],
+        api_key: str | None = None,
+        model: str = "openai/gpt-4o-mini",
+    ) -> dict[str, str]:
+        """Prepare dictionary entries using morphological analysis and LLM.
+
+        First uses morphological analysis to get readings for known words,
+        then uses LLM to generate readings for unknown English words.
+
+        Args:
+            texts: List of text strings to analyze.
+            api_key: OpenRouter API key (uses env var if not provided).
+            model: LLM model to use for pronunciation generation.
+
+        Returns:
+            Dictionary of {word: reading} pairs that were added.
+        """
+        generator = self._get_furigana_generator()
+        if generator is None:
+            return {}
+
+        return await self._prepare_texts_with_llm_internal(texts, api_key, model)
+
+    async def _prepare_texts_with_llm_internal(
+        self,
+        texts: list[str],
+        api_key: str | None = None,
+        model: str = "openai/gpt-4o-mini",
+    ) -> dict[str, str]:
+        """Internal implementation for LLM-based pronunciation preparation.
+
+        All words containing non-kana characters (kanji, ASCII letters, etc.)
+        are sent to LLM for pronunciation verification/generation with full
+        context for accurate reading determination.
+
+        Args:
+            texts: List of text strings to analyze.
+            api_key: OpenRouter API key.
+            model: LLM model to use.
+
+        Returns:
+            Dictionary of {word: reading} pairs that were added to the dictionary.
+        """
+        generator = self._get_furigana_generator()
+        if generator is None:
+            return {}
+
+        try:
+            # Step 1: Get all words needing pronunciation (non-kana words with suggested readings)
+            words_needing_pronunciation = generator.get_words_needing_pronunciation(texts)
+
+            if not words_needing_pronunciation:
+                return {}
+
+            # Step 2: Use LLM to verify/generate readings with full context
+            from .furigana import generate_readings_with_llm
+
+            # Combine all texts as context for LLM
+            context = "\n".join(texts)
+
+            print(f"  🔍 Found {len(words_needing_pronunciation)} words needing pronunciation")
+            llm_readings = await generate_readings_with_llm(
+                words=words_needing_pronunciation,
+                context=context,
+                api_key=api_key,
+                model=model,
+            )
+
+            if not llm_readings:
+                # Fallback to morphological analysis readings if LLM fails
+                llm_readings = words_needing_pronunciation
+
+            print(f"  🤖 LLM verified/generated readings for {len(llm_readings)} words")
+
+            # Step 3: Add all readings to dictionary and track what was added
+            added_readings: dict[str, str] = {}
+            for word, reading in llm_readings.items():
+                if word not in self.dictionary.entries:
+                    success = self.dictionary.add_word(
+                        word=word,
+                        reading=reading,
+                        word_type="COMMON_NOUN",
+                        priority=5,
+                    )
+                    if success:
+                        added_readings[word] = reading
+
+            if added_readings:
+                print(f"  📚 Added {len(added_readings)} pronunciation entries total")
+
+            return added_readings
+
+        except Exception as e:
+            print(f"Warning: Pronunciation preparation failed: {e}")
+            return {}
 
     def initialize(
         self,
@@ -201,10 +336,13 @@ class VoicevoxSynthesizer:
             Audio metadata with duration.
 
         Raises:
-            RuntimeError: If synthesizer not initialized.
+            AudioGenerationError: If synthesizer not initialized or synthesis fails.
         """
         if not self._initialized:
             raise AudioGenerationError("Synthesizer not initialized. Call initialize() first.")
+
+        if not VOICEVOX_AVAILABLE or self._synthesizer is None:
+            raise AudioGenerationError("VOICEVOX is not available. Cannot synthesize audio.")
 
         # Skip empty or whitespace-only text
         if not phrase.text or not phrase.text.strip():
@@ -212,27 +350,19 @@ class VoicevoxSynthesizer:
             output_path.write_bytes(b"")
             return AudioMetadata(duration=0.0)
 
-        if VOICEVOX_AVAILABLE and self._synthesizer is not None:
-            # Real VOICEVOX synthesis with error handling
-            try:
-                duration = voicevox_impl.synthesize_to_file(  # type: ignore
-                    synthesizer=self._synthesizer,
-                    text=phrase.text,
-                    speaker_id=self.speaker_id,
-                    output_path=output_path,
-                    speed_scale=self.speed_scale,
-                )
-            except Exception as e:
-                # Log error and create placeholder for failed synthesis
-                print(f"Warning: Failed to synthesize phrase '{phrase.text[:50]}...': {e}")
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_bytes(b"")
-                duration = len(phrase.text) * 0.15  # Fallback estimate
-        else:
-            # Placeholder mode
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(b"")
-            duration = len(phrase.text) * 0.15  # ~150ms per character
+        # Synthesize with VOICEVOX
+        try:
+            duration = voicevox_impl.synthesize_to_file(  # type: ignore
+                synthesizer=self._synthesizer,
+                text=phrase.text,
+                speaker_id=self.speaker_id,
+                output_path=output_path,
+                speed_scale=self.speed_scale,
+            )
+        except Exception as e:
+            raise AudioGenerationError(
+                f"Failed to synthesize phrase '{phrase.text[:50]}...': {e}"
+            ) from e
 
         return AudioMetadata(duration=duration)
 

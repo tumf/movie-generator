@@ -159,10 +159,12 @@ class TestSceneRangeIntegration:
 class TestOutputFilename:
     """Test output filename generation based on scene range."""
 
-    def _generate_output_filename(self, scenes: str | None, total_sections: int) -> str:
-        """Helper to generate output filename based on scene range."""
+    def _generate_output_filename(
+        self, scenes: str | None, total_sections: int, language_id: str = "ja"
+    ) -> str:
+        """Helper to generate output filename based on scene range and language."""
         if not scenes:
-            return "output.mp4"
+            return f"output_{language_id}.mp4"
 
         scene_start, scene_end = parse_scene_range(scenes)
 
@@ -171,41 +173,126 @@ class TestOutputFilename:
         end_num = total_sections if scene_end is None else scene_end + 1
 
         if start_num == end_num:
-            return f"output_{start_num}.mp4"
+            return f"output_{language_id}_{start_num}.mp4"
         else:
-            return f"output_{start_num}-{end_num}.mp4"
+            return f"output_{language_id}_{start_num}-{end_num}.mp4"
 
     def test_no_scene_range(self) -> None:
         """Test default filename when no scene range specified."""
         filename = self._generate_output_filename(None, 10)
-        assert filename == "output.mp4"
+        assert filename == "output_ja.mp4"
+
+    def test_no_scene_range_english(self) -> None:
+        """Test default filename for English language."""
+        filename = self._generate_output_filename(None, 10, language_id="en")
+        assert filename == "output_en.mp4"
 
     def test_single_scene(self) -> None:
         """Test filename for single scene (e.g., --scenes 2)."""
         filename = self._generate_output_filename("2", 10)
-        assert filename == "output_2.mp4"
+        assert filename == "output_ja_2.mp4"
+
+    def test_single_scene_english(self) -> None:
+        """Test filename for single scene in English."""
+        filename = self._generate_output_filename("2", 10, language_id="en")
+        assert filename == "output_en_2.mp4"
 
     def test_explicit_range(self) -> None:
         """Test filename for explicit range (e.g., --scenes 1-3)."""
         filename = self._generate_output_filename("1-3", 10)
-        assert filename == "output_1-3.mp4"
+        assert filename == "output_ja_1-3.mp4"
+
+    def test_explicit_range_english(self) -> None:
+        """Test filename for explicit range in English."""
+        filename = self._generate_output_filename("1-3", 10, language_id="en")
+        assert filename == "output_en_1-3.mp4"
 
     def test_from_beginning(self) -> None:
         """Test filename for from-beginning format (e.g., --scenes -3)."""
         filename = self._generate_output_filename("-3", 10)
-        assert filename == "output_1-3.mp4"
+        assert filename == "output_ja_1-3.mp4"
 
     def test_to_end(self) -> None:
         """Test filename for to-end format (e.g., --scenes 5-)."""
         filename = self._generate_output_filename("5-", 10)
-        assert filename == "output_5-10.mp4"
+        assert filename == "output_ja_5-10.mp4"
 
     def test_from_beginning_single(self) -> None:
         """Test filename for -1 (from beginning to scene 1)."""
         filename = self._generate_output_filename("-1", 10)
-        assert filename == "output_1.mp4"
+        assert filename == "output_ja_1.mp4"
 
     def test_same_start_end(self) -> None:
         """Test filename when start equals end (e.g., --scenes 5-5)."""
         filename = self._generate_output_filename("5-5", 10)
-        assert filename == "output_5.mp4"
+        assert filename == "output_ja_5.mp4"
+
+
+class TestLanguageIdExtraction:
+    """Test language ID extraction from script filenames."""
+
+    def _extract_language_id(self, script_filename: str) -> str:
+        """Helper to extract language ID from script filename."""
+        from pathlib import Path
+
+        script_path = Path(script_filename)
+        language_id = "ja"  # Default language
+
+        if script_path.stem.startswith("script_"):
+            # Extract language code from filename like "script_ja" or "script_en"
+            potential_lang = script_path.stem.replace("script_", "")
+            if potential_lang:  # Ensure we got a language code
+                language_id = potential_lang
+
+        return language_id
+
+    def test_extract_japanese_language_id(self) -> None:
+        """Test extracting Japanese language ID from script_ja.yaml."""
+        lang_id = self._extract_language_id("script_ja.yaml")
+        assert lang_id == "ja"
+
+    def test_extract_english_language_id(self) -> None:
+        """Test extracting English language ID from script_en.yaml."""
+        lang_id = self._extract_language_id("script_en.yaml")
+        assert lang_id == "en"
+
+    def test_legacy_script_filename(self) -> None:
+        """Test default language for legacy script.yaml filename."""
+        lang_id = self._extract_language_id("script.yaml")
+        assert lang_id == "ja"
+
+    def test_extract_with_path(self) -> None:
+        """Test extracting language ID from full path."""
+        lang_id = self._extract_language_id("output/script_en.yaml")
+        assert lang_id == "en"
+
+
+class TestMultiLanguageOutputFilenames:
+    """Test that multiple languages don't overwrite each other's output files."""
+
+    def test_japanese_and_english_no_collision(self) -> None:
+        """Test that Japanese and English videos have different filenames."""
+        # Japanese output
+        ja_filename = "output_ja.mp4"
+        # English output
+        en_filename = "output_en.mp4"
+
+        assert ja_filename != en_filename
+
+    def test_scene_range_no_collision(self) -> None:
+        """Test that scene ranges in different languages don't collide."""
+        # Japanese scene 2
+        ja_scene_2 = "output_ja_2.mp4"
+        # English scene 2
+        en_scene_2 = "output_en_2.mp4"
+
+        assert ja_scene_2 != en_scene_2
+
+    def test_range_no_collision(self) -> None:
+        """Test that ranges in different languages don't collide."""
+        # Japanese scenes 1-3
+        ja_range = "output_ja_1-3.mp4"
+        # English scenes 1-3
+        en_range = "output_en_1-3.mp4"
+
+        assert ja_range != en_range

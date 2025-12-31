@@ -56,6 +56,7 @@ SCRIPT_GENERATION_PROMPT_JA = """
 - ナレーションは自然な話し言葉で、「{character}」のキャラクターで話してください
 - スタイル: {style}
 - 各セクションは3-6文程度で構成してください
+- **重要**: 各ナレーションは40文字程度を目安に分割してください。句読点（。、！？）で区切り、長い文は自然な位置で分けてください
 - 専門用語は避けるか、わかりやすく説明してください
 - 視覚的な説明を含めてください
 - **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
@@ -102,6 +103,7 @@ JSON形式で以下を出力してください：
 
 【読み方辞書（pronunciations）について】
 - ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
+- **数字は登録しないでください**（音声合成エンジンが正しく読めます）
 - 各単語について、正しいカタカナ読みを指定してください
 - **重要**: カタカナ読みにはスペースを含めないでください（例: "カイジュウエンジン" ○、"カイジュウ エンジン" ×）
 - word_typeは以下から選択: PROPER_NOUN（固有名詞）, COMMON_NOUN（普通名詞）, VERB（動詞）, ADJECTIVE（形容詞）
@@ -117,6 +119,7 @@ Create a video script from the following content that explains clearly to viewer
 - Write narration in natural spoken language with the character of "{character}"
 - Style: {style}
 - Each section should be 3-6 sentences
+- **IMPORTANT**: Split each narration into approximately 40 characters. Use punctuation (. , ! ?) as natural break points
 - Avoid or clearly explain technical terms
 - Include visual descriptions
 - **IMPORTANT**: Write slide_prompt in English, but specify text to display on slides in English
@@ -168,6 +171,7 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 - 各キャラクターの個性を活かした自然な会話形式で台本を作成してください
 - スタイル: {style}
 - 各セクションは5-10ターン程度の対話で構成してください
+- **重要**: 各セリフは40文字程度を目安に分割してください。句読点（。、！？）で区切り、長い文は自然な位置で分けてください
 - 専門用語は避けるか、わかりやすく説明してください
 - 視覚的な説明を含めてください
 - **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
@@ -217,6 +221,7 @@ JSON形式で以下を出力してください：
 
 【読み方辞書（pronunciations）について】
 - ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
+- **数字は登録しないでください**（音声合成エンジンが正しく読めます）
 - 各単語について、正しいカタカナ読みを指定してください
 - **重要**: カタカナ読みにはスペースを含めないでください（例: "カイジュウエンジン" ○、"カイジュウ エンジン" ×）
 - word_typeは以下から選択: PROPER_NOUN（固有名詞）, COMMON_NOUN（普通名詞）, VERB（動詞）, ADJECTIVE（形容詞）
@@ -235,6 +240,7 @@ Create a video script with multiple characters having a dialogue-style conversat
 - Create natural dialogue that leverages each character's personality
 - Style: {style}
 - Each section should have 5-10 dialogue turns
+- **IMPORTANT**: Split each dialogue line into approximately 40 characters. Use punctuation (. , ! ?) as natural break points
 - Avoid or clearly explain technical terms
 - Include visual descriptions
 - **IMPORTANT**: Write slide_prompt in English, and specify text to display on slides in English
