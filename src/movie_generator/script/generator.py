@@ -214,25 +214,38 @@ JSON形式で以下を出力してください：
     {{
       "title": "セクションタイトル",
       "narrations": [
-        {{
+        {
           "persona_id": "キャラクターID（例: zundamon, metan）",
           "text": "セリフ",
-          "reading": "セリフ"
-        }}
+          "reading": "セリフのカタカナ読み"
+        }
       ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
       "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
-    }}
+    }
   ],
   "pronunciations": [
-    {{
+    {
       "word": "ENGINE",
       "reading": "エンジン",
       "word_type": "COMMON_NOUN",
       "accent": 1
-    }}
+    }
   ]
 }}
+
+【reading フィールドについて】
+- **必須フィールド**: 各セリフには必ず reading フィールドを含めてください
+- **カタカナ形式**: すべてカタカナで記述してください（ひらがな不可）
+- **助詞の発音**: 助詞は発音通りに変換してください
+  - 「は」→「ワ」（例: 「これは」→「コレワ」）
+  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
+  - 「を」→「オ」（例: 「本を」→「ホンオ」）
+- **スペース不要**: カタカナにスペースを含めないでください
+- **例**:
+  - text: "ねえねえ！" → reading: "ネエネエ！"
+  - text: "これは便利だね" → reading: "コレワベンリダネ"
+  - text: "東京へ行こう" → reading: "トウキョウエイコウ"
 
 【スライド画像について】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -284,18 +297,30 @@ Output in JSON format:
     {{
       "title": "Section Title",
       "narrations": [
-        {{
+        {
           "persona_id": "Character ID (e.g., zundamon, metan)",
           "text": "Dialogue line",
-          "reading": "Dialogue line"
-        }}
+          "reading": "Katakana reading for pronunciation"
+        }
       ],
       "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
       "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
-    }}
+    }
   ],
   "pronunciations": []
 }}
+
+[About Reading Field]
+- **Required field**: Each narration MUST include a reading field
+- **Katakana format**: Write in katakana (not hiragana or romaji)
+- **Particle pronunciation**: Convert particles to their spoken form:
+  - "は" → "ワ" (e.g., "これは" → "コレワ")
+  - "へ" → "エ" (e.g., "東京へ" → "トウキョウエ")
+  - "を" → "オ" (e.g., "本を" → "ホンオ")
+- **No spaces**: Do not include spaces in katakana
+- **Examples**:
+  - text: "Hello there!" → reading: "ハローゼアー！"
+  - text: "Let's go to Tokyo" → reading: "レッツゴートゥートウキョウ"
 
 [About Slide Images]
 - For each section, specify either source_image_url OR slide_prompt (not both)
