@@ -205,8 +205,25 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 
 {images_section}
 
+【重要：reading フィールドについて】
+各ナレーションには必ず reading フィールドを含めてください。これは音声合成で正しい発音を実現するために必須です。
+
+- **必須フィールド**: 各セリフには必ず reading フィールドを含める
+- **カタカナ形式**: すべてカタカナで記述（ひらがな不可）
+- **助詞の発音**: 助詞は発音通りに変換
+  - 「は」→「ワ」（例: 「これは」→「コレワ」）
+  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
+  - 「を」→「オ」（例: 「本を」→「ホンオ」）
+- **スペース不要**: カタカナにスペースを含めない
+- **例**:
+  - text: "ねえねえ！" → reading: "ネエネエ！"
+  - text: "これは便利だね" → reading: "コレワベンリダネ"
+  - text: "東京へ行こう" → reading: "トウキョウエイコウ"
+  - text: "RAGって何？" → reading: "ラグッテナニ？"
+  - text: "97%削減！" → reading: "キュウジュウナナパーセントサクゲン！"
+
 【出力形式】
-JSON形式で以下を出力してください：
+JSON形式で以下を出力してください。**必ず各ナレーションに reading フィールドを含めること**：
 {{
   "title": "動画タイトル",
   "description": "動画の説明",
@@ -217,7 +234,7 @@ JSON形式で以下を出力してください：
         {{
           "persona_id": "キャラクターID（例: zundamon, metan）",
           "text": "セリフ",
-          "reading": "セリフのカタカナ読み"
+          "reading": "セリフのカタカナ読み（必須）"
         }}
       ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
@@ -233,19 +250,6 @@ JSON形式で以下を出力してください：
     }}
   ]
 }}
-
-【reading フィールドについて】
-- **必須フィールド**: 各セリフには必ず reading フィールドを含めてください
-- **カタカナ形式**: すべてカタカナで記述してください（ひらがな不可）
-- **助詞の発音**: 助詞は発音通りに変換してください
-  - 「は」→「ワ」（例: 「これは」→「コレワ」）
-  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
-  - 「を」→「オ」（例: 「本を」→「ホンオ」）
-- **スペース不要**: カタカナにスペースを含めないでください
-- **例**:
-  - text: "ねえねえ！" → reading: "ネエネエ！"
-  - text: "これは便利だね" → reading: "コレワベンリダネ"
-  - text: "東京へ行こう" → reading: "トウキョウエイコウ"
 
 【スライド画像について】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -288,8 +292,24 @@ Description: {description}
 
 {images_section}
 
+[IMPORTANT: About Reading Field]
+Each narration MUST include a reading field. This is essential for accurate audio synthesis.
+
+- **Required field**: Every dialogue line must have a reading field
+- **Katakana format**: Write in katakana (not hiragana or romaji)
+- **Particle pronunciation**: Convert particles to their spoken form:
+  - "は" → "ワ" (e.g., "これは" → "コレワ")
+  - "へ" → "エ" (e.g., "東京へ" → "トウキョウエ")
+  - "を" → "オ" (e.g., "本を" → "ホンオ")
+- **No spaces**: Do not include spaces in katakana
+- **Examples**:
+  - text: "Hello there!" → reading: "ハローゼアー！"
+  - text: "Let's go to Tokyo" → reading: "レッツゴートゥートウキョウ"
+  - text: "What is RAG?" → reading: "ホワットイズラグ？"
+  - text: "97% reduction!" → reading: "ナインティセブンパーセントリダクション！"
+
 [Output Format]
-Output in JSON format:
+Output in JSON format. **MUST include reading field for each narration**:
 {{
   "title": "Video Title",
   "description": "Video Description",
@@ -300,7 +320,7 @@ Output in JSON format:
         {{
           "persona_id": "Character ID (e.g., zundamon, metan)",
           "text": "Dialogue line",
-          "reading": "Katakana reading for pronunciation"
+          "reading": "Katakana reading (REQUIRED)"
         }}
       ],
       "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
@@ -309,18 +329,6 @@ Output in JSON format:
   ],
   "pronunciations": []
 }}
-
-[About Reading Field]
-- **Required field**: Each narration MUST include a reading field
-- **Katakana format**: Write in katakana (not hiragana or romaji)
-- **Particle pronunciation**: Convert particles to their spoken form:
-  - "は" → "ワ" (e.g., "これは" → "コレワ")
-  - "へ" → "エ" (e.g., "東京へ" → "トウキョウエ")
-  - "を" → "オ" (e.g., "本を" → "ホンオ")
-- **No spaces**: Do not include spaces in katakana
-- **Examples**:
-  - text: "Hello there!" → reading: "ハローゼアー！"
-  - text: "Let's go to Tokyo" → reading: "レッツゴートゥートウキョウ"
 
 [About Slide Images]
 - For each section, specify either source_image_url OR slide_prompt (not both)
