@@ -5,6 +5,7 @@ Command-line interface for generating YouTube videos from blog URLs.
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import click
 import yaml
@@ -208,7 +209,12 @@ def generate(
             console.print(f"[yellow]⊙ Script already exists, loading: {script_path}[/yellow]")
             with open(script_path, encoding="utf-8") as f:
                 script_dict = yaml.safe_load(f)
-            from .script.generator import PronunciationEntry, ScriptSection, VideoScript
+            from .script.generator import (
+                Narration,
+                PronunciationEntry,
+                ScriptSection,
+                VideoScript,
+            )
 
             # Load pronunciations if available
             pronunciations = None
@@ -224,18 +230,43 @@ def generate(
                     for entry in script_dict["pronunciations"]
                 ]
 
-            script = VideoScript(
-                title=script_dict["title"],
-                description=script_dict["description"],
-                sections=[
+            # Parse sections with unified narrations format
+            sections = []
+            for section in script_dict["sections"]:
+                narrations: list[Narration] = []
+
+                if "narrations" in section and section["narrations"]:
+                    # New unified format
+                    for n in section["narrations"]:
+                        if isinstance(n, str):
+                            narrations.append(Narration(text=n))
+                        else:
+                            narrations.append(
+                                Narration(text=n["text"], persona_id=n.get("persona_id"))
+                            )
+                elif "dialogues" in section and section["dialogues"]:
+                    # Legacy dialogue format
+                    for d in section["dialogues"]:
+                        narrations.append(
+                            Narration(text=d["narration"], persona_id=d["persona_id"])
+                        )
+                elif "narration" in section:
+                    # Legacy single narration format
+                    narrations.append(Narration(text=section["narration"]))
+
+                sections.append(
                     ScriptSection(
                         title=section["title"],
-                        narration=section["narration"],
+                        narrations=narrations,
                         slide_prompt=section.get("slide_prompt"),
                         source_image_url=section.get("source_image_url"),
                     )
-                    for section in script_dict["sections"]
-                ],
+                )
+
+            script = VideoScript(
+                title=script_dict["title"],
+                description=script_dict["description"],
+                sections=sections,
                 pronunciations=pronunciations,
             )
         else:
@@ -297,6 +328,14 @@ def generate(
                 console.print(f"  Found {len(parsed.images)} usable images in content")
 
             task = progress.add_task("Generating script...", total=None)
+
+            # Prepare personas if defined (enables multi-speaker mode automatically)
+            personas_for_script = None
+            if cfg.personas:
+                personas_for_script = [
+                    {"id": p.id, "name": p.name, "character": p.character} for p in cfg.personas
+                ]
+
             script = asyncio.run(
                 generate_script(
                     content=parsed.markdown,
@@ -307,6 +346,7 @@ def generate(
                     api_key=api_key,
                     model=cfg.content.llm.model,
                     images=images_metadata,
+                    personas=personas_for_script,
                 )
             )
             progress.update(task, completed=True)
@@ -317,16 +357,24 @@ def generate(
             script_dict = {
                 "title": script.title,
                 "description": script.description,
-                "sections": [
-                    {
-                        "title": section.title,
-                        "narration": section.narration,
-                        "slide_prompt": section.slide_prompt,
-                        "source_image_url": section.source_image_url,
-                    }
-                    for section in script.sections
-                ],
+                "sections": [],
             }
+            for section in script.sections:
+                section_dict = {
+                    "title": section.title,
+                    "slide_prompt": section.slide_prompt,
+                    "source_image_url": section.source_image_url,
+                }
+                # Save narrations in unified format
+                section_dict["narrations"] = []
+                for n in section.narrations:
+                    if n.persona_id:
+                        section_dict["narrations"].append(
+                            {"persona_id": n.persona_id, "text": n.text}
+                        )
+                    else:
+                        section_dict["narrations"].append({"text": n.text})
+                script_dict["sections"].append(section_dict)
             # Add pronunciations if available
             if script.pronunciations:
                 script_dict["pronunciations"] = [
@@ -363,10 +411,21 @@ def generate(
         # First pass: generate all phrases to determine original_index
         all_sections_phrases = []
         for section_idx, section in enumerate(script.sections):
-            phrases = split_into_phrases(section.narration)
-            for phrase in phrases:
-                phrase.section_index = section_idx
-            all_sections_phrases.append((section_idx, phrases))
+            section_phrases = []
+            for narration in section.narrations:
+                narration_phrases = split_into_phrases(narration.text)
+                for phrase in narration_phrases:
+                    phrase.section_index = section_idx
+                    if narration.persona_id:
+                        phrase.persona_id = narration.persona_id
+                        # Look up persona name from config
+                        if cfg.personas:
+                            for p in cfg.personas:
+                                if p.id == narration.persona_id:
+                                    phrase.persona_name = p.name
+                                    break
+                section_phrases.extend(narration_phrases)
+            all_sections_phrases.append((section_idx, section_phrases))
 
         # Set original_index for all phrases globally
         global_index = 0
@@ -390,57 +449,167 @@ def generate(
 
         # Step 4: Generate audio
         task = progress.add_task("Generating audio...", total=None)
-        synthesizer = create_synthesizer_from_config(cfg)
 
-        # Add pronunciations from script to dictionary (LLM-generated, high priority)
-        if script.pronunciations:
-            for entry in script.pronunciations:
-                synthesizer.dictionary.add_word(
-                    word=entry.word,
-                    reading=entry.reading,
-                    accent=entry.accent,
-                    word_type=entry.word_type,
-                    priority=10,  # High priority for LLM-generated pronunciations
+        # Check if multi-speaker mode is enabled
+        has_personas = hasattr(cfg, "personas") and len(cfg.personas) > 0
+        if has_personas:
+            # Multi-speaker mode: create synthesizer per persona
+            from .audio.voicevox import VoicevoxSynthesizer
+
+            synthesizers: dict[str, Any] = {}
+            for persona_config in cfg.personas:
+                synthesizer = VoicevoxSynthesizer(
+                    speaker_id=persona_config.synthesizer.speaker_id,
+                    speed_scale=persona_config.synthesizer.speed_scale,
+                    dictionary=None,  # Will be set below
                 )
-            console.print(f"  Added {len(script.pronunciations)} LLM pronunciations to dictionary")
+                synthesizers[persona_config.id] = synthesizer
 
-        # Add morphological analysis pronunciations (auto-generated, lower priority)
-        narration_texts = [section.narration for section in script.sections]
-        morpheme_count = synthesizer.prepare_texts(narration_texts)
-        if morpheme_count > 0:
-            console.print(f"  Added {morpheme_count} morphological analysis pronunciations")
-
-        # Initialize VOICEVOX if not in placeholder mode
-        if not allow_placeholder:
-            import os
-
-            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
-
-            if dict_dir_str and model_path_str:
-                synthesizer.initialize(
-                    dict_dir=Path(dict_dir_str),
-                    model_path=Path(model_path_str),
-                    onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
+            # Add pronunciations to all synthesizers
+            if script.pronunciations:
+                for persona_synthesizer in synthesizers.values():
+                    for entry in script.pronunciations:
+                        persona_synthesizer.dictionary.add_word(
+                            word=entry.word,
+                            reading=entry.reading,
+                            accent=entry.accent,
+                            word_type=entry.word_type,
+                            priority=10,
+                        )
+                console.print(
+                    f"  Added {len(script.pronunciations)} LLM pronunciations to dictionaries"
                 )
 
-        audio_dir = output_dir / "audio"
-        # Count existing audio files before generation (use original_index)
-        existing_audio_count = sum(
-            1
-            for phrase in all_phrases
-            if (audio_dir / f"phrase_{phrase.original_index:04d}.wav").exists()
-            and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
-        )
-        audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
-        calculate_phrase_timings(all_phrases)
-        progress.update(task, completed=True)
-        new_audio_count = len(audio_paths) - existing_audio_count
-        if existing_audio_count > 0:
-            console.print(f"✓ Audio: {new_audio_count} generated, {existing_audio_count} reused")
+            # Add morphological analysis pronunciations to all synthesizers
+            narration_texts = [n.text for section in script.sections for n in section.narrations]
+            morpheme_count = 0
+            for persona_synthesizer in synthesizers.values():
+                morpheme_count = persona_synthesizer.prepare_texts(narration_texts)
+                break  # Only count once, same for all synthesizers
+            if morpheme_count > 0:
+                console.print(f"  Added {morpheme_count} morphological analysis pronunciations")
+
+            # Initialize VOICEVOX for all synthesizers if not in placeholder mode
+            if not allow_placeholder:
+                import os
+
+                dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+                model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+                onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+
+                if dict_dir_str and model_path_str:
+                    for persona_synthesizer in synthesizers.values():
+                        persona_synthesizer.initialize(
+                            dict_dir=Path(dict_dir_str),
+                            model_path=Path(model_path_str),
+                            onnxruntime_path=Path(onnxruntime_path_str)
+                            if onnxruntime_path_str
+                            else None,
+                        )
+
+            # Synthesize audio per persona
+            audio_dir = output_dir / "audio"
+            audio_paths = []
+            metadata_list = []
+            existing_audio_count = 0
+
+            for phrase in all_phrases:
+                audio_file = audio_dir / f"phrase_{phrase.original_index:04d}.wav"
+                persona_id = getattr(phrase, "persona_id", None)
+
+                # Count existing audio files
+                if audio_file.exists() and audio_file.stat().st_size > 0:
+                    existing_audio_count += 1
+                    audio_paths.append(audio_file)
+                    metadata_list.append(None)  # Placeholder for existing files
+                    continue
+
+                # Get appropriate synthesizer
+                if persona_id and persona_id in synthesizers:
+                    persona_synthesizer = synthesizers[persona_id]
+                else:
+                    # Fallback to first persona if no persona_id specified
+                    persona_synthesizer = next(iter(synthesizers.values()))
+
+                # Synthesize single phrase
+                phrase_paths, phrase_metadata = persona_synthesizer.synthesize_phrases(
+                    [phrase], audio_dir
+                )
+                audio_paths.extend(phrase_paths)
+                metadata_list.extend(phrase_metadata)
+
+            calculate_phrase_timings(all_phrases)
+            progress.update(task, completed=True)
+            new_audio_count = len(audio_paths) - existing_audio_count
+            if existing_audio_count > 0:
+                console.print(
+                    f"✓ Audio: {new_audio_count} generated, {existing_audio_count} reused "
+                    f"({len(synthesizers)} personas)"
+                )
+            else:
+                console.print(
+                    f"✓ Generated {len(audio_paths)} audio files ({len(synthesizers)} personas)"
+                )
+
         else:
-            console.print(f"✓ Generated {len(audio_paths)} audio files")
+            # Single-speaker mode (backward compatible)
+            synthesizer = create_synthesizer_from_config(cfg)
+
+            # Add pronunciations from script to dictionary (LLM-generated, high priority)
+            if script.pronunciations:
+                for entry in script.pronunciations:
+                    synthesizer.dictionary.add_word(
+                        word=entry.word,
+                        reading=entry.reading,
+                        accent=entry.accent,
+                        word_type=entry.word_type,
+                        priority=10,  # High priority for LLM-generated pronunciations
+                    )
+                console.print(
+                    f"  Added {len(script.pronunciations)} LLM pronunciations to dictionary"
+                )
+
+            # Add morphological analysis pronunciations (auto-generated, lower priority)
+            narration_texts = [n.text for section in script.sections for n in section.narrations]
+            morpheme_count = synthesizer.prepare_texts(narration_texts)
+            if morpheme_count > 0:
+                console.print(f"  Added {morpheme_count} morphological analysis pronunciations")
+
+            # Initialize VOICEVOX if not in placeholder mode
+            if not allow_placeholder:
+                import os
+
+                dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+                model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+                onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+
+                if dict_dir_str and model_path_str:
+                    synthesizer.initialize(
+                        dict_dir=Path(dict_dir_str),
+                        model_path=Path(model_path_str),
+                        onnxruntime_path=Path(onnxruntime_path_str)
+                        if onnxruntime_path_str
+                        else None,
+                    )
+
+            audio_dir = output_dir / "audio"
+            # Count existing audio files before generation (use original_index)
+            existing_audio_count = sum(
+                1
+                for phrase in all_phrases
+                if (audio_dir / f"phrase_{phrase.original_index:04d}.wav").exists()
+                and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
+            )
+            audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
+            calculate_phrase_timings(all_phrases)
+            progress.update(task, completed=True)
+            new_audio_count = len(audio_paths) - existing_audio_count
+            if existing_audio_count > 0:
+                console.print(
+                    f"✓ Audio: {new_audio_count} generated, {existing_audio_count} reused"
+                )
+            else:
+                console.print(f"✓ Generated {len(audio_paths)} audio files")
 
         # Step 5: Generate slides
         if api_key:
@@ -523,7 +692,21 @@ def generate(
         }
 
         # Step 7: Setup Remotion project and render video
-        video_path = output_dir / "output.mp4"
+        # Generate output filename based on scene range
+        if scenes:
+            # Convert None values to actual scene numbers for filename
+            start_num = 1 if scene_start is None else scene_start + 1
+            end_num = len(script.sections) if scene_end is None else scene_end + 1
+
+            if start_num == end_num:
+                # Single scene: "output_2.mp4"
+                video_filename = f"output_{start_num}.mp4"
+            else:
+                # Range: "output_1-3.mp4"
+                video_filename = f"output_{start_num}-{end_num}.mp4"
+            video_path = output_dir / video_filename
+        else:
+            video_path = output_dir / "output.mp4"
         # Create/load project
         project_name = output_dir.name
         project = Project(project_name, output_dir.parent)
@@ -542,6 +725,14 @@ def generate(
 
         # Render video with Remotion
         task = progress.add_task("Rendering video with Remotion...", total=None)
+        # Prepare personas for Remotion if defined
+        personas_for_render = None
+        if cfg.personas:
+            personas_for_render = [
+                {"id": p.id, "name": p.name, "subtitle_color": p.subtitle_color}
+                for p in cfg.personas
+            ]
+
         render_video_with_remotion(
             phrases=all_phrases,
             audio_paths=audio_paths,
@@ -551,6 +742,7 @@ def generate(
             project_name=project_name,
             show_progress=show_progress,
             transition=transition_config,
+            personas=personas_for_render,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")

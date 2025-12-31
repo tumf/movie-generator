@@ -1,0 +1,63 @@
+# Multi-speaker dialogue configuration example
+# Based on default.yaml with persona settings enabled
+
+project:
+  name: "Multi-Speaker Demo"
+  output_dir: "./output"
+
+style:
+  resolution: [1920, 1080]
+  fps: 30
+  font_family: "Noto Sans JP"
+  primary_color: "#FFFFFF"
+  background_color: "#1a1a2e"
+
+audio:
+  engine: "voicevox"
+  speaker_id: 3
+  speed_scale: 1.0
+
+narration:
+  # character is not used when personas are defined
+  character: ""
+  style: "casual"
+
+# Persona configurations for multi-speaker dialogue
+personas:
+  - id: "zundamon"
+    name: "ずんだもん"
+    character: "元気で明るい東北の妖精"
+    synthesizer:
+      speaker_id: 3
+      speed_scale: 1.0
+    subtitle_color: "#8FCF4F"
+  - id: "metan"
+    name: "四国めたん"
+    character: "優しくて落ち着いた四国の妖精"
+    synthesizer:
+      speaker_id: 2
+      speed_scale: 1.0
+    subtitle_color: "#FF69B4"
+
+content:
+  llm:
+    provider: "openrouter"
+    model: "openai/gpt-5.2"
+
+slides:
+  llm:
+    provider: "openrouter"
+    model: "google/gemini-3-pro-image-preview"
+  style: "presentation"
+
+video:
+  renderer: "remotion"
+  template: "default"
+  output_format: "mp4"
+  transition:
+    type: "fade"
+    duration_frames: 15
+    timing: "linear"
+
+pronunciation:
+  custom: {}

@@ -46,6 +46,9 @@ export interface PhraseData {
   audioFile: string;
   slideFile?: string;
   duration: number;
+  personaId?: string;
+  personaName?: string;
+  subtitleColor?: string;
 }
 
 // Props interface
@@ -68,6 +71,9 @@ const getScenesWithTiming = (phrases: PhraseData[]) => {
       startFrame: currentFrame,
       durationFrames,
       endFrame: currentFrame + durationFrames,
+      personaId: phrase.personaId,
+      personaName: phrase.personaName,
+      subtitleColor: phrase.subtitleColor,
     };
     currentFrame += durationFrames;
     return scene;
@@ -188,13 +194,17 @@ const SlideLayer: React.FC<{
 const AudioSubtitleLayer: React.FC<{
   audioFile: string;
   subtitle?: string;
-}> = ({ audioFile, subtitle }) => {
+  subtitleColor?: string;
+}> = ({ audioFile, subtitle, subtitleColor }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   // Subtle fade for subtitles only
   const fadeInDuration = fps * 0.3;
   const opacity = Math.min(1, frame / fadeInDuration);
+
+  // Stroke color from persona, default to green
+  const strokeColor = subtitleColor || '#8FCF4F';
 
   return (
     <>
@@ -218,7 +228,7 @@ const AudioSubtitleLayer: React.FC<{
             textAlign: 'center',
             lineHeight: '1.4',
             opacity,
-            WebkitTextStroke: '1.5px #8FCF4F',
+            WebkitTextStroke: `1.5px ${strokeColor}`,
             textShadow: '0 0 10px rgba(0, 0, 0, 0.8)',
           }}
         >
@@ -275,6 +285,7 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
           <AudioSubtitleLayer
             audioFile={scene.audioFile}
             subtitle={scene.subtitle}
+            subtitleColor={scene.subtitleColor}
           />
         </Sequence>
       ))}

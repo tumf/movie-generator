@@ -144,6 +144,7 @@ def update_composition_json(
     slide_paths: list[Path] | None,
     project_name: str = "video",
     transition: dict[str, Any] | None = None,
+    personas: list[dict[str, Any]] | None = None,
 ) -> None:
     """Update composition.json with current phrase data.
 
@@ -154,9 +155,16 @@ def update_composition_json(
         slide_paths: Optional list of slide image paths (relative to project).
         project_name: Name of the project.
         transition: Transition configuration (type, duration_frames, timing).
+        personas: Optional list of persona configurations for multi-speaker dialogue.
     """
     # Build slide map for efficient lookup
     slide_map = _build_slide_map(slide_paths) if slide_paths else {}
+
+    # Build persona lookup map
+    persona_map: dict[str, dict[str, Any]] = {}
+    if personas:
+        for persona in personas:
+            persona_map[persona["id"]] = persona
 
     composition_data = {
         "title": project_name,
@@ -169,6 +177,8 @@ def update_composition_json(
                 "audioFile": f"audio/phrase_{phrase.original_index:04d}.wav",
                 "slideFile": slide_map.get(phrase.section_index),
                 "duration": phrase.duration,
+                # Add persona information if available
+                **_get_persona_fields(phrase, persona_map),
             }
             for i, phrase in enumerate(phrases)
         ],
@@ -185,6 +195,33 @@ def update_composition_json(
     console.print(f"[green]✓ Updated composition.json with {len(phrases)} phrases[/green]")
 
 
+def _get_persona_fields(phrase: Phrase, persona_map: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Get persona-related fields for a phrase.
+
+    Args:
+        phrase: Phrase object.
+        persona_map: Map of persona ID to persona config.
+
+    Returns:
+        Dictionary with personaId, personaName, and subtitleColor fields.
+    """
+    if not phrase.persona_id or not persona_map:
+        return {}
+
+    persona = persona_map.get(phrase.persona_id)
+    if not persona:
+        return {
+            "personaId": phrase.persona_id,
+            "personaName": phrase.persona_name,
+        }
+
+    return {
+        "personaId": phrase.persona_id,
+        "personaName": persona.get("name", phrase.persona_name),
+        "subtitleColor": persona.get("subtitle_color", "#FFFFFF"),
+    }
+
+
 def render_video_with_remotion(
     phrases: list[Phrase],
     audio_paths: list[Path],
@@ -194,6 +231,7 @@ def render_video_with_remotion(
     project_name: str = "video",
     show_progress: bool = False,
     transition: dict[str, Any] | None = None,
+    personas: list[dict[str, Any]] | None = None,
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
 
@@ -206,6 +244,7 @@ def render_video_with_remotion(
         project_name: Name of the project for metadata.
         show_progress: If True, show real-time rendering progress. Default False.
         transition: Transition configuration (type, duration_frames, timing).
+        personas: Optional list of persona configurations for multi-speaker dialogue.
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
@@ -216,7 +255,7 @@ def render_video_with_remotion(
 
     # Update composition.json with current data
     update_composition_json(
-        remotion_root, phrases, audio_paths, slide_paths, project_name, transition
+        remotion_root, phrases, audio_paths, slide_paths, project_name, transition, personas
     )
 
     # Ensure output directory exists

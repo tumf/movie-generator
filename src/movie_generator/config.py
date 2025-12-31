@@ -4,13 +4,34 @@ Loads and validates YAML configuration files using Pydantic.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
 from .exceptions import ConfigurationError
+
+
+class VoicevoxSynthesizerConfig(BaseModel):
+    """VOICEVOX synthesizer configuration."""
+
+    engine: Literal["voicevox"] = "voicevox"
+    speaker_id: int = Field(ge=0, description="VOICEVOX speaker ID")
+    speed_scale: float = Field(default=1.0, gt=0.0, description="Speech speed multiplier")
+
+
+class PersonaConfig(BaseModel):
+    """Persona (speaker) configuration for multi-speaker dialogue."""
+
+    id: str = Field(description="Unique persona identifier (e.g., 'zundamon', 'metan')")
+    name: str = Field(description="Display name for the persona")
+    character: str = Field(
+        default="", description="Character description for LLM prompt generation"
+    )
+    synthesizer: VoicevoxSynthesizerConfig = Field(description="Audio synthesizer settings")
+    subtitle_color: str = Field(default="#FFFFFF", description="Subtitle text color (hex)")
+    avatar_image: str | None = Field(default=None, description="Path to avatar image (future use)")
 
 
 class StyleConfig(BaseModel):
@@ -143,6 +164,25 @@ class Config(BaseSettings):
     slides: SlidesConfig = Field(default_factory=SlidesConfig)
     video: VideoConfig = Field(default_factory=VideoConfig)
     pronunciation: PronunciationConfig = Field(default_factory=PronunciationConfig)
+    personas: list[PersonaConfig] = Field(
+        default_factory=list, description="Persona configurations for multi-speaker dialogue"
+    )
+
+    @field_validator("personas")
+    @classmethod
+    def validate_unique_persona_ids(cls, personas: list[PersonaConfig]) -> list[PersonaConfig]:
+        """Validate that persona IDs are unique."""
+        if not personas:
+            return personas
+
+        ids = [p.id for p in personas]
+        if len(ids) != len(set(ids)):
+            duplicates = [id for id in ids if ids.count(id) > 1]
+            raise ConfigurationError(
+                f"Duplicate persona IDs found: {', '.join(set(duplicates))}. "
+                "Each persona must have a unique ID."
+            )
+        return personas
 
 
 def load_config(config_path: Path | None = None) -> Config:
@@ -229,8 +269,28 @@ def generate_default_config_yaml() -> str:
         "",
         "# Narration style settings",
         "narration:",
-        '  character: "ずんだもん"  # Narrator character name',
+        '  character: "ずんだもん"  # Narrator character name (used when no personas defined)',
         '  style: "casual"  # Narration style: casual, formal, educational',
+        "",
+        "# Persona configurations for multi-speaker dialogue",
+        "# Uncomment and configure for dialogue mode",
+        "# personas:",
+        '#   - id: "zundamon"',
+        '#     name: "ずんだもん"',
+        '#     character: "元気で明るい東北の妖精"',
+        "#     synthesizer:",
+        '#       engine: "voicevox"',
+        "#       speaker_id: 3",
+        "#       speed_scale: 1.0",
+        '#     subtitle_color: "#8FCF4F"',
+        '#   - id: "metan"',
+        '#     name: "四国めたん"',
+        '#     character: "優しくて落ち着いた四国の妖精"',
+        "#     synthesizer:",
+        '#       engine: "voicevox"',
+        "#       speaker_id: 2",
+        "#       speed_scale: 1.0",
+        '#     subtitle_color: "#FF69B4"',
         "",
         "# Content generation settings",
         "content:",

@@ -57,9 +57,9 @@ def test_template_reads_config_from_composition_json():
     """Test that the template reads transition config from composition.json."""
     template = get_video_generator_tsx()
 
-    assert "compositionData as any).transitionType" in template
-    assert "compositionData as any).transitionDuration" in template
-    assert "compositionData as any).transitionTiming" in template
+    assert "compositionData as any).transition?.type" in template
+    assert "compositionData as any).transition?.duration_frames" in template
+    assert "compositionData as any).transition?.timing" in template
 
 
 def test_calculate_total_frames_considers_transitions():

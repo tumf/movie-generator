@@ -154,3 +154,58 @@ class TestSceneRangeIntegration:
         assert all(p.section_index in [1, 2] for p in filtered_phrases)
 
         # This demonstrates that audio generation will only process 4 phrases instead of 10
+
+
+class TestOutputFilename:
+    """Test output filename generation based on scene range."""
+
+    def _generate_output_filename(self, scenes: str | None, total_sections: int) -> str:
+        """Helper to generate output filename based on scene range."""
+        if not scenes:
+            return "output.mp4"
+
+        scene_start, scene_end = parse_scene_range(scenes)
+
+        # Convert None values to actual scene numbers for filename
+        start_num = 1 if scene_start is None else scene_start + 1
+        end_num = total_sections if scene_end is None else scene_end + 1
+
+        if start_num == end_num:
+            return f"output_{start_num}.mp4"
+        else:
+            return f"output_{start_num}-{end_num}.mp4"
+
+    def test_no_scene_range(self) -> None:
+        """Test default filename when no scene range specified."""
+        filename = self._generate_output_filename(None, 10)
+        assert filename == "output.mp4"
+
+    def test_single_scene(self) -> None:
+        """Test filename for single scene (e.g., --scenes 2)."""
+        filename = self._generate_output_filename("2", 10)
+        assert filename == "output_2.mp4"
+
+    def test_explicit_range(self) -> None:
+        """Test filename for explicit range (e.g., --scenes 1-3)."""
+        filename = self._generate_output_filename("1-3", 10)
+        assert filename == "output_1-3.mp4"
+
+    def test_from_beginning(self) -> None:
+        """Test filename for from-beginning format (e.g., --scenes -3)."""
+        filename = self._generate_output_filename("-3", 10)
+        assert filename == "output_1-3.mp4"
+
+    def test_to_end(self) -> None:
+        """Test filename for to-end format (e.g., --scenes 5-)."""
+        filename = self._generate_output_filename("5-", 10)
+        assert filename == "output_5-10.mp4"
+
+    def test_from_beginning_single(self) -> None:
+        """Test filename for -1 (from beginning to scene 1)."""
+        filename = self._generate_output_filename("-1", 10)
+        assert filename == "output_1.mp4"
+
+    def test_same_start_end(self) -> None:
+        """Test filename when start equals end (e.g., --scenes 5-5)."""
+        filename = self._generate_output_filename("5-5", 10)
+        assert filename == "output_5.mp4"

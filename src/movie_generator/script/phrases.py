@@ -15,6 +15,8 @@ class Phrase:
     start_time: float = 0.0  # Cumulative start time
     section_index: int = 0  # Index of the section this phrase belongs to
     original_index: int = 0  # Global phrase index across all sections (for file naming)
+    persona_id: str = ""  # Persona ID for multi-speaker dialogue (empty for single-speaker)
+    persona_name: str = ""  # Persona display name (empty for single-speaker)
 
     def get_subtitle_text(self) -> str:
         """Get text suitable for subtitle display.
@@ -50,27 +52,40 @@ def split_into_phrases(text: str, max_chars: int = 40) -> list[Phrase]:
     phrases: list[Phrase] = []
     current_phrase = ""
     in_quote = False  # Track if we're inside quotation marks
+    quote_depth = 0  # Track nested quote depth
 
     for i, char in enumerate(text):
         current_phrase += char
 
-        # Track quotation mark state
+        # Track quotation mark state (handle nested quotes)
         if char == "「":
+            quote_depth += 1
             in_quote = True
         elif char == "」":
-            in_quote = False
+            quote_depth -= 1
+            if quote_depth <= 0:
+                in_quote = False
+                quote_depth = 0
 
         # Check if we should split here
         should_split = False
 
-        # Primary: hit a strong delimiter outside quotes
-        if not in_quote and char in primary_delimiters:
-            should_split = True
+        # Primary: hit a strong delimiter (split even inside quotes for long phrases)
+        if char in primary_delimiters:
+            # Always split at sentence end if phrase is long enough
+            if len(current_phrase) >= max_chars // 2:
+                should_split = True
+            # Split outside quotes normally
+            elif not in_quote:
+                should_split = True
         # Secondary: hit a weak delimiter outside quotes
         elif not in_quote and char in secondary_delimiters:
             should_split = True
         # Emergency: reached max length and not in quote
         elif not in_quote and len(current_phrase) >= max_chars:
+            should_split = True
+        # Very long phrase even with quote - split at sentence boundaries inside
+        elif len(current_phrase) >= max_chars and char in primary_delimiters:
             should_split = True
         # Very long phrase even with quote - split at quote boundary
         elif len(current_phrase) >= max_chars * 1.5 and char == "」":
@@ -78,14 +93,14 @@ def split_into_phrases(text: str, max_chars: int = 40) -> list[Phrase]:
 
         if should_split:
             phrase_text = current_phrase.strip()
-            # Only add if not just punctuation
-            if phrase_text and not all(c in "。、！？\n" for c in phrase_text):
+            # Only add if not just punctuation or quotes
+            if phrase_text and not all(c in "。、！？\n「」" for c in phrase_text):
                 phrases.append(Phrase(text=phrase_text))
             current_phrase = ""
 
     # Add remaining text
     remaining = current_phrase.strip()
-    if remaining and not all(c in "。、！？\n" for c in remaining):
+    if remaining and not all(c in "。、！？\n「」" for c in remaining):
         phrases.append(Phrase(text=remaining))
 
     return phrases

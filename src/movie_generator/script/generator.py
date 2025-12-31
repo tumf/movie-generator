@@ -11,11 +11,19 @@ from ..utils.text import clean_katakana_reading  # type: ignore[import]
 
 
 @dataclass
+class Narration:
+    """A single narration line, optionally with persona information."""
+
+    text: str
+    persona_id: str | None = None  # None for single-speaker mode
+
+
+@dataclass
 class ScriptSection:
     """A section of the video script."""
 
     title: str
-    narration: str
+    narrations: list[Narration]  # Unified format: always a list
     slide_prompt: str | None = None
     source_image_url: str | None = None
 
@@ -69,7 +77,9 @@ JSON形式で以下を出力してください：
   "sections": [
     {{
       "title": "セクションタイトル",
-      "narration": "ナレーション文",
+      "narrations": [
+        {{"text": "ナレーション文"}}
+      ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
       "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
     }}
@@ -128,8 +138,131 @@ Output in JSON format:
   "sections": [
     {{
       "title": "Section Title",
-      "narration": "Narration text",
+      "narrations": [
+        {{"text": "Narration text"}}
+      ],
       "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)",
+      "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
+    }}
+  ],
+  "pronunciations": []
+}}
+
+[About Slide Images]
+- For each section, specify either source_image_url OR slide_prompt (not both)
+- source_image_url: Use when selecting an appropriate image from the blog's image list
+- slide_prompt: Use when generating a new slide with AI
+- Prefer source_image_url if the blog contains suitable diagrams or screenshots
+
+Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
+"""
+
+SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
+あなたはYouTube動画の台本作成の専門家です。
+以下のコンテンツから、複数のキャラクターが掛け合いで説明する動画台本を作成してください。
+
+【登場キャラクター】
+{personas_description}
+
+【要件】
+- 各キャラクターの個性を活かした自然な会話形式で台本を作成してください
+- スタイル: {style}
+- 各セクションは5-10ターン程度の対話で構成してください
+- 専門用語は避けるか、わかりやすく説明してください
+- 視覚的な説明を含めてください
+- **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
+  - 例: "A slide with text 'データベース設計' in the center, modern design"
+
+【元コンテンツ】
+タイトル: {title}
+説明: {description}
+
+{content}
+
+{images_section}
+
+【出力形式】
+JSON形式で以下を出力してください：
+{{
+  "title": "動画タイトル",
+  "description": "動画の説明",
+  "sections": [
+    {{
+      "title": "セクションタイトル",
+      "narrations": [
+        {{
+          "persona_id": "キャラクターID（例: zundamon, metan）",
+          "text": "セリフ"
+        }}
+      ],
+      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
+      "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
+    }}
+  ],
+  "pronunciations": [
+    {{
+      "word": "ENGINE",
+      "reading": "エンジン",
+      "word_type": "COMMON_NOUN",
+      "accent": 1
+    }}
+  ]
+}}
+
+【スライド画像について】
+- 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
+- source_image_url: 元記事の画像リストから適切な画像を選択する場合に使用
+- slide_prompt: AI生成する場合に使用
+- 元記事に適切な図解やスクリーンショットがある場合は、source_image_urlを優先してください
+
+【読み方辞書（pronunciations）について】
+- ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
+- 各単語について、正しいカタカナ読みを指定してください
+- **重要**: カタカナ読みにはスペースを含めないでください（例: "カイジュウエンジン" ○、"カイジュウ エンジン" ×）
+- word_typeは以下から選択: PROPER_NOUN（固有名詞）, COMMON_NOUN（普通名詞）, VERB（動詞）, ADJECTIVE（形容詞）
+- accentは0（自動）または1-N（アクセント位置）を指定
+- 例: "API" → "エーピーアイ", "GitHub" → "ギットハブ", "Unity" → "ユニティ", "Kaiju Engine" → "カイジュウエンジン"
+"""
+
+SCRIPT_GENERATION_PROMPT_DIALOGUE_EN = """
+You are an expert YouTube video script writer.
+Create a video script with multiple characters having a dialogue-style conversation to explain the content.
+
+[Characters]
+{personas_description}
+
+[Requirements]
+- Create natural dialogue that leverages each character's personality
+- Style: {style}
+- Each section should have 5-10 dialogue turns
+- Avoid or clearly explain technical terms
+- Include visual descriptions
+- **IMPORTANT**: Write slide_prompt in English, and specify text to display on slides in English
+  - Example: "A slide with text 'Database Design' in the center, modern design"
+
+[Source Content]
+Title: {title}
+Description: {description}
+
+{content}
+
+{images_section}
+
+[Output Format]
+Output in JSON format:
+{{
+  "title": "Video Title",
+  "description": "Video Description",
+  "sections": [
+    {{
+      "title": "Section Title",
+      "narrations": [
+        {{
+          "persona_id": "Character ID (e.g., zundamon, metan)",
+          "text": "Dialogue line"
+        }}
+      ],
+      "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
       "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
     }}
   ],
@@ -150,6 +283,11 @@ SCRIPT_GENERATION_PROMPTS = {
     "en": SCRIPT_GENERATION_PROMPT_EN,
 }
 
+SCRIPT_GENERATION_PROMPTS_DIALOGUE = {
+    "ja": SCRIPT_GENERATION_PROMPT_DIALOGUE_JA,
+    "en": SCRIPT_GENERATION_PROMPT_DIALOGUE_EN,
+}
+
 
 async def generate_script(
     content: str,
@@ -162,6 +300,7 @@ async def generate_script(
     model: str = "openai/gpt-5.2",
     base_url: str = "https://openrouter.ai/api/v1",
     images: list[dict[str, str]] | None = None,
+    personas: list[dict[str, str]] | None = None,
 ) -> VideoScript:
     """Generate video script from content using LLM.
 
@@ -169,13 +308,15 @@ async def generate_script(
         content: Source content (markdown or text).
         title: Content title.
         description: Content description.
-        character: Character name for narration.
+        character: Character name for narration (used when no personas defined).
         style: Narration style (casual, formal, educational).
         language: Language code for script generation (ja, en).
         api_key: OpenRouter API key.
         model: Model identifier.
         base_url: API base URL.
         images: List of image metadata dicts with 'src', 'alt', 'title' keys.
+        personas: List of persona dicts with 'id', 'name', 'character' keys.
+                  If provided, multi-speaker dialogue mode is used.
 
     Returns:
         Generated video script.
@@ -207,15 +348,36 @@ async def generate_script(
 
             images_section += f"{idx}. URL: {img['src']}\n   {description}\n"
 
-    prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
-    prompt = prompt_template.format(
-        character=character,
-        style=style,
-        title=title or "Unknown",
-        description=description or "",
-        content=content,
-        images_section=images_section,
-    )
+    # Select prompt template based on personas presence
+    if personas:
+        prompt_template = SCRIPT_GENERATION_PROMPTS_DIALOGUE.get(
+            language, SCRIPT_GENERATION_PROMPT_DIALOGUE_JA
+        )
+        # Format personas description
+        personas_description = ""
+        if personas:
+            for persona in personas:
+                personas_description += (
+                    f"- {persona['name']} (ID: {persona['id']}): {persona.get('character', '')}\n"
+                )
+        prompt = prompt_template.format(
+            personas_description=personas_description,
+            style=style,
+            title=title or "Unknown",
+            description=description or "",
+            content=content,
+            images_section=images_section,
+        )
+    else:
+        prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
+        prompt = prompt_template.format(
+            character=character,
+            style=style,
+            title=title or "Unknown",
+            description=description or "",
+            content=content,
+            images_section=images_section,
+        )
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -229,8 +391,15 @@ async def generate_script(
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(f"{base_url}/chat/completions", headers=headers, json=payload)
-        response.raise_for_status()
+        url = f"{base_url}/chat/completions"
+        response = await client.post(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            error_detail = response.text[:500] if response.text else "No response body"
+            raise RuntimeError(
+                f"LLM API request failed: {response.status_code} for {url}\n"
+                f"Model: {model}\n"
+                f"Response: {error_detail}"
+            )
         data = response.json()
 
     # Parse response
@@ -239,15 +408,36 @@ async def generate_script(
     message_content = data["choices"][0]["message"]["content"]
     script_data = json.loads(message_content)
 
-    sections = [
-        ScriptSection(
-            title=section["title"],
-            narration=section["narration"],
-            slide_prompt=section.get("slide_prompt"),
-            source_image_url=section.get("source_image_url"),
+    # Parse sections - unified format with narrations list
+    sections = []
+    for section in script_data["sections"]:
+        narrations: list[Narration] = []
+
+        if "narrations" in section and section["narrations"]:
+            # New unified format
+            for n in section["narrations"]:
+                if isinstance(n, str):
+                    # Simple string format (single speaker)
+                    narrations.append(Narration(text=n))
+                else:
+                    # Object format with optional persona_id
+                    narrations.append(Narration(text=n["text"], persona_id=n.get("persona_id")))
+        elif "dialogues" in section and section["dialogues"]:
+            # Legacy dialogue format (backward compatibility)
+            for d in section["dialogues"]:
+                narrations.append(Narration(text=d["narration"], persona_id=d["persona_id"]))
+        elif "narration" in section:
+            # Legacy single narration format (backward compatibility)
+            narrations.append(Narration(text=section["narration"]))
+
+        sections.append(
+            ScriptSection(
+                title=section["title"],
+                narrations=narrations,
+                slide_prompt=section.get("slide_prompt"),
+                source_image_url=section.get("source_image_url"),
+            )
         )
-        for section in script_data["sections"]
-    ]
 
     # Parse pronunciations if provided
     pronunciations = None

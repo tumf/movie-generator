@@ -21,8 +21,28 @@ audio:
   # onnxruntime_path: "~/.local/share/voicevox/onnxruntime/lib/libvoicevox_onnxruntime.1.17.3.dylib"
 
 narration:
+  mode: "single" # single, dialogue
   character: "ずんだもん"
   style: "casual" # casual, formal, educational
+
+# Persona configurations for multi-speaker dialogue
+# personas:
+#   - id: "zundamon"
+#     name: "ずんだもん"
+#     character: "元気で明るい東北の妖精"
+#     synthesizer:
+#       engine: "voicevox"
+#       speaker_id: 3
+#       speed_scale: 1.0
+#     subtitle_color: "#8FCF4F"
+#   - id: "metan"
+#     name: "四国めたん"
+#     character: "優しくて落ち着いた四国の妖精"
+#     synthesizer:
+#       engine: "voicevox"
+#       speaker_id: 2
+#       speed_scale: 1.0
+#     subtitle_color: "#FF69B4"
 
 content:
   llm:

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..utils.text import clean_katakana_reading  # type: ignore[import]
+from ..utils.text import clean_katakana_reading, is_valid_katakana_reading  # type: ignore[import]
 
 
 @dataclass
@@ -29,15 +29,24 @@ class PronunciationDictionary:
         """Initialize empty dictionary."""
         self.entries: dict[str, DictionaryEntry] = {}
 
-    def add_entry(self, entry: DictionaryEntry) -> None:
+    def add_entry(self, entry: DictionaryEntry) -> bool:
         """Add an entry to the dictionary.
 
         Args:
             entry: Dictionary entry to add.
+
+        Returns:
+            True if entry was added, False if skipped due to invalid reading.
         """
-        # Ensure reading has no spaces (final validation)
+        # Ensure reading has no spaces and only katakana (final validation)
         entry.reading = clean_katakana_reading(entry.reading)
+
+        # Skip if reading is empty or invalid after cleaning
+        if not is_valid_katakana_reading(entry.reading):
+            return False
+
         self.entries[entry.surface] = entry
+        return True
 
     def add_word(
         self,

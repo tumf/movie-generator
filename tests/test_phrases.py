@@ -1,6 +1,5 @@
 """Tests for phrase splitting and subtitle text generation."""
 
-
 from movie_generator.script.phrases import Phrase, split_into_phrases
 
 
@@ -60,25 +59,29 @@ class TestSplitIntoPhrases:
         phrases = split_into_phrases(text)
         assert len(phrases) == 3
 
-    def test_no_split_inside_quotes(self) -> None:
-        """Test that splitting does not happen inside quotation marks."""
-        text = "たとえばボタンやカードみたいな部品だけを「使いたい！」ってお願いできる。"
+    def test_no_split_inside_short_quotes(self) -> None:
+        """Test that short quoted text is not split inside quotation marks."""
+        text = "これは「短い」テストです。"
+        phrases = split_into_phrases(text, max_chars=50)
+        # Short quoted text should not be split
+        assert len(phrases) == 1
+
+    def test_split_inside_long_quotes_at_sentence_boundary(self) -> None:
+        """Test that long quoted text splits at sentence boundaries."""
+        # This is the actual use case: narration wrapped in quotes
+        text = "「これは長いナレーションです。複数の文で構成されています。」"
         phrases = split_into_phrases(text, max_chars=30)
-        # Should be a single phrase or split at the period, not inside the quote
-        for phrase in phrases:
-            # Check that quotes are balanced
-            assert phrase.text.count("「") == phrase.text.count("」")
+        # Should split at sentence boundaries even inside quotes
+        assert len(phrases) >= 2
+        # First phrase should start with opening quote
+        assert phrases[0].text.startswith("「")
 
     def test_split_at_quote_end_when_too_long(self) -> None:
-        """Test that very long text splits at quote boundary."""
+        """Test that very long text splits at sentence boundaries."""
         text = "これは非常に長いテキストで「この中に含まれる引用部分も長くて複数の文が入っています。」さらに続きます。"
         phrases = split_into_phrases(text, max_chars=30)
-        # Should split, but maintain quote balance
-        for phrase in phrases:
-            # Each phrase should have balanced quotes or no quotes
-            open_count = phrase.text.count("「")
-            close_count = phrase.text.count("」")
-            assert open_count == close_count
+        # Should split into multiple phrases
+        assert len(phrases) >= 2
 
     def test_nested_quotes_not_supported(self) -> None:
         """Test behavior with nested quotes (not currently supported)."""
