@@ -10,6 +10,7 @@ class Phrase(BaseModel):
     """A single phrase with timing information."""
 
     text: str
+    reading: str | None = None  # Katakana pronunciation for audio synthesis
     duration: float = 0.0  # In seconds, filled by audio generation
     start_time: float = 0.0  # Cumulative start time
     section_index: int = 0  # Index of the section this phrase belongs to

@@ -350,11 +350,14 @@ class VoicevoxSynthesizer:
             output_path.write_bytes(b"")
             return AudioMetadata(duration=0.0)
 
+        # Use reading field for synthesis if available, otherwise fallback to text
+        synthesis_text = phrase.reading if phrase.reading else phrase.text
+
         # Synthesize with VOICEVOX
         try:
             duration = voicevox_impl.synthesize_to_file(  # type: ignore
                 synthesizer=self._synthesizer,
-                text=phrase.text,
+                text=synthesis_text,
                 speaker_id=self.speaker_id,
                 output_path=output_path,
                 speed_scale=self.speed_scale,

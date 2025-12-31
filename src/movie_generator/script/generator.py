@@ -13,6 +13,7 @@ class Narration(BaseModel):
     """A single narration line, optionally with persona information."""
 
     text: str
+    reading: str  # Katakana pronunciation for audio synthesis
     persona_id: str | None = None  # None for single-speaker mode
 
 
@@ -74,7 +75,10 @@ JSON形式で以下を出力してください：
     {{
       "title": "セクションタイトル",
       "narrations": [
-        {{"text": "ナレーション文"}}
+        {{
+          "text": "ナレーション文",
+          "reading": "ナレーションブン"
+        }}
       ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
       "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
@@ -89,6 +93,19 @@ JSON形式で以下を出力してください：
     }}
   ]
 }}
+
+【reading フィールドについて】
+- **必須フィールド**: 各ナレーションには必ず reading フィールドを含めてください
+- **カタカナ形式**: すべてカタカナで記述してください（ひらがな不可）
+- **助詞の発音**: 助詞は発音通りに変換してください
+  - 「は」→「ワ」（例: 「これは」→「コレワ」）
+  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
+  - 「を」→「オ」（例: 「本を」→「ホンオ」）
+- **スペース不要**: カタカナにスペースを含めないでください
+- **例**:
+  - text: "明日は晴れです" → reading: "アシタワハレデス"
+  - text: "道案内図を見る" → reading: "ミチアンナイズオミル"
+  - text: "97個あります" → reading: "キュウジュウナナコアリマス"
 
 【スライド画像について】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -137,7 +154,10 @@ Output in JSON format:
     {{
       "title": "Section Title",
       "narrations": [
-        {{"text": "Narration text"}}
+        {{
+          "text": "Narration text",
+          "reading": "Narration text"
+        }}
       ],
       "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)",
       "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
@@ -145,6 +165,11 @@ Output in JSON format:
   ],
   "pronunciations": []
 }}
+
+[Reading Field]
+- **Required field**: Each narration must include a reading field
+- For English narration, simply copy the text field to reading field (no special pronunciation rules)
+- Example: text: "Hello world" → reading: "Hello world"
 
 [About Slide Images]
 - For each section, specify either source_image_url OR slide_prompt (not both)
@@ -191,7 +216,8 @@ JSON形式で以下を出力してください：
       "narrations": [
         {{
           "persona_id": "キャラクターID（例: zundamon, metan）",
-          "text": "セリフ"
+          "text": "セリフ",
+          "reading": "セリフ"
         }}
       ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
@@ -260,7 +286,8 @@ Output in JSON format:
       "narrations": [
         {{
           "persona_id": "Character ID (e.g., zundamon, metan)",
-          "text": "Dialogue line"
+          "text": "Dialogue line",
+          "reading": "Dialogue line"
         }}
       ],
       "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
@@ -418,18 +445,24 @@ async def generate_script(
             # New unified format
             for n in section["narrations"]:
                 if isinstance(n, str):
-                    # Simple string format (single speaker)
-                    narrations.append(Narration(text=n))
+                    # Simple string format (single speaker) - legacy, use text as reading
+                    narrations.append(Narration(text=n, reading=n))
                 else:
-                    # Object format with optional persona_id
-                    narrations.append(Narration(text=n["text"], persona_id=n.get("persona_id")))
+                    # Object format with required reading field
+                    reading = n.get("reading", n["text"])  # Fallback to text if reading missing
+                    narrations.append(
+                        Narration(text=n["text"], reading=reading, persona_id=n.get("persona_id"))
+                    )
         elif "dialogues" in section and section["dialogues"]:
             # Legacy dialogue format (backward compatibility)
             for d in section["dialogues"]:
-                narrations.append(Narration(text=d["narration"], persona_id=d["persona_id"]))
+                reading = d.get("reading", d["narration"])  # Fallback to narration text
+                narrations.append(
+                    Narration(text=d["narration"], reading=reading, persona_id=d["persona_id"])
+                )
         elif "narration" in section:
             # Legacy single narration format (backward compatibility)
-            narrations.append(Narration(text=section["narration"]))
+            narrations.append(Narration(text=section["narration"], reading=section["narration"]))
 
         sections.append(
             ScriptSection(

@@ -238,20 +238,30 @@ def generate(
                     # New unified format
                     for n in section["narrations"]:
                         if isinstance(n, str):
-                            narrations.append(Narration(text=n))
+                            # Legacy string format - use text as reading
+                            narrations.append(Narration(text=n, reading=n))
                         else:
+                            # Object format - use reading field or fallback to text
+                            reading = n.get("reading", n["text"])
                             narrations.append(
-                                Narration(text=n["text"], persona_id=n.get("persona_id"))
+                                Narration(
+                                    text=n["text"], reading=reading, persona_id=n.get("persona_id")
+                                )
                             )
                 elif "dialogues" in section and section["dialogues"]:
                     # Legacy dialogue format
                     for d in section["dialogues"]:
+                        reading = d.get("reading", d["narration"])
                         narrations.append(
-                            Narration(text=d["narration"], persona_id=d["persona_id"])
+                            Narration(
+                                text=d["narration"], reading=reading, persona_id=d["persona_id"]
+                            )
                         )
                 elif "narration" in section:
                     # Legacy single narration format
-                    narrations.append(Narration(text=section["narration"]))
+                    narrations.append(
+                        Narration(text=section["narration"], reading=section["narration"])
+                    )
 
                 sections.append(
                     ScriptSection(
@@ -413,7 +423,7 @@ def generate(
             section_phrases = []
             for narration in section.narrations:
                 # Each narration is already split by LLM (~40 chars)
-                phrase = Phrase(text=narration.text)
+                phrase = Phrase(text=narration.text, reading=narration.reading)
                 phrase.section_index = section_idx
                 if narration.persona_id:
                     phrase.persona_id = narration.persona_id

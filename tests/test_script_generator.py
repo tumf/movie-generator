@@ -1,19 +1,26 @@
 """Tests for script generator."""
 
-from movie_generator.script.generator import Narration, ScriptSection
+from movie_generator.script.generator import (
+    Narration,
+    ScriptSection,
+    VideoScript,
+)
 
 
 def test_script_section_with_source_image_url():
     """Test ScriptSection with source_image_url."""
     section = ScriptSection(
         title="Test Section",
-        narrations=[Narration(text="This is a test narration.")],
+        narrations=[
+            Narration(text="This is a test narration.", reading="This is a test narration.")
+        ],
         slide_prompt=None,
         source_image_url="https://example.com/image.jpg",
     )
     assert section.title == "Test Section"
     assert len(section.narrations) == 1
     assert section.narrations[0].text == "This is a test narration."
+    assert section.narrations[0].reading == "This is a test narration."
     assert section.slide_prompt is None
     assert section.source_image_url == "https://example.com/image.jpg"
 
@@ -22,12 +29,15 @@ def test_script_section_with_slide_prompt():
     """Test ScriptSection with slide_prompt."""
     section = ScriptSection(
         title="Test Section",
-        narrations=[Narration(text="This is a test narration.")],
+        narrations=[
+            Narration(text="This is a test narration.", reading="This is a test narration.")
+        ],
         slide_prompt="A beautiful landscape",
         source_image_url=None,
     )
     assert section.title == "Test Section"
     assert section.narrations[0].text == "This is a test narration."
+    assert section.narrations[0].reading == "This is a test narration."
     assert section.slide_prompt == "A beautiful landscape"
     assert section.source_image_url is None
 
@@ -36,7 +46,9 @@ def test_script_section_with_both():
     """Test ScriptSection with both slide_prompt and source_image_url."""
     section = ScriptSection(
         title="Test Section",
-        narrations=[Narration(text="This is a test narration.")],
+        narrations=[
+            Narration(text="This is a test narration.", reading="This is a test narration.")
+        ],
         slide_prompt="A beautiful landscape",
         source_image_url="https://example.com/image.jpg",
     )
@@ -50,9 +62,9 @@ def test_script_section_with_multi_speaker():
     section = ScriptSection(
         title="Test Section",
         narrations=[
-            Narration(text="Hello!", persona_id="alice"),
-            Narration(text="Hi there!", persona_id="bob"),
-            Narration(text="How are you?", persona_id="alice"),
+            Narration(text="Hello!", reading="Hello!", persona_id="alice"),
+            Narration(text="Hi there!", reading="Hi there!", persona_id="bob"),
+            Narration(text="How are you?", reading="How are you?", persona_id="alice"),
         ],
         slide_prompt="A conversation between two people",
     )
@@ -65,6 +77,36 @@ def test_script_section_with_multi_speaker():
 
 def test_narration_without_persona():
     """Test Narration without persona_id (single speaker)."""
-    narration = Narration(text="This is a single speaker narration.")
+    narration = Narration(
+        text="This is a single speaker narration.", reading="This is a single speaker narration."
+    )
     assert narration.text == "This is a single speaker narration."
+    assert narration.reading == "This is a single speaker narration."
     assert narration.persona_id is None
+
+
+def test_narration_with_reading_field():
+    """Test Narration with different text and reading (Japanese example)."""
+    narration = Narration(text="明日は晴れです", reading="アシタワハレデス")
+    assert narration.text == "明日は晴れです"
+    assert narration.reading == "アシタワハレデス"
+    assert narration.persona_id is None
+
+
+def test_video_script_basic():
+    """Test creating a basic VideoScript."""
+    script = VideoScript(
+        title="テスト動画",
+        description="テストの説明",
+        sections=[
+            ScriptSection(
+                title="セクション1",
+                narrations=[Narration(text="こんにちは！", reading="コンニチワ！")],
+                slide_prompt="A test slide",
+            )
+        ],
+    )
+    assert script.title == "テスト動画"
+    assert len(script.sections) == 1
+    assert script.sections[0].narrations[0].text == "こんにちは！"
+    assert script.sections[0].narrations[0].reading == "コンニチワ！"

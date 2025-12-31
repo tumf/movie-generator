@@ -3,9 +3,7 @@
 ## Purpose
 
 This specification defines the audio synthesis system for the movie generator application. The system provides an abstraction layer for multiple speech synthesis engines, supports per-persona voice synthesis, and manages pronunciation dictionaries. This enables multi-speaker dialogue videos with different voice characteristics for each persona.
-
 ## Requirements
-
 ### Requirement: Speech Synthesis Engine Abstraction
 
 The system SHALL provide an abstraction interface that supports multiple speech synthesis engines.
@@ -97,7 +95,63 @@ When an existing audio file is present, re-synthesis SHALL be skipped.
 - **WHEN** `synthesize_phrases()` is called
 - **THEN** the audio is regenerated
 
+### Requirement: Reading Field for Synthesis
+
+The audio synthesis system SHALL use the `reading` field when available for accurate pronunciation.
+
+#### Scenario: Synthesize with reading field
+- **GIVEN** a phrase with:
+  ```python
+  Phrase(text="明日は晴れです", reading="アシタワハレデス")
+  ```
+- **WHEN** audio synthesis is executed
+- **THEN** the `reading` field is passed to the synthesis engine
+- **AND** the synthesized audio reflects the specified pronunciation
+
+#### Scenario: Fallback to text field
+- **GIVEN** a phrase with no `reading` field:
+  ```python
+  Phrase(text="明日は晴れです", reading="")
+  ```
+- **WHEN** audio synthesis is executed
+- **THEN** the `text` field is used as fallback
+- **AND** a warning is logged about missing `reading`
+
 ---
 
 **Note**: This specification was created by archiving the change `add-multi-speaker-dialogue`.
 Original Japanese version archived in `openspec/changes/archive/2025-12-31-add-multi-speaker-dialogue/specs/audio-synthesis/spec.md`.
+
+### Requirement: Use Reading Field for Synthesis
+
+音声合成時に `reading` フィールドを使用して正確な発音を実現する SHALL。
+
+#### Scenario: Synthesize with Reading Field
+- **GIVEN** `Phrase` オブジェクトに `reading` フィールドが設定されている
+- **WHEN** `synthesize_from_texts_async()` が呼び出される
+- **THEN** `reading` の値が VOICEVOX に渡される
+- **AND** `text` は字幕表示用として保持される
+
+#### Scenario: Skip Dictionary Processing with Reading
+- **GIVEN** `Phrase` オブジェクトに `reading` フィールドが設定されている
+- **WHEN** 音声合成処理が実行される
+- **THEN** 既存の辞書登録処理（形態素解析・LLM読み取得）はスキップされる
+- **AND** `reading` が直接 VOICEVOX に渡される
+
+#### Scenario: Katakana Reading Format
+- **GIVEN** `reading` フィールドがカタカナ形式で設定されている
+- **WHEN** VOICEVOX で合成される
+- **THEN** 正確な発音で音声が生成される
+- **AND** 助詞「ワ」「エ」「オ」は正しく発音される
+
+### Requirement: Backward Compatibility
+
+既存の辞書処理との互換性を維持する SHALL。
+
+#### Scenario: Fallback to Dictionary Processing
+- **GIVEN** `Phrase` オブジェクトに `reading` フィールドがない（None）
+- **WHEN** 音声合成処理が実行される
+- **THEN** 既存の辞書登録処理が実行される
+- **AND** `pronunciations` 辞書が使用される
+
+**Note**: 新しいスクリプトでは `reading` は必須だが、古いスクリプトとの互換性のためフォールバック処理を残す。
