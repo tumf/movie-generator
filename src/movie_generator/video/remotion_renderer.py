@@ -155,7 +155,8 @@ def update_composition_json(
     phrases: list[Phrase],
     audio_paths: list[Path],
     slide_paths: list[Path] | None,
-    project_name: str,
+    project_name: str = "video",
+    transition: dict[str, Any] | None = None,
 ) -> None:
     """Update composition.json with current phrase data.
 
@@ -165,6 +166,7 @@ def update_composition_json(
         audio_paths: List of audio file paths (relative to project).
         slide_paths: Optional list of slide image paths (relative to project).
         project_name: Name of the project.
+        transition: Transition configuration (type, duration_frames, timing).
     """
     # Build slide map for efficient lookup
     slide_map = _build_slide_map(slide_paths) if slide_paths else {}
@@ -185,6 +187,10 @@ def update_composition_json(
         ],
     }
 
+    # Add transition config if provided
+    if transition:
+        composition_data["transition"] = transition
+
     composition_path = remotion_root / "composition.json"
     with composition_path.open("w", encoding="utf-8") as f:
         json.dump(composition_data, f, indent=2, ensure_ascii=False)
@@ -200,6 +206,7 @@ def render_video_with_remotion(
     remotion_root: Path,
     project_name: str = "video",
     show_progress: bool = False,
+    transition: dict[str, Any] | None = None,
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
 
@@ -211,6 +218,7 @@ def render_video_with_remotion(
         remotion_root: Path to Remotion project root directory.
         project_name: Name of the project for metadata.
         show_progress: If True, show real-time rendering progress. Default False.
+        transition: Transition configuration (type, duration_frames, timing).
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
@@ -220,7 +228,9 @@ def render_video_with_remotion(
     ensure_pnpm_dependencies(remotion_root)
 
     # Update composition.json with current data
-    update_composition_json(remotion_root, phrases, audio_paths, slide_paths, project_name)
+    update_composition_json(
+        remotion_root, phrases, audio_paths, slide_paths, project_name, transition
+    )
 
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)

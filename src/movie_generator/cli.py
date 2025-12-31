@@ -567,6 +567,7 @@ def generate(
             remotion_root=remotion_dir,
             project_name=project_name,
             show_progress=show_progress,
+            transition=transition_config,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")
