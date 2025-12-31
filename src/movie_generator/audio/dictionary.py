@@ -4,15 +4,15 @@ Manages user dictionary for correct pronunciation of proper nouns.
 """
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from pydantic import BaseModel
 
 from ..utils.text import clean_katakana_reading, is_valid_katakana_reading  # type: ignore[import]
 
 
-@dataclass
-class DictionaryEntry:
+class DictionaryEntry(BaseModel):
     """A pronunciation dictionary entry."""
 
     surface: str  # Original text

@@ -4,9 +4,10 @@ Integrates with VOICEVOX Core for text-to-speech generation.
 """
 
 import wave
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from pydantic import BaseModel
 
 from ..exceptions import AudioGenerationError, ConfigurationError
 from ..script.phrases import Phrase
@@ -22,8 +23,7 @@ except ImportError:
     voicevox_impl = None
 
 
-@dataclass
-class AudioMetadata:
+class AudioMetadata(BaseModel):
     """Metadata for generated audio."""
 
     duration: float  # Duration in seconds

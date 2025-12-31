@@ -3,11 +3,10 @@
 Splits narration text into 3-6 second phrases for optimal subtitle display.
 """
 
-from dataclasses import dataclass
+from pydantic import BaseModel, ConfigDict
 
 
-@dataclass
-class Phrase:
+class Phrase(BaseModel):
     """A single phrase with timing information."""
 
     text: str
@@ -17,6 +16,8 @@ class Phrase:
     original_index: int = 0  # Global phrase index across all sections (for file naming)
     persona_id: str = ""  # Persona ID for multi-speaker dialogue (empty for single-speaker)
     persona_name: str = ""  # Persona display name (empty for single-speaker)
+
+    model_config = ConfigDict(frozen=False)  # Allow mutation for setting duration/start_time
 
     def get_subtitle_text(self) -> str:
         """Get text suitable for subtitle display.

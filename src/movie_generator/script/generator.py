@@ -3,23 +3,20 @@
 Generates video scripts from source content using LLM providers.
 """
 
-from dataclasses import dataclass
-
 import httpx
+from pydantic import BaseModel
 
 from ..utils.text import clean_katakana_reading  # type: ignore[import]
 
 
-@dataclass
-class Narration:
+class Narration(BaseModel):
     """A single narration line, optionally with persona information."""
 
     text: str
     persona_id: str | None = None  # None for single-speaker mode
 
 
-@dataclass
-class ScriptSection:
+class ScriptSection(BaseModel):
     """A section of the video script."""
 
     title: str
@@ -28,8 +25,7 @@ class ScriptSection:
     source_image_url: str | None = None
 
 
-@dataclass
-class PronunciationEntry:
+class PronunciationEntry(BaseModel):
     """Pronunciation dictionary entry."""
 
     word: str
@@ -38,8 +34,7 @@ class PronunciationEntry:
     accent: int = 0  # 0=auto
 
 
-@dataclass
-class VideoScript:
+class VideoScript(BaseModel):
     """Complete video script with multiple sections."""
 
     title: str

@@ -6,10 +6,10 @@ English terms), uses LLM to generate katakana readings.
 """
 
 import json
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from pydantic import BaseModel
 
 from ..utils.text import clean_katakana_reading
 
@@ -17,8 +17,7 @@ if TYPE_CHECKING:
     from fugashi import Tagger
 
 
-@dataclass
-class MorphemeReading:
+class MorphemeReading(BaseModel):
     """A morpheme with its surface form and reading."""
 
     surface: str  # Original text (e.g., "表計算")

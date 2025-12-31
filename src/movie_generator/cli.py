@@ -578,12 +578,25 @@ def generate(
                 audio_file = audio_dir / f"phrase_{phrase.original_index:04d}.wav"
                 persona_id = getattr(phrase, "persona_id", None)
 
-                # Count existing audio files
+                # Count existing audio files and read their duration
                 if audio_file.exists() and audio_file.stat().st_size > 0:
                     existing_audio_count += 1
                     audio_paths.append(audio_file)
-                    metadata_list.append(None)  # Placeholder for existing files
-                    continue
+                    # Read duration from existing file
+                    try:
+                        import wave
+
+                        with wave.open(str(audio_file), "rb") as wf:
+                            frames = wf.getnframes()
+                            rate = wf.getframerate()
+                            duration = frames / float(rate)
+                        phrase.duration = duration
+                    except Exception:
+                        # If file is corrupt, will be regenerated below
+                        pass
+                    else:
+                        metadata_list.append(None)  # Placeholder for existing files
+                        continue
 
                 # Get appropriate synthesizer
                 if persona_id and persona_id in synthesizers:

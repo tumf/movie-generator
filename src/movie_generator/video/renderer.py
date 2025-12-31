@@ -4,15 +4,15 @@ Generates composition.json and renders video using Remotion.
 """
 
 import json
-from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from pydantic import BaseModel
 
 from ..script.phrases import Phrase
 
 
-@dataclass
-class CompositionData:
+class CompositionData(BaseModel):
     """Data for Remotion composition."""
 
     title: str
@@ -93,7 +93,7 @@ def save_composition(composition: CompositionData, output_path: Path) -> None:
         output_path: Path to save JSON file.
     """
     with output_path.open("w", encoding="utf-8") as f:
-        json.dump(asdict(composition), f, ensure_ascii=False, indent=2)
+        json.dump(composition.model_dump(), f, ensure_ascii=False, indent=2)
 
 
 def render_video(

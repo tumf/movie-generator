@@ -3,16 +3,15 @@
 Parses HTML content and extracts metadata and main content.
 """
 
-from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from markdownify import markdownify
+from pydantic import BaseModel
 
 
-@dataclass
-class ContentMetadata:
+class ContentMetadata(BaseModel):
     """Metadata extracted from content."""
 
     title: str | None = None
@@ -21,8 +20,7 @@ class ContentMetadata:
     description: str | None = None
 
 
-@dataclass
-class ImageInfo:
+class ImageInfo(BaseModel):
     """Image information extracted from blog content."""
 
     src: str
@@ -33,8 +31,7 @@ class ImageInfo:
     height: int | None = None
 
 
-@dataclass
-class ParsedContent:
+class ParsedContent(BaseModel):
     """Parsed content with metadata."""
 
     metadata: ContentMetadata

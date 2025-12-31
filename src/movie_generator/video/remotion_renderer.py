@@ -6,10 +6,10 @@ Per-project Remotion setup with pnpm workspace integration.
 
 import json
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
 from rich.console import Console
 
 from ..exceptions import RenderingError
@@ -18,8 +18,7 @@ from ..script.phrases import Phrase
 console = Console()
 
 
-@dataclass
-class RemotionPhrase:
+class RemotionPhrase(BaseModel):
     """Phrase data for Remotion composition."""
 
     text: str
