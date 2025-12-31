@@ -20,7 +20,6 @@ from .script.generator import generate_script
 from .script.phrases import calculate_phrase_timings, split_into_phrases
 from .slides.generator import generate_slides_for_sections
 from .video.remotion_renderer import render_video_with_remotion
-from .video.renderer import create_composition, save_composition
 
 console = Console()
 
@@ -516,27 +515,12 @@ def generate(
             console.print("[yellow]⚠ Skipping slides (no API key provided)[/yellow]")
             slide_paths = []
 
-        # Step 6: Create composition
-        composition_path = output_dir / "composition.json"
-        task = progress.add_task("Creating composition...", total=None)
-        # Prepare transition config
+        # Step 6: Prepare transition config for Remotion
         transition_config = {
             "type": cfg.video.transition.type,
             "duration_frames": cfg.video.transition.duration_frames,
             "timing": cfg.video.transition.timing,
         }
-        composition = create_composition(
-            title=script.title,
-            phrases=all_phrases,
-            slide_paths=slide_paths,
-            audio_paths=audio_paths,
-            fps=cfg.style.fps,
-            resolution=cfg.style.resolution,
-            transition=transition_config,
-        )
-        save_composition(composition, composition_path)
-        progress.update(task, completed=True)
-        console.print(f"✓ Created composition: {composition_path}")
 
         # Step 7: Setup Remotion project and render video
         video_path = output_dir / "output.mp4"
