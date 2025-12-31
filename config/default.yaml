@@ -13,7 +13,7 @@ style:
 
 audio:
   engine: "voicevox"
-  speaker_id: 3  # Zundamon
+  speaker_id: 3 # Zundamon
   speed_scale: 1.0
   # VOICEVOX paths (can also be set via environment variables)
   # dict_dir: "~/.local/share/voicevox/dict/open_jtalk_dic_utf_8-1.11"
@@ -22,7 +22,7 @@ audio:
 
 narration:
   character: "ずんだもん"
-  style: "casual"  # casual, formal, educational
+  style: "casual" # casual, formal, educational
 
 content:
   llm:
@@ -32,17 +32,17 @@ content:
 slides:
   llm:
     provider: "openrouter"
-    model: "google/gemini-3-pro-image-preview"  # Image generation model
-  style: "presentation"  # presentation, illustration, minimal
+    model: "google/gemini-3-pro-image-preview" # Image generation model
+  style: "presentation" # presentation, illustration, minimal
 
 video:
   renderer: "remotion"
   template: "default"
   output_format: "mp4"
   transition:
-    type: "fade"  # fade, slide, wipe, flip, clockWipe, none
-    duration_frames: 15  # Transition duration in frames (0.5s at 30fps)
-    timing: "linear"  # linear, spring
+    type: "flip" # fade, slide, wipe, flip, clockWipe, none
+    duration_frames: 15 # Transition duration in frames (0.5s at 30fps)
+    timing: "linear" # linear, spring
 
 pronunciation:
   custom:
@@ -72,7 +72,7 @@ pronunciation:
       accent: 1
       word_type: "COMMON_NOUN"
       priority: 10
-    
+
     # Project-specific terms
     "Bubble Tea":
       reading: "バブルティー"
