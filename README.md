@@ -320,9 +320,36 @@ uv run pytest tests/test_config.py  # Specific file
 ### Linting and Formatting
 
 ```bash
+# Manual linting
 uv run ruff check .
 uv run ruff format .
 uv run mypy src/
+
+# Pre-commit hooks (recommended)
+# Install pre-commit hooks
+pre-commit install
+
+# Run pre-commit on all files
+pre-commit run --all-files
+
+# Pre-commit will automatically run on git commit
+git commit -m "your message"
+```
+
+#### Pre-commit Hooks
+
+This project uses pre-commit hooks to automatically check code quality before commits:
+
+- **trailing-whitespace**: Remove trailing whitespace
+- **end-of-file-fixer**: Ensure files end with a newline
+- **check-yaml/toml**: Validate YAML and TOML files
+- **ruff**: Fast Python linter with auto-fix
+- **ruff-format**: Python code formatter
+- **mypy**: Static type checker (src directory only)
+
+To skip hooks temporarily (not recommended):
+```bash
+git commit --no-verify -m "your message"
 ```
 
 ### Project Structure

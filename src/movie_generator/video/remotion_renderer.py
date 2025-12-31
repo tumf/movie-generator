@@ -106,20 +106,6 @@ def _get_slide_file_path(slide_paths: list[Path], section_index: int) -> str:
     slide_map = _build_slide_map(slide_paths)
     return slide_map.get(section_index, "")
 
-    # If slide_path is absolute, try to make it relative to find the structure
-    # Expected structure: .../slides/[lang or provider]/slide_XXXX.png
-    parts = slide_path.parts
-
-    # Find 'slides' in the path
-    try:
-        slides_idx = parts.index("slides")
-        # Get everything from 'slides' onwards
-        relative_parts = parts[slides_idx:]
-        return str(Path(*relative_parts))
-    except (ValueError, IndexError):
-        # Fallback: just use the filename under slides/
-        return f"slides/{slide_path.name}"
-
 
 def ensure_pnpm_dependencies(remotion_root: Path) -> None:
     """Ensure pnpm dependencies are installed in the Remotion project.
@@ -145,7 +131,7 @@ def ensure_pnpm_dependencies(remotion_root: Path) -> None:
         )
         console.print("[green]✓ Dependencies installed[/green]")
     except subprocess.CalledProcessError as e:
-        console.print(f"[red]Failed to install dependencies:[/red]")
+        console.print("[red]Failed to install dependencies:[/red]")
         console.print(f"[red]{e.stderr}[/red]")
         raise RuntimeError("pnpm install failed") from e
 

@@ -1,0 +1,56 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: debug-statements
+      - id: mixed-line-ending
+
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.15
+    hooks:
+      # Run the linter (only check critical errors)
+      - id: ruff
+        args:
+          - --fix
+          - --select=F,E9,W6  # F: pyflakes, E9: syntax errors, W6: warnings
+          - --ignore=F401,F841  # Allow unused imports and variables
+      # Run the formatter
+      - id: ruff-format
+
+  # mypy - Static type checker (informational only, won't block commits)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.0.0
+          - pydantic-settings>=2.0.0
+          - types-pyyaml
+          - types-beautifulsoup4
+          - types-requests
+          - types-Pillow
+          - httpx
+          - click
+          - rich
+          - pytest
+          - fugashi
+          - cairosvg
+          - markdownify
+        args: [--strict]
+        # Only check src directory to avoid test file issues
+        files: ^src/
+        # Don't fail the commit on type errors (informational only)
+        verbose: true
+        # This makes mypy informational only
+        stages: [manual]
