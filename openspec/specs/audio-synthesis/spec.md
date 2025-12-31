@@ -149,9 +149,15 @@ Original Japanese version archived in `openspec/changes/archive/2025-12-31-add-m
 既存の辞書処理との互換性を維持する SHALL。
 
 #### Scenario: Fallback to Dictionary Processing
-- **GIVEN** `Phrase` オブジェクトに `reading` フィールドがない（None）
+- **GIVEN** `Phrase` オブジェクトに `reading` フィールドがない（None または空文字列）
 - **WHEN** 音声合成処理が実行される
-- **THEN** 既存の辞書登録処理が実行される
-- **AND** `pronunciations` 辞書が使用される
+- **THEN** 既存の形態素解析による辞書登録処理が実行される
+- **AND** `config.pronunciation.custom` の手動辞書が使用される
 
-**Note**: 新しいスクリプトでは `reading` は必須だが、古いスクリプトとの互換性のためフォールバック処理を残す。
+#### Scenario: Reading Field Takes Priority
+- **GIVEN** `Phrase` オブジェクトに `reading` フィールドが設定されている
+- **WHEN** 音声合成処理が実行される
+- **THEN** `reading` の値が直接 VOICEVOX に渡される
+- **AND** 辞書登録処理はスキップされる
+
+**Note**: `pronunciations` フィールドは削除されました。`reading` フィールドまたは `config.pronunciation.custom` による手動辞書設定のみがサポートされます。

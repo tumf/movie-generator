@@ -61,9 +61,7 @@ async def generate_multilang_content(
 
         # Save script to language-specific file
         script_path = output_dir / f"script_{lang_code}.yaml"
-        script_data = script.model_dump(
-            include={"title", "description", "sections", "pronunciations"}
-        )
+        script_data = script.model_dump(include={"title", "description", "sections"})
 
         with script_path.open("w", encoding="utf-8") as f:
             yaml.dump(script_data, f, allow_unicode=True, sort_keys=False)

@@ -7,22 +7,26 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..script.phrases import Phrase
 
 
 class CompositionPhrase(BaseModel):
-    """A phrase in the composition with audio and slide information."""
+    """A phrase in the composition with audio and slide information.
+
+    Note: Some field names use serialization_alias for camelCase JSON output
+    to match TypeScript/Remotion convention. Use model_dump(by_alias=True) for JSON.
+    """
 
     text: str
     duration: float
     start_time: float
     audioFile: str
     slideFile: str | None = None
-    persona_id: str | None = None
-    persona_name: str | None = None
-    subtitle_color: str | None = None
+    persona_id: str | None = Field(default=None, serialization_alias="personaId")
+    persona_name: str | None = Field(default=None, serialization_alias="personaName")
+    subtitle_color: str | None = Field(default=None, serialization_alias="subtitleColor")
 
 
 class CompositionData(BaseModel):

@@ -67,6 +67,12 @@ SCRIPT_GENERATION_PROMPT_JA = """
 - **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
   - 例: "A slide with text 'データベース設計' in the center, modern design"
 
+【台本構成の必須ルール】
+- **必ず起承転結の構成で最後まで完成させてください**
+- 最低6セクション以上を目安に構成してください
+- 最後のセクションは必ず「まとめ」「結論」「次のステップ」のいずれかを含めてください
+- 途中で終わらせず、視聴者に結論を伝えてください
+
 【元コンテンツ】
 タイトル: {title}
 説明: {description}
@@ -146,6 +152,12 @@ Create a video script from the following content that explains clearly to viewer
 - **IMPORTANT**: Write slide_prompt in English, but specify text to display on slides in English
   - Example: "A slide with text 'Database Design' in the center, modern design"
 
+[Script Structure Rules - MANDATORY]
+- **Complete the script with proper introduction, development, and conclusion**
+- Create at least 6 sections minimum
+- The final section MUST include "Summary", "Conclusion", or "Next Steps"
+- Do NOT end the script abruptly. Always provide viewers with a conclusion
+
 [Source Content]
 Title: {title}
 Description: {description}
@@ -210,6 +222,12 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 - 視覚的な説明を含めてください
 - **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
   - 例: "A slide with text 'データベース設計' in the center, modern design"
+
+【台本構成の必須ルール】
+- **必ず起承転結の構成で最後まで完成させてください**
+- 最低6セクション以上を目安に構成してください
+- 最後のセクションは必ず「まとめ」「結論」「次のステップ」のいずれかを含めてください
+- 途中で終わらせず、視聴者に結論を伝えてください
 
 【元コンテンツ】
 タイトル: {title}
@@ -309,6 +327,12 @@ Define each character's role freely (e.g., explainer, questioner, commentator, e
 - Include visual descriptions
 - **IMPORTANT**: Write slide_prompt in English, and specify text to display on slides in English
   - Example: "A slide with text 'Database Design' in the center, modern design"
+
+[Script Structure Rules - MANDATORY]
+- **Complete the script with proper introduction, development, and conclusion**
+- Create at least 6 sections minimum
+- The final section MUST include "Summary", "Conclusion", or "Next Steps"
+- Do NOT end the script abruptly. Always provide viewers with a conclusion
 
 [Source Content]
 Title: {title}
@@ -497,9 +521,10 @@ async def generate_script(
             {"role": "user", "content": prompt},
         ],
         "response_format": {"type": "json_object"},
+        "max_tokens": 16000,  # Ensure sufficient output for complete scripts
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:  # Extended for long articles
         url = f"{base_url}/chat/completions"
         response = await client.post(url, headers=headers, json=payload)
         if response.status_code != 200:
@@ -590,6 +615,15 @@ async def generate_script(
             )
             for entry in script_data["role_assignments"]
         ]
+
+    # Validate script completeness
+    if not sections:
+        raise ValueError("Script generation failed: no sections were generated")
+    if not sections[-1].narrations:
+        raise ValueError(
+            f"Script generation incomplete: last section '{sections[-1].title}' has no narrations. "
+            "The LLM response may have been truncated. Try regenerating the script."
+        )
 
     return VideoScript(
         title=script_data["title"],

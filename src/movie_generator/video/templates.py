@@ -2,9 +2,14 @@
 
 This module contains template strings for generating Remotion project files.
 Each template is a Python string that can be formatted with project-specific data.
+
+IMPORTANT: Subtitle default color is defined in constants.py (SubtitleConstants.DEFAULT_COLOR).
+When generating TypeScript templates, this value is embedded directly into the code.
 """
 
 from typing import Any
+
+from ..constants import SubtitleConstants
 
 
 def get_video_generator_tsx(
@@ -227,8 +232,8 @@ const AudioSubtitleLayer: React.FC<{
   const fadeInDuration = fps * 0.3;
   const opacity = Math.min(1, frame / fadeInDuration);
 
-  // Stroke color from persona, default to white
-  const strokeColor = subtitleColor || '#FFFFFF';
+  // Stroke color from persona, default defined in constants.py
+  const strokeColor = subtitleColor || '{default_subtitle_color}';
 
   return (
     <>
@@ -333,7 +338,7 @@ export const calculateTotalFrames = (phrases: PhraseData[]): number => {
   if (scenes.length === 0) return 0;
   return scenes[scenes.length - 1].endFrame;
 };
-"""
+""".replace("{default_subtitle_color}", SubtitleConstants.DEFAULT_COLOR)
 
 
 def get_root_tsx() -> str:

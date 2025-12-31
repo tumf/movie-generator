@@ -373,3 +373,74 @@ done
 ### Summary
 
 **Golden Rule**: If you add a field to the LLM output schema, you must add explicit generation instructions to ALL prompt variants. Half-updated prompts lead to silent failures in production.
+
+## Subtitle Color Management
+
+### Single Source of Truth
+
+Subtitle colors are defined in `constants.py` and must be used consistently across all modules:
+
+```python
+# constants.py - THE definitive source
+class SubtitleConstants:
+    DEFAULT_COLOR = "#FFFFFF"  # White
+```
+
+**Modules that use this constant:**
+| Module | Usage |
+|--------|-------|
+| `config.py` | Default for `PersonaConfig.subtitle_color` |
+| `remotion_renderer.py` | Fallback in `_get_persona_fields()` |
+| `templates.py` | Embedded in generated VideoGenerator.tsx |
+
+### Why This Matters
+
+**Past Incidents**: Multiple regressions occurred due to:
+1. Hardcoded `#8FCF4F` (green/Zundamon's color) as default in templates.py
+2. Inconsistent defaults between Python and TypeScript
+3. JSON serialization losing `subtitleColor` field (snake_case vs camelCase)
+4. Manual sed updates breaking all colors
+
+### Prevention Measures
+
+1. **Use constants, never hardcode colors**
+   ```python
+   # Good
+   from ..constants import SubtitleConstants
+   color = SubtitleConstants.DEFAULT_COLOR
+
+   # Bad - DO NOT DO THIS
+   color = "#FFFFFF"  # Hardcoded
+   color = "#8FCF4F"  # Persona-specific as default
+   ```
+
+2. **Test coverage in `tests/test_subtitle_color.py`**
+   - Verifies constant definition
+   - Tests config defaults
+   - Tests composition.json propagation
+   - Tests VideoGenerator.tsx template generation
+   - Integration tests for multi-speaker colors
+
+3. **JSON serialization with aliases**
+   ```python
+   # CompositionPhrase uses serialization_alias for camelCase JSON
+   subtitle_color: str | None = Field(default=None, serialization_alias="subtitleColor")
+
+   # Must use by_alias=True when dumping
+   phrase.model_dump(exclude_none=True, by_alias=True)
+   ```
+
+### Quick Verification
+
+Before modifying subtitle-related code:
+```bash
+# Run subtitle color tests
+uv run pytest tests/test_subtitle_color.py -v
+
+# Verify no hardcoded colors in templates
+grep -n "#8FCF4F" src/movie_generator/video/templates.py
+# Should return nothing
+
+# Verify constant is used
+grep -r "SubtitleConstants.DEFAULT_COLOR" src/
+```

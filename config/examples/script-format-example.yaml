@@ -26,17 +26,6 @@ sections:
     slide_prompt: null
     source_image_url: "https://example.com/image.jpg"
 
-# Optional: Custom pronunciation dictionary for special terms
-pronunciations:
-  - word: "API"
-    reading: "エーピーアイ"
-    word_type: "COMMON_NOUN"
-    accent: 0
-  - word: "GitHub"
-    reading: "ギットハブ"
-    word_type: "PROPER_NOUN"
-    accent: 0
-
 # Note: The reading field ensures accurate audio synthesis
 # - Correct kanji pronunciation
 # - Proper particle pronunciation (は→ワ, へ→エ, を→オ)

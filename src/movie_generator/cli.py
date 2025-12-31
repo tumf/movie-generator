@@ -17,11 +17,10 @@ from .config import Config, load_config, print_default_config, write_config_to_f
 from .content.fetcher import fetch_url_sync
 from .content.parser import parse_html
 from .project import Project
-from .script.generator import PronunciationEntry, generate_script
+from .script.generator import generate_script
 from .script.phrases import Phrase, calculate_phrase_timings
 from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
-from .utils.text import clean_katakana_reading  # type: ignore[import]
 from .video.remotion_renderer import render_video_with_remotion
 
 console = Console()
@@ -215,20 +214,6 @@ def generate(
                 VideoScript,
             )
 
-            # Load pronunciations if available
-            pronunciations = None
-            if "pronunciations" in script_dict and script_dict["pronunciations"]:
-                pronunciations = [
-                    PronunciationEntry(
-                        word=entry["word"],
-                        # Remove spaces from reading (VOICEVOX requires katakana-only)
-                        reading=clean_katakana_reading(entry["reading"]),
-                        word_type=entry.get("word_type", "COMMON_NOUN"),
-                        accent=entry.get("accent", 0),
-                    )
-                    for entry in script_dict["pronunciations"]
-                ]
-
             # Parse sections with unified narrations format
             sections = []
             for section in script_dict["sections"]:
@@ -276,7 +261,6 @@ def generate(
                 title=script_dict["title"],
                 description=script_dict["description"],
                 sections=sections,
-                pronunciations=pronunciations,
             )
         else:
             # Need URL to generate new script
@@ -366,8 +350,6 @@ def generate(
             with open(script_path, "w", encoding="utf-8") as f:
                 yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
             console.print(f"✓ Script saved: {script_path}")
-            if script.pronunciations:
-                console.print(f"  Pronunciations: {len(script.pronunciations)} entries")
 
         # Step 3: Parse scene range if specified
         scene_start: int | None = None
@@ -455,70 +437,6 @@ def generate(
                 )
                 synthesizers[persona_config.id] = synthesizer
 
-            # Add pronunciations to all synthesizers
-            if script.pronunciations:
-                for persona_synthesizer in synthesizers.values():
-                    for entry in script.pronunciations:
-                        persona_synthesizer.dictionary.add_word(
-                            word=entry.word,
-                            reading=entry.reading,
-                            accent=entry.accent,
-                            word_type=entry.word_type,
-                            priority=10,
-                        )
-                console.print(
-                    f"  Added {len(script.pronunciations)} LLM pronunciations to dictionaries"
-                )
-
-            # Add pronunciations using LLM for context-aware reading generation
-            narration_texts = [n.text for section in script.sections for n in section.narrations]
-            new_readings: dict[str, str] = {}
-            for persona_synthesizer in synthesizers.values():
-                new_readings = asyncio.run(
-                    persona_synthesizer.prepare_texts_with_llm(narration_texts)
-                )
-                break  # Only count once, same for all synthesizers
-            if new_readings:
-                console.print(f"  Added {len(new_readings)} LLM-verified pronunciations")
-
-                # Save new pronunciations to script.yaml
-                existing_words = set()
-                if script.pronunciations:
-                    existing_words = {e.word for e in script.pronunciations}
-
-                new_entries = []
-                for word, reading in new_readings.items():
-                    if word not in existing_words:
-                        new_entries.append(
-                            PronunciationEntry(
-                                word=word,
-                                reading=reading,
-                                word_type="COMMON_NOUN",
-                                accent=0,
-                            )
-                        )
-
-                if new_entries:
-                    # Update script object
-                    if script.pronunciations is None:
-                        script.pronunciations = []
-                    script.pronunciations.extend(new_entries)
-
-                    # Save updated script.yaml
-                    with open(script_path, "r", encoding="utf-8") as f:
-                        script_dict = yaml.safe_load(f)
-
-                    script_dict["pronunciations"] = [
-                        entry.model_dump() for entry in script.pronunciations
-                    ]
-
-                    with open(script_path, "w", encoding="utf-8") as f:
-                        yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
-
-                    console.print(
-                        f"  💾 Saved {len(new_entries)} new pronunciations to script.yaml"
-                    )
-
             # Initialize VOICEVOX for all synthesizers
             import os
 
@@ -600,64 +518,6 @@ def generate(
         else:
             # Single-speaker mode (backward compatible)
             synthesizer = create_synthesizer_from_config(cfg)
-
-            # Add pronunciations from script to dictionary (LLM-generated, high priority)
-            if script.pronunciations:
-                for entry in script.pronunciations:
-                    synthesizer.dictionary.add_word(
-                        word=entry.word,
-                        reading=entry.reading,
-                        accent=entry.accent,
-                        word_type=entry.word_type,
-                        priority=10,  # High priority for LLM-generated pronunciations
-                    )
-                console.print(
-                    f"  Added {len(script.pronunciations)} LLM pronunciations to dictionary"
-                )
-
-            # Add pronunciations using LLM for context-aware reading generation
-            narration_texts = [n.text for section in script.sections for n in section.narrations]
-            new_readings = asyncio.run(synthesizer.prepare_texts_with_llm(narration_texts))
-            if new_readings:
-                console.print(f"  Added {len(new_readings)} LLM-verified pronunciations")
-
-                # Save new pronunciations to script.yaml
-                existing_words = set()
-                if script.pronunciations:
-                    existing_words = {e.word for e in script.pronunciations}
-
-                new_entries = []
-                for word, reading in new_readings.items():
-                    if word not in existing_words:
-                        new_entries.append(
-                            PronunciationEntry(
-                                word=word,
-                                reading=reading,
-                                word_type="COMMON_NOUN",
-                                accent=0,
-                            )
-                        )
-
-                if new_entries:
-                    # Update script object
-                    if script.pronunciations is None:
-                        script.pronunciations = []
-                    script.pronunciations.extend(new_entries)
-
-                    # Save updated script.yaml
-                    with open(script_path, "r", encoding="utf-8") as f:
-                        script_dict = yaml.safe_load(f)
-
-                    script_dict["pronunciations"] = [
-                        entry.model_dump() for entry in script.pronunciations
-                    ]
-
-                    with open(script_path, "w", encoding="utf-8") as f:
-                        yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
-
-                    console.print(
-                        f"  💾 Saved {len(new_entries)} new pronunciations to script.yaml"
-                    )
 
             # Initialize VOICEVOX
             import os

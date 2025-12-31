@@ -12,6 +12,7 @@ from typing import Any
 from pydantic import BaseModel
 from rich.console import Console
 
+from ..constants import SubtitleConstants
 from ..exceptions import RenderingError
 from ..script.phrases import Phrase
 from .renderer import CompositionPhrase
@@ -180,7 +181,7 @@ def update_composition_json(
         "fps": 30,
         "width": 1920,
         "height": 1080,
-        "phrases": [p.model_dump(exclude_none=True) for p in composition_phrases],
+        "phrases": [p.model_dump(exclude_none=True, by_alias=True) for p in composition_phrases],
     }
 
     # Add transition config if provided
@@ -217,7 +218,7 @@ def _get_persona_fields(phrase: Phrase, persona_map: dict[str, dict[str, Any]]) 
     return {
         "personaId": phrase.persona_id,
         "personaName": persona.get("name", phrase.persona_name),
-        "subtitleColor": persona.get("subtitle_color", "#FFFFFF"),
+        "subtitleColor": persona.get("subtitle_color", SubtitleConstants.DEFAULT_COLOR),
     }
 
 

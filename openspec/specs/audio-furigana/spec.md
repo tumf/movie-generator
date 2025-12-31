@@ -130,20 +130,6 @@ The system SHALL use LLM to generate context-aware pronunciations for words that
 - **When** get_words_needing_pronunciation() is called
 - **Then** it returns words containing kanji or ASCII letters, excluding kana-only words
 
-### Requirement: Pronunciation Persistence
-
-The system SHALL persist LLM-generated pronunciations to the script file.
-
-#### Scenario: Save new pronunciations to script.yaml
-- **Given** LLM generates new pronunciation entries
-- **When** audio generation completes
-- **Then** new pronunciations are saved to the `pronunciations` section of script.yaml
-
-#### Scenario: Reuse saved pronunciations
-- **Given** a script.yaml with saved pronunciations
-- **When** audio generation runs again
-- **Then** saved pronunciations are used without calling LLM again
-
 ### Requirement: LLM-Based Context-Aware Reading Generation
 
 システムは、形態素解析で抽出した単語をLLMに送信し、文脈を考慮した正確なカタカナ読みを生成しなければならない（SHALL）。

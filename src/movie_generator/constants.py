@@ -9,6 +9,22 @@ class VideoConstants:
     DEFAULT_HEIGHT = 1080
 
 
+class SubtitleConstants:
+    """Subtitle styling constants.
+
+    IMPORTANT: This is the Single Source of Truth for subtitle default values.
+    All modules (config.py, remotion_renderer.py, templates.py) MUST use these constants.
+    Do NOT hardcode color values elsewhere to prevent regression.
+
+    Design Decision:
+    - Default color is WHITE (#FFFFFF) for single-speaker mode
+    - Multi-speaker mode uses persona-specific colors from config
+    - If a persona has no color defined, WHITE is used as fallback
+    """
+
+    DEFAULT_COLOR = "#FFFFFF"  # White - neutral default for all modes
+
+
 class FileExtensions:
     """Supported file extensions."""
 

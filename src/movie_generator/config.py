@@ -10,6 +10,7 @@ import yaml
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
+from .constants import SubtitleConstants
 from .exceptions import ConfigurationError
 
 
@@ -30,7 +31,10 @@ class PersonaConfig(BaseModel):
         default="", description="Character description for LLM prompt generation"
     )
     synthesizer: VoicevoxSynthesizerConfig = Field(description="Audio synthesizer settings")
-    subtitle_color: str = Field(default="#FFFFFF", description="Subtitle text color (hex)")
+    subtitle_color: str = Field(
+        default=SubtitleConstants.DEFAULT_COLOR,
+        description="Subtitle text color (hex). See SubtitleConstants for default.",
+    )
     avatar_image: str | None = Field(default=None, description="Path to avatar image (future use)")
 
 
