@@ -22,6 +22,7 @@ class CompositionData:
     phrases: list[dict[str, Any]]
     slides: list[str]
     audio_files: list[str]
+    transition: dict[str, Any] | None = None
 
 
 def create_composition(
@@ -31,6 +32,7 @@ def create_composition(
     audio_paths: list[Path],
     fps: int = 30,
     resolution: tuple[int, int] = (1920, 1080),
+    transition: dict[str, Any] | None = None,
 ) -> CompositionData:
     """Create composition data for Remotion.
 
@@ -41,6 +43,7 @@ def create_composition(
         audio_paths: List of audio file paths.
         fps: Frames per second.
         resolution: Video resolution (width, height).
+        transition: Transition configuration (type, duration_frames, timing).
 
     Returns:
         Composition data object.
@@ -78,6 +81,7 @@ def create_composition(
         phrases=phrase_dicts,
         slides=[str(p) for p in slide_paths],
         audio_files=[str(p) for p in audio_paths],
+        transition=transition,
     )
 
 

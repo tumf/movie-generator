@@ -519,6 +519,12 @@ def generate(
         # Step 6: Create composition
         composition_path = output_dir / "composition.json"
         task = progress.add_task("Creating composition...", total=None)
+        # Prepare transition config
+        transition_config = {
+            "type": cfg.video.transition.type,
+            "duration_frames": cfg.video.transition.duration_frames,
+            "timing": cfg.video.transition.timing,
+        }
         composition = create_composition(
             title=script.title,
             phrases=all_phrases,
@@ -526,6 +532,7 @@ def generate(
             audio_paths=audio_paths,
             fps=cfg.style.fps,
             resolution=cfg.style.resolution,
+            transition=transition_config,
         )
         save_composition(composition, composition_path)
         progress.update(task, completed=True)
