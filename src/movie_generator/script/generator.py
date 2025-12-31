@@ -68,7 +68,7 @@ SCRIPT_GENERATION_PROMPT_JA = """
   - 例: "A slide with text 'データベース設計' in the center, modern design"
 
 【台本構成の必須ルール】
-- **必ず起承転結の構成で最後まで完成させてください**
+- 論理的な構成で最後まで完成させてください
 - 最低6セクション以上を目安に構成してください
 - 最後のセクションは必ず「まとめ」「結論」「次のステップ」のいずれかを含めてください
 - 途中で終わらせず、視聴者に結論を伝えてください
@@ -153,7 +153,7 @@ Create a video script from the following content that explains clearly to viewer
   - Example: "A slide with text 'Database Design' in the center, modern design"
 
 [Script Structure Rules - MANDATORY]
-- **Complete the script with proper introduction, development, and conclusion**
+- **Complete the script with a logical structure**
 - Create at least 6 sections minimum
 - The final section MUST include "Summary", "Conclusion", or "Next Steps"
 - Do NOT end the script abruptly. Always provide viewers with a conclusion
@@ -224,7 +224,7 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
   - 例: "A slide with text 'データベース設計' in the center, modern design"
 
 【台本構成の必須ルール】
-- **必ず起承転結の構成で最後まで完成させてください**
+- 論理的な構成で最後まで完成させてください
 - 最低6セクション以上を目安に構成してください
 - 最後のセクションは必ず「まとめ」「結論」「次のステップ」のいずれかを含めてください
 - 途中で終わらせず、視聴者に結論を伝えてください
@@ -329,7 +329,7 @@ Define each character's role freely (e.g., explainer, questioner, commentator, e
   - Example: "A slide with text 'Database Design' in the center, modern design"
 
 [Script Structure Rules - MANDATORY]
-- **Complete the script with proper introduction, development, and conclusion**
+- **Complete the script with a logical structure**
 - Create at least 6 sections minimum
 - The final section MUST include "Summary", "Conclusion", or "Next Steps"
 - Do NOT end the script abruptly. Always provide viewers with a conclusion
