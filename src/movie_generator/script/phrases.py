@@ -31,7 +31,7 @@ class Phrase:
         return text
 
 
-def split_into_phrases(text: str, max_chars: int = 50) -> list[Phrase]:
+def split_into_phrases(text: str, max_chars: int = 40) -> list[Phrase]:
     """Split text into phrases based on punctuation and length.
 
     Respects quotation marks and prioritizes natural break points.
