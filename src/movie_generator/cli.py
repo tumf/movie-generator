@@ -528,18 +528,17 @@ def generate(
         project_name = output_dir.name
         project = Project(project_name, output_dir.parent)
 
-        # Setup Remotion project if needed
+        # Setup Remotion project (creates or updates templates)
         remotion_dir = output_dir / "remotion"
-        if not remotion_dir.exists():
-            task = progress.add_task("Setting up Remotion project...", total=None)
-            # Temporarily override project_dir for setup_remotion_project
-            original_project_dir = project.project_dir
-            project.project_dir = output_dir
-            project.audio_dir = output_dir / "audio"
-            project.slides_dir = output_dir / "slides"
-            project.setup_remotion_project()
-            project.project_dir = original_project_dir
-            progress.update(task, completed=True)
+        task = progress.add_task("Setting up Remotion project...", total=None)
+        # Temporarily override project_dir for setup_remotion_project
+        original_project_dir = project.project_dir
+        project.project_dir = output_dir
+        project.audio_dir = output_dir / "audio"
+        project.slides_dir = output_dir / "slides"
+        project.setup_remotion_project()
+        project.project_dir = original_project_dir
+        progress.update(task, completed=True)
 
         # Render video with Remotion
         task = progress.add_task("Rendering video with Remotion...", total=None)

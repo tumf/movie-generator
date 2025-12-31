@@ -266,6 +266,22 @@ class Project:
         # Check if already initialized
         if remotion_dir.exists() and (remotion_dir / "package.json").exists():
             console.print(f"[yellow]Remotion project already exists at {remotion_dir}[/yellow]")
+            console.print("[cyan]Updating TypeScript templates...[/cyan]")
+            # Update templates even if project exists
+            src_dir = remotion_dir / "src"
+            src_dir.mkdir(exist_ok=True)
+
+            # Regenerate TypeScript components from latest templates
+            (src_dir / "VideoGenerator.tsx").write_text(
+                video.templates.get_video_generator_tsx(), encoding="utf-8"
+            )
+            (src_dir / "Root.tsx").write_text(video.templates.get_root_tsx(), encoding="utf-8")
+            (src_dir / "index.ts").write_text(video.templates.get_index_ts(), encoding="utf-8")
+            (remotion_dir / "remotion.config.ts").write_text(
+                video.templates.get_remotion_config_ts(), encoding="utf-8"
+            )
+
+            console.print("[green]✓ Templates updated[/green]")
             return remotion_dir
 
         # Verify pnpm is available

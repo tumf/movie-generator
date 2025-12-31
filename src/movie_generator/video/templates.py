@@ -207,16 +207,19 @@ const AudioSubtitleLayer: React.FC<{
             bottom: '30px',
             left: '50%',
             transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
             color: 'white',
             fontSize: '36px',
             fontFamily: 'Arial, sans-serif',
+            fontWeight: 'bold',
             padding: '20px 40px',
             borderRadius: '10px',
             width: '80%',
             textAlign: 'center',
             lineHeight: '1.4',
             opacity,
+            WebkitTextStroke: '1.5px #8FCF4F',
+            textShadow: '0 0 10px rgba(0, 0, 0, 0.8)',
           }}
         >
           {subtitle}
