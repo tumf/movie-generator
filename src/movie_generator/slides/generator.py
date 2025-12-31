@@ -12,6 +12,8 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
+from ..utils.filesystem import is_valid_file, skip_if_exists  # type: ignore[import]
+
 
 async def download_and_process_image(
     *,
@@ -42,8 +44,7 @@ async def download_and_process_image(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Skip if already exists
-    if output_path.exists() and output_path.stat().st_size > 0:
-        print(f"  ↷ Skipping existing image: {output_path.name}")
+    if skip_if_exists(output_path, "image"):
         return output_path
 
     # Download image
@@ -146,8 +147,7 @@ async def generate_slide(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Skip if slide already exists and is not empty
-    if output_path.exists() and output_path.stat().st_size > 0:
-        print(f"  ↷ Skipping existing slide: {output_path.name}")
+    if skip_if_exists(output_path, "slide"):
         return output_path
 
     # Create prompt for slide generation
@@ -306,7 +306,7 @@ async def generate_slides_for_sections(
         slide_paths.append(output_path)
 
         # Check if already exists
-        if output_path.exists() and output_path.stat().st_size > 0:
+        if is_valid_file(output_path):
             print(f"⊙ Slide {i:02d}/{len(sections) - 1} already exists: {output_path.name}")
         else:
             # Decide whether to download image or generate with AI

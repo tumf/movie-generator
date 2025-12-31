@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..script.phrases import Phrase
+from ..utils.filesystem import is_valid_file  # type: ignore[import]
 from .dictionary import PronunciationDictionary
 
 try:
@@ -255,7 +256,7 @@ class VoicevoxSynthesizer:
             output_path = output_dir / f"phrase_{phrase.original_index:04d}.wav"
 
             # Skip if audio file already exists and is not empty
-            if output_path.exists() and output_path.stat().st_size > 0:
+            if is_valid_file(output_path):
                 try:
                     # Read existing metadata
                     with wave.open(str(output_path), "rb") as wf:

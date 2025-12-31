@@ -19,6 +19,8 @@ from .project import Project
 from .script.generator import generate_script
 from .script.phrases import calculate_phrase_timings, split_into_phrases
 from .slides.generator import generate_slides_for_sections
+from .utils.filesystem import is_valid_file  # type: ignore[import]
+from .utils.text import clean_katakana_reading  # type: ignore[import]
 from .video.remotion_renderer import render_video_with_remotion
 
 console = Console()
@@ -215,7 +217,7 @@ def generate(
                     PronunciationEntry(
                         word=entry["word"],
                         # Remove spaces from reading (VOICEVOX requires katakana-only)
-                        reading=entry["reading"].replace(" ", "").replace("　", ""),
+                        reading=clean_katakana_reading(entry["reading"]),
                         word_type=entry.get("word_type", "COMMON_NOUN"),
                         accent=entry.get("accent", 0),
                     )
@@ -487,9 +489,7 @@ def generate(
                 progress.update(task, completed=True)
 
                 # Count successful slides
-                successful_count = sum(
-                    1 for p in slide_paths if p.exists() and p.stat().st_size > 0
-                )
+                successful_count = sum(1 for p in slide_paths if is_valid_file(p))
                 failed_count = len(slide_paths) - successful_count
                 new_slide_count = successful_count - existing_slide_count
 

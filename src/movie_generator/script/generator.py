@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from ..utils.text import clean_katakana_reading  # type: ignore[import]
+
 
 @dataclass
 class ScriptSection:
@@ -254,7 +256,7 @@ async def generate_script(
             PronunciationEntry(
                 word=entry["word"],
                 # Remove spaces from reading (VOICEVOX requires katakana-only)
-                reading=entry["reading"].replace(" ", "").replace("　", ""),
+                reading=clean_katakana_reading(entry["reading"]),
                 word_type=entry.get("word_type", "COMMON_NOUN"),
                 accent=entry.get("accent", 0),
             )

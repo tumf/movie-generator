@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..utils.text import clean_katakana_reading  # type: ignore[import]
+
 
 @dataclass
 class DictionaryEntry:
@@ -34,7 +36,7 @@ class PronunciationDictionary:
             entry: Dictionary entry to add.
         """
         # Ensure reading has no spaces (final validation)
-        entry.reading = entry.reading.replace(" ", "").replace("　", "")
+        entry.reading = clean_katakana_reading(entry.reading)
         self.entries[entry.surface] = entry
 
     def add_word(
@@ -55,10 +57,9 @@ class PronunciationDictionary:
             priority: Priority (1-10, higher = more priority).
         """
         # Remove spaces from reading (VOICEVOX requires katakana-only)
-        clean_reading = reading.replace(" ", "").replace("　", "")
         entry = DictionaryEntry(
             surface=word,
-            reading=clean_reading,
+            reading=clean_katakana_reading(reading),
             accent=accent,
             word_type=word_type,
             priority=priority,
@@ -74,16 +75,12 @@ class PronunciationDictionary:
         for surface, value in config_dict.items():
             if isinstance(value, str):
                 # Simple format: just reading
-                # Remove spaces from reading (VOICEVOX requires katakana-only)
-                reading = value.replace(" ", "").replace("　", "")
-                entry = DictionaryEntry(surface=surface, reading=reading)
+                entry = DictionaryEntry(surface=surface, reading=clean_katakana_reading(value))
             elif isinstance(value, dict):
                 # Full format with all fields
-                # Remove spaces from reading (VOICEVOX requires katakana-only)
-                reading = value["reading"].replace(" ", "").replace("　", "")
                 entry = DictionaryEntry(
                     surface=surface,
-                    reading=reading,
+                    reading=clean_katakana_reading(value["reading"]),
                     accent=value.get("accent", 0),
                     word_type=value.get("word_type", "PROPER_NOUN"),
                     priority=value.get("priority", 10),

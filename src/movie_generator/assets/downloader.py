@@ -6,6 +6,8 @@ from pathlib import Path
 
 import httpx
 
+from ..utils.filesystem import skip_if_exists  # type: ignore[import]
+
 
 def sanitize_filename(name: str) -> str:
     """Sanitize a product/company name to create a safe filename.
@@ -50,8 +52,7 @@ async def download_logo(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Skip if already exists
-    if output_path.exists() and output_path.stat().st_size > 0:
-        print(f"  ↷ Skipping existing logo: {output_path.name}")
+    if skip_if_exists(output_path, "logo"):
         return output_path
 
     print(f"  ↓ Downloading logo: {url}")
