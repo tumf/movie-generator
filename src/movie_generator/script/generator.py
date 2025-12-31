@@ -429,6 +429,8 @@ async def generate_script(
             content=content,
             images_section=images_section,
         )
+        # Add critical reminder at the end
+        prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
     else:
         prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
         prompt = prompt_template.format(
@@ -439,15 +441,28 @@ async def generate_script(
             content=content,
             images_section=images_section,
         )
+        # Add critical reminder at the end
+        prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
 
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
+    # System prompt to enforce reading field generation
+    system_prompt = (
+        "You are a script generator for video narration. "
+        "CRITICAL REQUIREMENT: Every single narration MUST include a 'reading' field in katakana. "
+        "This is not optional. Missing 'reading' field will cause system failure. "
+        "Always generate both 'text' and 'reading' for each narration."
+    )
+
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
         "response_format": {"type": "json_object"},
     }
 

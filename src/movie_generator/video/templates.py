@@ -56,34 +56,24 @@ export interface VideoGeneratorProps {
   phrases: PhraseData[];
 }
 
-// Calculate timing for each phrase with transition overlap adjustment
-const getScenesWithTiming = (phrases: PhraseData[], transitionDurationFrames: number = 0) => {
+// Calculate timing for each phrase
+// Note: Audio sequences use continuous timing (no adjustment needed).
+// Transitions create visual overlap between slides, but audio plays continuously.
+// The total video duration accounts for transition overlaps in calculateTotalFrames().
+const getScenesWithTiming = (phrases: PhraseData[]) => {
   let currentFrame = 0;
-  let cumulativeTransitionOverlap = 0;
   const fps = 30;
-  let previousSlideFile: string | undefined = undefined;
 
   return phrases.map((phrase, index) => {
     const durationFrames = Math.round(phrase.duration * fps);
-
-    // Check if slide changed (transition occurred)
-    if (index > 0 && phrase.slideFile !== previousSlideFile) {
-      // A transition occurred before this phrase, accumulate the overlap
-      cumulativeTransitionOverlap += transitionDurationFrames;
-    }
-    previousSlideFile = phrase.slideFile;
-
-    // Adjust startFrame by subtracting cumulative transition overlap
-    const adjustedStartFrame = currentFrame - cumulativeTransitionOverlap;
-
     const scene = {
       id: `phrase-${index}`,
       audioFile: phrase.audioFile,
       subtitle: phrase.text,
       slideFile: phrase.slideFile,
-      startFrame: adjustedStartFrame,
+      startFrame: currentFrame,
       durationFrames,
-      endFrame: adjustedStartFrame + durationFrames,
+      endFrame: currentFrame + durationFrames,
       personaId: phrase.personaId,
       personaName: phrase.personaName,
       subtitleColor: phrase.subtitleColor,
@@ -253,6 +243,8 @@ const AudioSubtitleLayer: React.FC<{
 };
 
 export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
+  const scenes = getScenesWithTiming(phrases);
+  const slideGroups = getSlideGroups(scenes);
   const { fps } = useVideoConfig();
 
   // Get transition configuration from composition data
@@ -265,10 +257,6 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
 
   // Calculate actual transition duration for slide sequences
   const transitionDurationFrames = timing.getDurationInFrames({ fps });
-
-  // Calculate scenes with transition overlap adjustment
-  const scenes = getScenesWithTiming(phrases, transitionDurationFrames);
-  const slideGroups = getSlideGroups(scenes);
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#1a1a1a' }}>
@@ -309,25 +297,17 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
 };
 
 // Calculate total frames for the composition
+// The total duration must match the audio duration (not the slide TransitionSeries duration)
+// because audio plays continuously while slides may overlap during transitions.
 export const calculateTotalFrames = (phrases: PhraseData[]): number => {
   const fps = 30;
+  const scenes = getScenesWithTiming(phrases);
 
-  // Get transition configuration
-  const transitionTiming = (compositionData as any).transition?.timing || 'linear';
-  const transitionDuration = (compositionData as any).transition?.duration_frames || 15;
-  const timing = getTransitionTiming(transitionTiming, transitionDuration);
-  const transitionDurationFrames = timing.getDurationInFrames({ fps });
-
-  // Calculate scenes with transition overlap adjustment
-  const scenes = getScenesWithTiming(phrases, transitionDurationFrames);
-  const slideGroups = getSlideGroups(scenes);
-
-  // Calculate total: sum of all slide durations minus transition overlaps
-  const totalSlideFrames = slideGroups.reduce((sum, group) => sum + group.durationFrames, 0);
-  const numTransitions = Math.max(0, slideGroups.length - 1);
-  const totalTransitionOverlap = numTransitions * transitionDurationFrames;
-
-  return totalSlideFrames - totalTransitionOverlap;
+  // Return the total audio duration (last scene's end frame)
+  // This ensures all audio plays completely, even though slides may
+  // visually overlap during transitions.
+  if (scenes.length === 0) return 0;
+  return scenes[scenes.length - 1].endFrame;
 };
 """
 

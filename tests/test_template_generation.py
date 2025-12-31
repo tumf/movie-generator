@@ -62,14 +62,16 @@ def test_template_reads_config_from_composition_json():
     assert "compositionData as any).transition?.timing" in template
 
 
-def test_calculate_total_frames_considers_transitions():
-    """Test that calculateTotalFrames accounts for transition overlaps."""
+def test_calculate_total_frames_uses_audio_duration():
+    """Test that calculateTotalFrames uses audio duration for complete playback."""
     template = get_video_generator_tsx()
 
-    # Check that the function considers transitions
-    assert "const numTransitions = Math.max(0, slideGroups.length - 1)" in template
-    assert "const totalTransitionOverlap = numTransitions * transitionDurationFrames" in template
-    assert "return totalSlideFrames - totalTransitionOverlap" in template
+    # Check that the function uses the last scene's end frame (audio duration)
+    # This ensures all audio plays completely, even when slides overlap during transitions
+    assert "const scenes = getScenesWithTiming(phrases)" in template
+    assert "return scenes[scenes.length - 1].endFrame" in template
+    # Verify the comment explains the reasoning
+    assert "total duration must match the audio duration" in template
 
 
 def test_template_parameters_are_documented():
