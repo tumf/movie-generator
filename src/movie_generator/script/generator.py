@@ -482,16 +482,27 @@ async def generate_script(
                     narrations.append(Narration(text=n, reading=n))
                 else:
                     # Object format with required reading field
-                    reading = n.get("reading", n["text"])  # Fallback to text if reading missing
+                    if "reading" not in n or not n["reading"]:
+                        raise ValueError(
+                            f"Missing or empty 'reading' field in narration: {n.get('text', 'N/A')[:50]}...\n"
+                            f"The LLM did not generate the required 'reading' field. "
+                            f"This is a critical error in script generation."
+                        )
                     narrations.append(
-                        Narration(text=n["text"], reading=reading, persona_id=n.get("persona_id"))
+                        Narration(
+                            text=n["text"], reading=n["reading"], persona_id=n.get("persona_id")
+                        )
                     )
         elif "dialogues" in section and section["dialogues"]:
             # Legacy dialogue format (backward compatibility)
             for d in section["dialogues"]:
-                reading = d.get("reading", d["narration"])  # Fallback to narration text
+                if "reading" not in d or not d["reading"]:
+                    raise ValueError(
+                        f"Missing or empty 'reading' field in dialogue: {d.get('narration', 'N/A')[:50]}...\n"
+                        f"The LLM did not generate the required 'reading' field."
+                    )
                 narrations.append(
-                    Narration(text=d["narration"], reading=reading, persona_id=d["persona_id"])
+                    Narration(text=d["narration"], reading=d["reading"], persona_id=d["persona_id"])
                 )
         elif "narration" in section:
             # Legacy single narration format (backward compatibility)
