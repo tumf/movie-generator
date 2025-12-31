@@ -70,6 +70,31 @@ export VOICEVOX_ONNXRUNTIME_PATH="..."    # VOICEVOX ONNX runtime path
 - **Type Checker**: mypy (strict mode)
 - **Testing**: pytest
 
+### Pydantic Model Serialization
+
+**ALWAYS use `model_dump()` to serialize Pydantic models.** Never manually construct dictionaries.
+
+**Bad** (manual, error-prone):
+```python
+# Easy to forget fields - causes silent data loss!
+narr_dict = {"text": n.text, "reading": n.reading}
+if n.persona_id:
+    narr_dict["persona_id"] = n.persona_id
+```
+
+**Good** (automatic, safe):
+```python
+# All fields included automatically
+narr_dict = n.model_dump(exclude_none=True)
+```
+
+**Why this matters:**
+- **Past incident**: Manual serialization forgot `reading` field, causing all pronunciation data to be lost
+- **Root cause**: Hand-coded dictionary construction doesn't track model changes
+- **Solution**: Use Pydantic's built-in serialization - it's type-safe and automatic
+
+**Key principle**: Don't reinvent what the framework provides. Use `model_dump()` for serialization.
+
 ### Naming Conventions
 
 | Type | Convention | Example |
