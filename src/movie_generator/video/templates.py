@@ -232,9 +232,9 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
   const { fps } = useVideoConfig();
 
   // Get transition configuration from composition data
-  const transitionType = (compositionData as any).transitionType || 'fade';
-  const transitionDuration = (compositionData as any).transitionDuration || 15;
-  const transitionTiming = (compositionData as any).transitionTiming || 'linear';
+  const transitionType = (compositionData as any).transition?.type || 'fade';
+  const transitionDuration = (compositionData as any).transition?.duration_frames || 15;
+  const transitionTiming = (compositionData as any).transition?.timing || 'linear';
 
   const presentation = getTransitionPresentation(transitionType);
   const timing = getTransitionTiming(transitionTiming, transitionDuration);
@@ -286,8 +286,8 @@ export const calculateTotalFrames = (phrases: PhraseData[]): number => {
   const slideGroups = getSlideGroups(scenes);
   
   // Get transition configuration
-  const transitionTiming = (compositionData as any).transitionTiming || 'linear';
-  const transitionDuration = (compositionData as any).transitionDuration || 15;
+  const transitionTiming = (compositionData as any).transition?.timing || 'linear';
+  const transitionDuration = (compositionData as any).transition?.duration_frames || 15;
   const timing = getTransitionTiming(transitionTiming, transitionDuration);
   const transitionDurationFrames = timing.getDurationInFrames({ fps });
   
