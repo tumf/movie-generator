@@ -214,23 +214,23 @@ JSON形式で以下を出力してください：
     {{
       "title": "セクションタイトル",
       "narrations": [
-        {
+        {{
           "persona_id": "キャラクターID（例: zundamon, metan）",
           "text": "セリフ",
           "reading": "セリフのカタカナ読み"
-        }
+        }}
       ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
       "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
-    }
+    }}
   ],
   "pronunciations": [
-    {
+    {{
       "word": "ENGINE",
       "reading": "エンジン",
       "word_type": "COMMON_NOUN",
       "accent": 1
-    }
+    }}
   ]
 }}
 
@@ -297,15 +297,15 @@ Output in JSON format:
     {{
       "title": "Section Title",
       "narrations": [
-        {
+        {{
           "persona_id": "Character ID (e.g., zundamon, metan)",
           "text": "Dialogue line",
           "reading": "Katakana reading for pronunciation"
-        }
+        }}
       ],
       "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
       "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
-    }
+    }}
   ],
   "pronunciations": []
 }}
