@@ -518,59 +518,51 @@ def generate(
 
         # Step 6: Create composition
         composition_path = output_dir / "composition.json"
-        if composition_path.exists():
-            console.print(
-                f"[yellow]⊙ Composition already exists, skipping: {composition_path}[/yellow]"
-            )
-        else:
-            task = progress.add_task("Creating composition...", total=None)
-            composition = create_composition(
-                title=script.title,
-                phrases=all_phrases,
-                slide_paths=slide_paths,
-                audio_paths=audio_paths,
-                fps=cfg.style.fps,
-                resolution=cfg.style.resolution,
-            )
-            save_composition(composition, composition_path)
-            progress.update(task, completed=True)
-            console.print(f"✓ Created composition: {composition_path}")
+        task = progress.add_task("Creating composition...", total=None)
+        composition = create_composition(
+            title=script.title,
+            phrases=all_phrases,
+            slide_paths=slide_paths,
+            audio_paths=audio_paths,
+            fps=cfg.style.fps,
+            resolution=cfg.style.resolution,
+        )
+        save_composition(composition, composition_path)
+        progress.update(task, completed=True)
+        console.print(f"✓ Created composition: {composition_path}")
 
         # Step 7: Setup Remotion project and render video
         video_path = output_dir / "output.mp4"
-        if video_path.exists():
-            console.print(f"[yellow]⊙ Video already exists, skipping: {video_path}[/yellow]")
-        else:
-            # Create/load project
-            project_name = output_dir.name
-            project = Project(project_name, output_dir.parent)
+        # Create/load project
+        project_name = output_dir.name
+        project = Project(project_name, output_dir.parent)
 
-            # Setup Remotion project if needed
-            remotion_dir = output_dir / "remotion"
-            if not remotion_dir.exists():
-                task = progress.add_task("Setting up Remotion project...", total=None)
-                # Temporarily override project_dir for setup_remotion_project
-                original_project_dir = project.project_dir
-                project.project_dir = output_dir
-                project.audio_dir = output_dir / "audio"
-                project.slides_dir = output_dir / "slides"
-                project.setup_remotion_project()
-                project.project_dir = original_project_dir
-                progress.update(task, completed=True)
-
-            # Render video with Remotion
-            task = progress.add_task("Rendering video with Remotion...", total=None)
-            render_video_with_remotion(
-                phrases=all_phrases,
-                audio_paths=audio_paths,
-                slide_paths=slide_paths,
-                output_path=video_path,
-                remotion_root=remotion_dir,
-                project_name=project_name,
-                show_progress=show_progress,
-            )
+        # Setup Remotion project if needed
+        remotion_dir = output_dir / "remotion"
+        if not remotion_dir.exists():
+            task = progress.add_task("Setting up Remotion project...", total=None)
+            # Temporarily override project_dir for setup_remotion_project
+            original_project_dir = project.project_dir
+            project.project_dir = output_dir
+            project.audio_dir = output_dir / "audio"
+            project.slides_dir = output_dir / "slides"
+            project.setup_remotion_project()
+            project.project_dir = original_project_dir
             progress.update(task, completed=True)
-            console.print(f"✓ Video ready: {video_path}")
+
+        # Render video with Remotion
+        task = progress.add_task("Rendering video with Remotion...", total=None)
+        render_video_with_remotion(
+            phrases=all_phrases,
+            audio_paths=audio_paths,
+            slide_paths=slide_paths,
+            output_path=video_path,
+            remotion_root=remotion_dir,
+            project_name=project_name,
+            show_progress=show_progress,
+        )
+        progress.update(task, completed=True)
+        console.print(f"✓ Video ready: {video_path}")
 
     console.print("\n[bold green]✓ Video generation complete![/bold green]")
 

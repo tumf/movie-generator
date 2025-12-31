@@ -216,11 +216,6 @@ def render_video_with_remotion(
         FileNotFoundError: If Remotion is not installed.
         RuntimeError: If video rendering fails.
     """
-    # Skip if video already exists and is not empty
-    if output_path.exists() and output_path.stat().st_size > 0:
-        console.print(f"[yellow]↷ Skipping existing video: {output_path.name}[/yellow]")
-        return
-
     # Ensure pnpm dependencies are installed
     ensure_pnpm_dependencies(remotion_root)
 
