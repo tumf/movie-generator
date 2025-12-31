@@ -326,12 +326,10 @@ def generate(
             images_metadata = None
             if parsed.images:
                 images_metadata = [
-                    {
-                        "src": img.src,
-                        "alt": img.alt,
-                        "title": img.title,
-                        "aria_describedby": img.aria_describedby,
-                    }
+                    img.model_dump(
+                        include={"src", "alt", "title", "aria_describedby"},
+                        exclude_none=True,
+                    )
                     for img in parsed.images
                 ]
                 console.print(f"  Found {len(parsed.images)} usable images in content")
@@ -342,7 +340,7 @@ def generate(
             personas_for_script = None
             if cfg.personas:
                 personas_for_script = [
-                    {"id": p.id, "name": p.name, "character": p.character} for p in cfg.personas
+                    p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
                 ]
 
             script = asyncio.run(
@@ -511,13 +509,7 @@ def generate(
                         script_dict = yaml.safe_load(f)
 
                     script_dict["pronunciations"] = [
-                        {
-                            "word": entry.word,
-                            "reading": entry.reading,
-                            "word_type": entry.word_type,
-                            "accent": entry.accent,
-                        }
-                        for entry in script.pronunciations
+                        entry.model_dump() for entry in script.pronunciations
                     ]
 
                     with open(script_path, "w", encoding="utf-8") as f:
@@ -657,13 +649,7 @@ def generate(
                         script_dict = yaml.safe_load(f)
 
                     script_dict["pronunciations"] = [
-                        {
-                            "word": entry.word,
-                            "reading": entry.reading,
-                            "word_type": entry.word_type,
-                            "accent": entry.accent,
-                        }
-                        for entry in script.pronunciations
+                        entry.model_dump() for entry in script.pronunciations
                     ]
 
                     with open(script_path, "w", encoding="utf-8") as f:
@@ -786,11 +772,7 @@ def generate(
             slide_paths = []
 
         # Step 6: Prepare transition config for Remotion
-        transition_config = {
-            "type": cfg.video.transition.type,
-            "duration_frames": cfg.video.transition.duration_frames,
-            "timing": cfg.video.transition.timing,
-        }
+        transition_config = cfg.video.transition.model_dump()
 
         # Step 7: Setup Remotion project and render video
         # Generate output filename based on scene range and language
@@ -831,8 +813,7 @@ def generate(
         personas_for_render = None
         if cfg.personas:
             personas_for_render = [
-                {"id": p.id, "name": p.name, "subtitle_color": p.subtitle_color}
-                for p in cfg.personas
+                p.model_dump(include={"id", "name", "subtitle_color"}) for p in cfg.personas
             ]
 
         render_video_with_remotion(

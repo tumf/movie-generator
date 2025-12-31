@@ -48,7 +48,8 @@ def test_create_remotion_input_without_slides():
     assert len(result) == 1
     assert result[0]["text"] == "First phrase"
     assert result[0]["audioFile"] == "audio/001.wav"
-    assert result[0]["slideFile"] is None
+    # slideFile should not be in the dict when it's None (exclude_none=True)
+    assert "slideFile" not in result[0]
 
 
 @pytest.mark.skip(reason="Requires Remotion installation and valid media files")

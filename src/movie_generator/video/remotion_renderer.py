@@ -14,17 +14,9 @@ from rich.console import Console
 
 from ..exceptions import RenderingError
 from ..script.phrases import Phrase
+from .renderer import CompositionPhrase
 
 console = Console()
-
-
-class RemotionPhrase(BaseModel):
-    """Phrase data for Remotion composition."""
-
-    text: str
-    audioFile: str
-    slideFile: str | None
-    duration: float
 
 
 def create_remotion_input(
@@ -42,22 +34,23 @@ def create_remotion_input(
     Returns:
         List of phrase dictionaries for Remotion.
     """
-    remotion_phrases = []
+    composition_phrases = []
 
     for i, phrase in enumerate(phrases):
         audio_file = str(audio_paths[i]) if i < len(audio_paths) else ""
         slide_file = str(slide_paths[i]) if slide_paths and i < len(slide_paths) else None
 
-        remotion_phrases.append(
-            {
-                "text": phrase.text,
-                "audioFile": audio_file,
-                "slideFile": slide_file,
-                "duration": phrase.duration,
-            }
+        composition_phrases.append(
+            CompositionPhrase(
+                text=phrase.text,
+                duration=phrase.duration,
+                start_time=phrase.start_time,
+                audioFile=audio_file,
+                slideFile=slide_file,
+            )
         )
 
-    return remotion_phrases
+    return [p.model_dump(exclude_none=True) for p in composition_phrases]
 
 
 def _build_slide_map(slide_paths: list[Path]) -> dict[int, str]:
@@ -165,22 +158,29 @@ def update_composition_json(
         for persona in personas:
             persona_map[persona["id"]] = persona
 
+    # Create CompositionPhrase objects
+    composition_phrases = []
+    for phrase in phrases:
+        persona_fields = _get_persona_fields(phrase, persona_map)
+        composition_phrases.append(
+            CompositionPhrase(
+                text=phrase.get_subtitle_text(),
+                duration=phrase.duration,
+                start_time=phrase.start_time,
+                audioFile=f"audio/phrase_{phrase.original_index:04d}.wav",
+                slideFile=slide_map.get(phrase.section_index),
+                persona_id=persona_fields.get("personaId"),
+                persona_name=persona_fields.get("personaName"),
+                subtitle_color=persona_fields.get("subtitleColor"),
+            )
+        )
+
     composition_data = {
         "title": project_name,
         "fps": 30,
         "width": 1920,
         "height": 1080,
-        "phrases": [
-            {
-                "text": phrase.get_subtitle_text(),
-                "audioFile": f"audio/phrase_{phrase.original_index:04d}.wav",
-                "slideFile": slide_map.get(phrase.section_index),
-                "duration": phrase.duration,
-                # Add persona information if available
-                **_get_persona_fields(phrase, persona_map),
-            }
-            for i, phrase in enumerate(phrases)
-        ],
+        "phrases": [p.model_dump(exclude_none=True) for p in composition_phrases],
     }
 
     # Add transition config if provided

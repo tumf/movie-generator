@@ -12,6 +12,19 @@ from pydantic import BaseModel
 from ..script.phrases import Phrase
 
 
+class CompositionPhrase(BaseModel):
+    """A phrase in the composition with audio and slide information."""
+
+    text: str
+    duration: float
+    start_time: float
+    audioFile: str
+    slideFile: str | None = None
+    persona_id: str | None = None
+    persona_name: str | None = None
+    subtitle_color: str | None = None
+
+
 class CompositionData(BaseModel):
     """Data for Remotion composition."""
 
@@ -19,7 +32,7 @@ class CompositionData(BaseModel):
     fps: int
     width: int
     height: int
-    phrases: list[dict[str, Any]]
+    phrases: list[CompositionPhrase]
     slides: list[str]
     audio_files: list[str]
     transition: dict[str, Any] | None = None
@@ -62,14 +75,14 @@ def create_composition(
                 pass
 
     # Create phrase data with slide files
-    phrase_dicts = [
-        {
-            "text": p.text,
-            "duration": p.duration,
-            "start_time": p.start_time,
-            "audioFile": f"audio/phrase_{p.original_index:04d}.wav",
-            "slideFile": slide_map.get(p.section_index),
-        }
+    composition_phrases = [
+        CompositionPhrase(
+            text=p.text,
+            duration=p.duration,
+            start_time=p.start_time,
+            audioFile=f"audio/phrase_{p.original_index:04d}.wav",
+            slideFile=slide_map.get(p.section_index),
+        )
         for p in phrases
     ]
 
@@ -78,7 +91,7 @@ def create_composition(
         fps=fps,
         width=resolution[0],
         height=resolution[1],
-        phrases=phrase_dicts,
+        phrases=composition_phrases,
         slides=[str(p) for p in slide_paths],
         audio_files=[str(p) for p in audio_paths],
         transition=transition,

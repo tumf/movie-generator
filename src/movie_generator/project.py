@@ -14,6 +14,7 @@ import yaml
 from rich.console import Console
 
 from .config import Config
+from .script.phrases import Phrase
 
 console = Console()
 
@@ -190,11 +191,11 @@ class Project:
         with self.config_file.open("w", encoding="utf-8") as f:
             yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False)
 
-    def load_phrases(self) -> list[dict[str, Any]]:
+    def load_phrases(self) -> list[Phrase]:
         """Load phrases data.
 
         Returns:
-            List of phrase dictionaries.
+            List of Phrase objects.
 
         Raises:
             FileNotFoundError: If phrases file doesn't exist.
@@ -203,16 +204,18 @@ class Project:
             raise FileNotFoundError(f"Phrases file not found: {self.phrases_file}")
 
         with self.phrases_file.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            phrases_data = json.load(f)
+            return [Phrase.model_validate(p) for p in phrases_data]
 
-    def save_phrases(self, phrases: list[dict[str, Any]]) -> None:
+    def save_phrases(self, phrases: list[Phrase]) -> None:
         """Save phrases data.
 
         Args:
-            phrases: List of phrase dictionaries.
+            phrases: List of Phrase objects.
         """
         with self.phrases_file.open("w", encoding="utf-8") as f:
-            json.dump(phrases, f, ensure_ascii=False, indent=2)
+            phrases_data = [p.model_dump() for p in phrases]
+            json.dump(phrases_data, f, ensure_ascii=False, indent=2)
 
     def copy_to_remotion(self, remotion_dir: Path | None = None) -> None:
         """Copy project assets to Remotion public directory.
@@ -355,18 +358,14 @@ class Project:
         # Load project config to get transition settings
         try:
             project_config = self.load_config()
-            transition_config = {
-                "type": project_config.video.transition.type,
-                "duration_frames": project_config.video.transition.duration_frames,
-                "timing": project_config.video.transition.timing,
-            }
+            transition_config = project_config.video.transition.model_dump()
         except Exception:
             # Fallback to defaults if config loading fails
-            transition_config = {
-                "type": "fade",
-                "duration_frames": 15,
-                "timing": "linear",
-            }
+            from .config import TransitionConfig
+
+            transition_config = TransitionConfig(
+                type="fade", duration_frames=15, timing="linear"
+            ).model_dump()
 
         # Create placeholder composition.json
         composition_data = {
@@ -400,18 +399,14 @@ class Project:
         # Load project config to get transition settings
         try:
             project_config = self.load_config()
-            transition_config = {
-                "type": project_config.video.transition.type,
-                "duration_frames": project_config.video.transition.duration_frames,
-                "timing": project_config.video.transition.timing,
-            }
+            transition_config = project_config.video.transition.model_dump()
         except Exception:
             # Fallback to defaults if config loading fails
-            transition_config = {
-                "type": "fade",
-                "duration_frames": 15,
-                "timing": "linear",
-            }
+            from .config import TransitionConfig
+
+            transition_config = TransitionConfig(
+                type="fade", duration_frames=15, timing="linear"
+            ).model_dump()
 
         # Build composition data
         composition_data = {
