@@ -251,3 +251,100 @@ The `openspec archive` command automatically:
 3. **Use `section_index`** - For mapping phrases to slides
 4. **Regenerate composition** - Always regenerate `composition.json` for scene ranges
 5. **Test with scene ranges** - Verify `--scenes N`, `--scenes N-M`, `--scenes N-`
+
+## LLM Prompt Management
+
+### Critical Rule: Complete Prompt Coverage
+
+When adding features that require LLM output changes, **ALL prompt variants MUST be updated**.
+
+**Background**: The script generator has 4 prompt templates:
+- `SCRIPT_GENERATION_PROMPT_JA` (single-speaker, Japanese)
+- `SCRIPT_GENERATION_PROMPT_EN` (single-speaker, English)
+- `SCRIPT_GENERATION_PROMPT_DIALOGUE_JA` (multi-speaker, Japanese)
+- `SCRIPT_GENERATION_PROMPT_DIALOGUE_EN` (multi-speaker, English)
+
+### Why This Matters
+
+**Past Incident**: When adding the `reading` field feature:
+- ✅ Updated single-speaker prompts (JA/EN) with detailed instructions
+- ❌ Updated dialogue prompts (JA/EN) with only example format, no detailed instructions
+- **Result**: Generated scripts in dialogue mode were missing `reading` fields
+
+**Root Cause Analysis**:
+1. **Incomplete requirements sweep**: Focused on "adding the field" rather than "ensuring LLM generates it correctly"
+2. **Lack of systematic verification**: Did not check if all prompts had equivalent instructions
+3. **Insufficient testing**: Tests used mocked data, not actual LLM calls
+4. **No prompt quality checklist**: No verification that instructions were detailed enough
+
+### Prevention Strategy
+
+When modifying LLM prompts or adding fields to LLM-generated output:
+
+#### 1. Identify All Prompt Variants
+```bash
+# Find all prompt constants
+grep -n "PROMPT.*=" src/movie_generator/script/generator.py
+```
+
+#### 2. Update Checklist
+For each prompt variant, verify:
+- [ ] Field is included in output format example
+- [ ] Detailed instructions explain how to generate the field
+- [ ] Edge cases and special rules are documented (e.g., particle pronunciation)
+- [ ] Examples demonstrate correct output format
+- [ ] Required vs optional is explicitly stated
+
+#### 3. Verification Requirements
+- [ ] Read all prompt templates end-to-end
+- [ ] Compare instruction completeness across variants
+- [ ] Ensure language-specific nuances are covered (e.g., katakana vs romaji)
+- [ ] Test with actual LLM calls, not just mocked data
+
+#### 4. Testing Strategy
+```python
+# Bad: Mock test (doesn't catch prompt issues)
+def test_reading_field():
+    data = {"text": "test", "reading": "テスト"}
+    assert Narration.model_validate(data)
+
+# Good: Integration test with LLM
+@pytest.mark.integration
+async def test_dialogue_prompt_generates_reading():
+    script = await generate_script(
+        content="sample",
+        personas=[...],
+        language="ja"
+    )
+    for section in script.sections:
+        for narration in section.narrations:
+            assert narration.reading, "LLM must generate reading field"
+            assert narration.reading != narration.text, "Reading should be katakana"
+```
+
+#### 5. Documentation Requirements
+When adding LLM-dependent features, document in code:
+```python
+# PROMPT COVERAGE CHECKLIST:
+# - SCRIPT_GENERATION_PROMPT_JA: ✓ Updated with reading field instructions
+# - SCRIPT_GENERATION_PROMPT_EN: ✓ Updated with reading field instructions
+# - SCRIPT_GENERATION_PROMPT_DIALOGUE_JA: ✓ Updated with reading field instructions
+# - SCRIPT_GENERATION_PROMPT_DIALOGUE_EN: ✓ Updated with reading field instructions
+```
+
+### Quick Verification Script
+
+Before committing prompt changes:
+```bash
+# Verify all prompts mention new fields
+NEW_FIELD="reading"
+for prompt in JA EN DIALOGUE_JA DIALOGUE_EN; do
+  echo "Checking SCRIPT_GENERATION_PROMPT_$prompt..."
+  grep -A50 "SCRIPT_GENERATION_PROMPT_$prompt" src/movie_generator/script/generator.py | \
+    grep -q "$NEW_FIELD" && echo "✓ Found" || echo "✗ MISSING"
+done
+```
+
+### Summary
+
+**Golden Rule**: If you add a field to the LLM output schema, you must add explicit generation instructions to ALL prompt variants. Half-updated prompts lead to silent failures in production.
