@@ -362,37 +362,9 @@ def generate(
             console.print(f"✓ Generated script: {script.title}")
             console.print(f"  Sections: {len(script.sections)}")
 
-            # Save script to YAML
-            script_dict = {
-                "title": script.title,
-                "description": script.description,
-                "sections": [],
-            }
-            for section in script.sections:
-                section_dict = {
-                    "title": section.title,
-                    "slide_prompt": section.slide_prompt,
-                    "source_image_url": section.source_image_url,
-                }
-                # Save narrations in unified format
-                section_dict["narrations"] = []
-                for n in section.narrations:
-                    narr_dict = {"text": n.text, "reading": n.reading}
-                    if n.persona_id:
-                        narr_dict["persona_id"] = n.persona_id
-                    section_dict["narrations"].append(narr_dict)
-                script_dict["sections"].append(section_dict)
-            # Add pronunciations if available
-            if script.pronunciations:
-                script_dict["pronunciations"] = [
-                    {
-                        "word": entry.word,
-                        "reading": entry.reading,
-                        "word_type": entry.word_type,
-                        "accent": entry.accent,
-                    }
-                    for entry in script.pronunciations
-                ]
+            # Save script to YAML using Pydantic's model_dump()
+            # This ensures all fields are included automatically
+            script_dict = script.model_dump(exclude_none=True)
             with open(script_path, "w", encoding="utf-8") as f:
                 yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
             console.print(f"✓ Script saved: {script_path}")
