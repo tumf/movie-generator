@@ -325,8 +325,8 @@ const CharacterLayer: React.FC<{
       style={{
         position: 'absolute',
         ...position,
-        width: '300px',
-        height: '300px',
+        width: '600px',
+        height: '600px',
         zIndex: 10,
         transform: transforms || undefined,
       }}
