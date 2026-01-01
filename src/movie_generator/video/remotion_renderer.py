@@ -129,6 +129,105 @@ def ensure_pnpm_dependencies(remotion_root: Path) -> None:
         raise RenderingError("pnpm install failed") from e
 
 
+def ensure_chrome_headless_shell(remotion_root: Path) -> None:
+    """Ensure Chrome Headless Shell is downloaded for Remotion rendering.
+
+    Uses a global cache directory to share the browser across all projects,
+    avoiding redundant downloads.
+
+    Args:
+        remotion_root: Path to Remotion project root directory.
+
+    Raises:
+        RuntimeError: If browser download fails.
+    """
+    # Global cache directory for Chrome Headless Shell
+    # Place it at the project root level (parent of output directories)
+    project_root = Path.cwd()
+    global_cache = project_root / ".cache" / "remotion" / "chrome-headless-shell"
+
+    # Target path in this project's node_modules
+    local_remotion_dir = remotion_root / "node_modules" / ".remotion"
+    local_browser_path = local_remotion_dir / "chrome-headless-shell"
+
+    # If local path already exists (file or symlink), we're done
+    if local_browser_path.exists() or local_browser_path.is_symlink():
+        return
+
+    # Ensure local .remotion directory exists
+    local_remotion_dir.mkdir(parents=True, exist_ok=True)
+
+    # If global cache doesn't exist, download it first
+    if not global_cache.exists():
+        console.print("[cyan]Downloading Chrome Headless Shell (shared cache)...[/cyan]")
+
+        # Create a temporary project to download the browser
+        temp_download_dir = project_root / ".cache" / "remotion" / "_temp_download"
+        temp_download_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            # Create minimal package.json for download
+            temp_package_json = temp_download_dir / "package.json"
+            temp_package_json.write_text('{"dependencies": {"@remotion/cli": "^4.0.0"}}')
+
+            # Install remotion CLI in temp directory
+            subprocess.run(
+                ["pnpm", "install", "--no-frozen-lockfile"],
+                cwd=temp_download_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            # Download browser
+            subprocess.run(
+                ["npx", "remotion", "browser", "ensure"],
+                cwd=temp_download_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minutes timeout for download
+            )
+
+            # Move downloaded browser to global cache
+            temp_browser = (
+                temp_download_dir / "node_modules" / ".remotion" / "chrome-headless-shell"
+            )
+            if temp_browser.exists():
+                global_cache.parent.mkdir(parents=True, exist_ok=True)
+                import shutil
+
+                shutil.move(str(temp_browser), str(global_cache))
+                console.print("[green]✓ Chrome Headless Shell downloaded to shared cache[/green]")
+            else:
+                raise RenderingError("Browser download succeeded but files not found")
+
+        except subprocess.TimeoutExpired as e:
+            console.print("[red]Browser download timed out (5 minutes)[/red]")
+            raise RenderingError("Chrome Headless Shell download timed out") from e
+        except subprocess.CalledProcessError as e:
+            console.print("[red]Failed to download Chrome Headless Shell:[/red]")
+            console.print(f"[red]{e.stderr}[/red]")
+            raise RenderingError("Chrome Headless Shell download failed") from e
+        finally:
+            # Clean up temp directory
+            import shutil
+
+            if temp_download_dir.exists():
+                shutil.rmtree(temp_download_dir, ignore_errors=True)
+
+    # Create symlink from local path to global cache
+    try:
+        local_browser_path.symlink_to(global_cache, target_is_directory=True)
+        console.print("[green]✓ Chrome Headless Shell linked from shared cache[/green]")
+    except OSError as e:
+        console.print(f"[yellow]Warning: Failed to create symlink: {e}[/yellow]")
+        console.print("[yellow]Falling back to copying browser files...[/yellow]")
+        import shutil
+
+        shutil.copytree(global_cache, local_browser_path)
+
+
 def update_composition_json(
     remotion_root: Path,
     phrases: list[Phrase],
@@ -333,6 +432,9 @@ def render_video_with_remotion(
     """
     # Ensure pnpm dependencies are installed
     ensure_pnpm_dependencies(remotion_root)
+
+    # Ensure Chrome Headless Shell is downloaded
+    ensure_chrome_headless_shell(remotion_root)
 
     # Update composition.json with current data
     update_composition_json(
