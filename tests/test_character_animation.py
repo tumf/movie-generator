@@ -112,13 +112,15 @@ class TestCharacterImageIntegration:
             }
         }
 
+        persona_position_map = {"zundamon": "left"}
+
         phrase = Phrase(
             text="こんにちは",
             persona_id="zundamon",
             persona_name="ずんだもん",
         )
 
-        fields = _get_persona_fields(phrase, persona_map)
+        fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         assert fields["characterImage"] == "characters/zundamon/base.png"
         assert fields["characterPosition"] == "left"
 
@@ -158,13 +160,15 @@ class TestLipSyncAndBlinkingPhase2:
             }
         }
 
+        persona_position_map = {"zundamon": "left"}
+
         phrase = Phrase(
             text="こんにちは",
             persona_id="zundamon",
             persona_name="ずんだもん",
         )
 
-        fields = _get_persona_fields(phrase, persona_map)
+        fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         assert fields["mouthOpenImage"] == "characters/zundamon/mouth_open.png"
         assert fields["eyeCloseImage"] == "characters/zundamon/eye_close.png"
 
@@ -181,9 +185,11 @@ class TestLipSyncAndBlinkingPhase2:
             }
         }
 
+        persona_position_map = {"speaker": "center"}
+
         phrase = Phrase(text="Hello", persona_id="speaker", persona_name="Speaker")
 
-        fields = _get_persona_fields(phrase, persona_map)
+        fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         assert "mouthOpenImage" not in fields
         assert "eyeCloseImage" not in fields
 
@@ -256,9 +262,11 @@ class TestAnimationStylePhase3:
             }
         }
 
+        persona_position_map = {"bouncer": "center"}
+
         phrase = Phrase(text="Bounce!", persona_id="bouncer", persona_name="Bouncer")
 
-        fields = _get_persona_fields(phrase, persona_map)
+        fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         assert fields["animationStyle"] == "bounce"
 
     def test_static_animation_style(self) -> None:

@@ -40,7 +40,13 @@ class PersonaConfig(BaseModel):
         description="Path to character base image (mouth closed, eyes open)",
     )
     character_position: Literal["left", "right", "center"] = Field(
-        default="left", description="Character display position on screen"
+        default="left",
+        description=(
+            "Character display position on screen. "
+            "NOTE: This field is auto-assigned based on persona order during rendering. "
+            "First persona -> left, second -> right, third+ -> center. "
+            "Manual values in config are ignored."
+        ),
     )
     mouth_open_image: str | None = Field(
         default=None, description="Path to character image with mouth open (for lip sync)"

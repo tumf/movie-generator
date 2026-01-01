@@ -30,7 +30,7 @@ personas:
       speed_scale: 1.0
     subtitle_color: "#8FCF4F"
     character_image: "assets/characters/zundamon/base.png"
-    character_position: "left"
+    # character_position is auto-assigned: zundamon=left (1st persona)
     character_scale: 0.45
     mouth_open_image: "assets/characters/zundamon/mouth_open.png"
     eye_close_image: "assets/characters/zundamon/eye_close.png"
@@ -44,7 +44,7 @@ personas:
       speed_scale: 1.0
     subtitle_color: "#F09CB2"
     character_image: "assets/characters/shikoku-metan/base.png"
-    character_position: "right"
+    # character_position is auto-assigned: metan=right (2nd persona)
     character_scale: 0.45
     mouth_open_image: "assets/characters/shikoku-metan/mouth_open.png"
     eye_close_image: "assets/characters/shikoku-metan/eye_close.png"

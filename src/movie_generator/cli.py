@@ -675,6 +675,7 @@ def generate(
         # Render video with Remotion
         task = progress.add_task("Rendering video with Remotion...", total=None)
         # Prepare personas for Remotion if defined
+        # Note: character_position is auto-assigned in remotion_renderer, not from config
         personas_for_render = None
         if cfg.personas:
             personas_for_render = [
@@ -684,11 +685,12 @@ def generate(
                         "name",
                         "subtitle_color",
                         "character_image",
-                        "character_position",
+                        # character_position is excluded - it's auto-assigned by order
                         "mouth_open_image",
                         "eye_close_image",
                         "animation_style",
-                    }
+                    },
+                    exclude_none=True,
                 )
                 for p in cfg.personas
             ]

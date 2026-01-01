@@ -76,7 +76,8 @@ class TestRemotionRendererSubtitleColor:
                 "subtitle_color": "#8FCF4F",
             }
         }
-        fields = _get_persona_fields(phrase, persona_map)
+        persona_position_map = {"zundamon": "left"}
+        fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         assert fields["subtitleColor"] == "#8FCF4F"
 
     def test_get_persona_fields_without_color_uses_default(self) -> None:
@@ -89,14 +90,16 @@ class TestRemotionRendererSubtitleColor:
                 # No subtitle_color
             }
         }
-        fields = _get_persona_fields(phrase, persona_map)
+        persona_position_map = {"test": "center"}
+        fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         assert fields["subtitleColor"] == SubtitleConstants.DEFAULT_COLOR
 
     def test_get_persona_fields_no_persona_returns_empty(self) -> None:
         """_get_persona_fields should return empty dict when no persona_id."""
         phrase = Phrase(text="test")  # No persona_id
         persona_map = {}
-        fields = _get_persona_fields(phrase, persona_map)
+        persona_position_map = {}
+        fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         assert fields == {}
 
 

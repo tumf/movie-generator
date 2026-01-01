@@ -152,16 +152,22 @@ def update_composition_json(
     # Build slide map for efficient lookup
     slide_map = _build_slide_map(slide_paths) if slide_paths else {}
 
-    # Build persona lookup map
+    # Build persona lookup map and position assignment map
     persona_map: dict[str, dict[str, Any]] = {}
+    persona_position_map: dict[str, str] = {}
     if personas:
-        for persona in personas:
-            persona_map[persona["id"]] = persona
+        # Assign positions based on persona order
+        positions = ["left", "right", "center"]
+        for i, persona in enumerate(personas):
+            persona_id = persona["id"]
+            persona_map[persona_id] = persona
+            # Assign position: first persona -> left, second -> right, third+ -> center
+            persona_position_map[persona_id] = positions[min(i, len(positions) - 1)]
 
     # Create CompositionPhrase objects
     composition_phrases = []
     for phrase in phrases:
-        persona_fields = _get_persona_fields(phrase, persona_map)
+        persona_fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         composition_phrases.append(
             CompositionPhrase(
                 text=phrase.get_subtitle_text(),
@@ -195,18 +201,24 @@ def update_composition_json(
     # Add personas config if provided (for persistent character display)
     if personas:
         # Convert asset paths in personas to be relative to public/
+        # Add auto-assigned character_position from persona_position_map
         converted_personas = []
         for persona in personas:
             persona_copy = persona.copy()
-            if "character_image" in persona_copy:
+            # Remove config's character_position (if any) and use auto-assigned one
+            persona_copy.pop("character_position", None)
+            # Add auto-assigned position from persona_position_map
+            if persona["id"] in persona_position_map:
+                persona_copy["character_position"] = persona_position_map[persona["id"]]
+            if "character_image" in persona_copy and persona_copy["character_image"] is not None:
                 persona_copy["character_image"] = _convert_to_public_path(
                     persona_copy["character_image"]
                 )
-            if "mouth_open_image" in persona_copy:
+            if "mouth_open_image" in persona_copy and persona_copy["mouth_open_image"] is not None:
                 persona_copy["mouth_open_image"] = _convert_to_public_path(
                     persona_copy["mouth_open_image"]
                 )
-            if "eye_close_image" in persona_copy:
+            if "eye_close_image" in persona_copy and persona_copy["eye_close_image"] is not None:
                 persona_copy["eye_close_image"] = _convert_to_public_path(
                     persona_copy["eye_close_image"]
                 )
@@ -220,12 +232,17 @@ def update_composition_json(
     console.print(f"[green]✓ Updated composition.json with {len(phrases)} phrases[/green]")
 
 
-def _get_persona_fields(phrase: Phrase, persona_map: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def _get_persona_fields(
+    phrase: Phrase,
+    persona_map: dict[str, dict[str, Any]],
+    persona_position_map: dict[str, str],
+) -> dict[str, Any]:
     """Get persona-related fields for a phrase.
 
     Args:
         phrase: Phrase object.
         persona_map: Map of persona ID to persona config.
+        persona_position_map: Map of persona ID to assigned position (left/right/center).
 
     Returns:
         Dictionary with personaId, personaName, subtitleColor, and character image fields.
@@ -252,8 +269,9 @@ def _get_persona_fields(phrase: Phrase, persona_map: dict[str, dict[str, Any]]) 
         # Convert to path relative to public/ (e.g., "characters/zundamon/base.png")
         character_fields["characterImage"] = _convert_to_public_path(character_image)
 
-    if character_position := persona.get("character_position"):
-        character_fields["characterPosition"] = character_position
+    # Use auto-assigned position based on persona order
+    if phrase.persona_id in persona_position_map:
+        character_fields["characterPosition"] = persona_position_map[phrase.persona_id]
 
     if mouth_open_image := persona.get("mouth_open_image"):
         character_fields["mouthOpenImage"] = _convert_to_public_path(mouth_open_image)
@@ -267,15 +285,18 @@ def _get_persona_fields(phrase: Phrase, persona_map: dict[str, dict[str, Any]]) 
     return character_fields
 
 
-def _convert_to_public_path(asset_path: str) -> str:
-    """Convert asset path to path relative to Remotion public/ directory.
+def _convert_to_public_path(asset_path: str | None) -> str | None:
+    """Convert asset path to be relative to public/ directory.
 
     Args:
-        asset_path: Original asset path (e.g., "assets/characters/zundamon/base.png").
+        asset_path: Path to asset file (e.g., "assets/characters/zundamon/base.png").
 
     Returns:
-        Path relative to public/ directory (e.g., "characters/zundamon/base.png").
+        Path relative to public/ directory (e.g., "characters/zundamon/base.png"),
+        or None if input is None.
     """
+    if asset_path is None:
+        return None
     # If path starts with "assets/", remove it (assets are symlinked to public/)
     if asset_path.startswith("assets/"):
         return asset_path[7:]  # Remove "assets/" prefix
