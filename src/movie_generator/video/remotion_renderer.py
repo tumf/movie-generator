@@ -192,6 +192,27 @@ def update_composition_json(
     if transition:
         composition_data["transition"] = transition
 
+    # Add personas config if provided (for persistent character display)
+    if personas:
+        # Convert asset paths in personas to be relative to public/
+        converted_personas = []
+        for persona in personas:
+            persona_copy = persona.copy()
+            if "character_image" in persona_copy:
+                persona_copy["character_image"] = _convert_to_public_path(
+                    persona_copy["character_image"]
+                )
+            if "mouth_open_image" in persona_copy:
+                persona_copy["mouth_open_image"] = _convert_to_public_path(
+                    persona_copy["mouth_open_image"]
+                )
+            if "eye_close_image" in persona_copy:
+                persona_copy["eye_close_image"] = _convert_to_public_path(
+                    persona_copy["eye_close_image"]
+                )
+            converted_personas.append(persona_copy)
+        composition_data["personas"] = converted_personas
+
     composition_path = remotion_root / "composition.json"
     with composition_path.open("w", encoding="utf-8") as f:
         json.dump(composition_data, f, indent=2, ensure_ascii=False)

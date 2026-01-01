@@ -312,11 +312,13 @@ const CharacterLayer: React.FC<{
   const position = getPosition();
   const animationTransform = getAnimationTransform();
 
-  // Combine position transform (for center) with animation transform
+  // Flip character horizontally if positioned on the left
+  // (characters face left by default, so flip them to face right)
+  const flipTransform = characterPosition === 'left' ? 'scaleX(-1)' : '';
+
+  // Combine all transforms: position, flip, and animation
   const baseTransform = position.transform || '';
-  const combinedTransform = baseTransform
-    ? `${baseTransform} ${animationTransform}`
-    : animationTransform;
+  const transforms = [baseTransform, flipTransform, animationTransform].filter(Boolean).join(' ');
 
   return (
     <div
@@ -326,7 +328,7 @@ const CharacterLayer: React.FC<{
         width: '300px',
         height: '300px',
         zIndex: 10,
-        transform: combinedTransform || undefined,
+        transform: transforms || undefined,
       }}
     >
       <Img
@@ -391,7 +393,8 @@ const AudioSubtitleLayer: React.FC<{
 
 export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
   const scenes = getScenesWithTiming(phrases);
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
+  const frame = useCurrentFrame();
 
   // Get transition configuration from composition data
   const transitionType = (compositionData as any).transition?.type || 'fade';
@@ -407,6 +410,19 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
   // Build slide groups with transition compensation
   // This ensures slides stay visible for the full duration of their audio
   const slideGroups = getSlideGroups(scenes, transitionDurationFrames);
+
+  // Get personas configuration
+  const personas = (compositionData as any).personas || [];
+
+  // Helper function to check if a persona is speaking at current frame
+  const isPersonaSpeaking = (personaId: string) => {
+    return scenes.some(
+      (scene) =>
+        scene.personaId === personaId &&
+        frame >= scene.startFrame &&
+        frame < scene.endFrame
+    );
+  };
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#1a1a1a' }}>
@@ -428,24 +444,17 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
         ))}
       </TransitionSeries>
 
-      {/* Character layer - changes with each phrase */}
-      {scenes.map((scene) => (
-        <Sequence
-          key={`character-${scene.id}`}
-          from={scene.startFrame}
-          durationInFrames={scene.durationFrames}
-        >
-          <CharacterLayer
-            characterImage={scene.characterImage}
-            characterPosition={scene.characterPosition}
-            mouthOpenImage={scene.mouthOpenImage}
-            eyeCloseImage={scene.eyeCloseImage}
-            animationStyle={scene.animationStyle}
-            isSpeaking={true}
-            startFrame={scene.startFrame}
-            endFrame={scene.endFrame}
-          />
-        </Sequence>
+      {/* Character layers - persistent display for each persona */}
+      {personas.map((persona: any) => (
+        <CharacterLayer
+          key={`character-${persona.id}`}
+          characterImage={persona.character_image}
+          characterPosition={persona.character_position || 'left'}
+          mouthOpenImage={persona.mouth_open_image}
+          eyeCloseImage={persona.eye_close_image}
+          animationStyle={persona.animation_style || 'sway'}
+          isSpeaking={isPersonaSpeaking(persona.id)}
+        />
       ))}
 
       {/* Audio and subtitle layer - changes with each phrase */}

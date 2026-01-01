@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Inspect PSD file structure to understand layer organization."""
 
+import sys
 from psd_tools import PSDImage
 
 
@@ -17,7 +18,11 @@ def print_layer_tree(layer, indent=0):
 
 
 def main():
-    psd_path = "assets/ずんだもん立ち絵素材2.3.psd"
+    if len(sys.argv) < 2:
+        print("Usage: inspect_psd.py <path-to-psd-file>")
+        sys.exit(1)
+
+    psd_path = sys.argv[1]
 
     print(f"Loading PSD: {psd_path}")
     psd = PSDImage.open(psd_path)

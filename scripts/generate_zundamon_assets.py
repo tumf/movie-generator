@@ -101,8 +101,10 @@ def generate_base_image(psd, output_path):
     # Render and save with transparency
     # Use force=True to get proper RGBA with transparency
     image = psd.composite(force=True)
-    # Crop and resize to square
-    image = crop_and_resize(image, 1024)
+    # Keep original aspect ratio (full body from feet)
+    # Ensure RGBA mode
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
     image.save(output_path, "PNG")
     print(f"  Saved: {output_path}")
 
@@ -130,7 +132,10 @@ def generate_mouth_open_image(psd, output_path):
     # Render and save with transparency
     # Use force=True to get proper RGBA with transparency
     image = psd.composite(force=True)
-    image = crop_and_resize(image, 1024)
+    # Keep original aspect ratio (full body from feet)
+    # Ensure RGBA mode
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
     image.save(output_path, "PNG")
     print(f"  Saved: {output_path}")
 
@@ -160,7 +165,10 @@ def generate_eye_close_image(psd, output_path):
     # Render and save with transparency
     # Use force=True to get proper RGBA with transparency
     image = psd.composite(force=True)
-    image = crop_and_resize(image, 1024)
+    # Keep original aspect ratio (full body from feet)
+    # Ensure RGBA mode
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
     image.save(output_path, "PNG")
     print(f"  Saved: {output_path}")
 
