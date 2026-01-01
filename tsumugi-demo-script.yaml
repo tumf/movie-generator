@@ -1,0 +1,29 @@
+title: "春日部つむぎデモンストレーション"
+sections:
+  - title: "はじめに"
+    narrations:
+      - persona_id: "tsumugi"
+        text: "こんにちは！春日部つむぎです！"
+        reading: "コンニチワ！カスカベツムギデス！"
+    slide_prompt: "A bright orange-themed title screen with 'Introduction' text"
+
+  - title: "自己紹介"
+    narrations:
+      - persona_id: "tsumugi"
+        text: "私はVOICEVOXの音声合成で話すことができる、春日部出身のキャラクターです。"
+        reading: "ワタシワボイスボックスノオンセイゴウセイデハナスコトガデキル、カスカベシュッシンノキャラクターデス。"
+    slide_prompt: "A friendly character introduction slide with profile information"
+
+  - title: "アニメーション機能"
+    narrations:
+      - persona_id: "tsumugi"
+        text: "口パク、まばたき、そしてバウンスアニメーションに対応しています！"
+        reading: "クチパク、マバタキ、ソシテバウンスアニメーションニタイオウシテイマス！"
+    slide_prompt: "An animation demo slide showing bouncing motion features"
+
+  - title: "おわりに"
+    narrations:
+      - persona_id: "tsumugi"
+        text: "以上、春日部つむぎでした！見てくれてありがとうございました！"
+        reading: "イジョウ、カスカベツムギデシタ！ミテクレテアリガトウゴザイマシタ！"
+    slide_prompt: "An orange-themed thank you slide with 'Thanks for watching!' text"
