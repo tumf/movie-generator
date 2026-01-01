@@ -345,6 +345,20 @@ uv run python scripts/generate_metan_assets.py
 #   - eye_close.png
 ```
 
+**For Kasukabe Tsumugi:**
+```bash
+# Place PSD file in assets/
+# assets/春日部つむぎ立ち絵素材.psd
+
+# Generate character assets automatically
+uv run python scripts/generate_tsumugi_assets.py
+
+# Output: assets/characters/kasukabe-tsumugi/
+#   - base.png
+#   - mouth_open.png
+#   - eye_close.png
+```
+
 Or **manually create character images** following the [Character Asset Guide](docs/CHARACTER_ASSET_GUIDE.md):
 
 ```bash
