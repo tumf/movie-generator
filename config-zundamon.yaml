@@ -1,0 +1,60 @@
+# Zundamon character animation configuration
+
+project:
+  name: "Zundamon Animation Demo"
+  output_dir: "./output"
+
+style:
+  resolution: [1920, 1080]
+  fps: 30
+  font_family: "Noto Sans JP"
+  primary_color: "#FFFFFF"
+  background_color: "#1a1a2e"
+
+audio:
+  engine: "voicevox"
+  speaker_id: 3  # Zundamon
+  speed_scale: 1.0
+
+narration:
+  character: "ずんだもん"
+  style: "casual"
+
+# Single persona with character animation
+personas:
+  - id: "zundamon"
+    name: "ずんだもん"
+    character: "元気で明るい東北の妖精。語尾に「なのだ」をつけて話す"
+    synthesizer:
+      speaker_id: 3
+      speed_scale: 1.0
+    subtitle_color: "#8FCF4F"
+    # Character animation with lip sync and blinking
+    character_image: "assets/characters/zundamon/base.png"
+    character_position: "right"  # Position on right side
+    mouth_open_image: "assets/characters/zundamon/mouth_open.png"
+    eye_close_image: "assets/characters/zundamon/eye_close.png"
+    animation_style: "sway"  # Gentle swaying motion
+
+content:
+  llm:
+    provider: "openrouter"
+    model: "openai/gpt-4o-mini"
+
+slides:
+  llm:
+    provider: "openrouter"
+    model: "google/gemini-2.0-flash-exp:free"
+  style: "presentation"
+
+video:
+  renderer: "remotion"
+  template: "default"
+  output_format: "mp4"
+  transition:
+    type: "fade"
+    duration_frames: 15
+    timing: "linear"
+
+pronunciation:
+  custom: {}

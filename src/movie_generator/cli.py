@@ -663,6 +663,11 @@ def generate(
         project.project_dir = output_dir
         project.audio_dir = output_dir / "audio"
         project.slides_dir = output_dir / "slides"
+        project.characters_dir = output_dir / "assets" / "characters"
+
+        # Copy character assets from project root to output
+        project.copy_character_assets()
+
         project.setup_remotion_project()
         project.project_dir = original_project_dir
         progress.update(task, completed=True)
@@ -673,7 +678,19 @@ def generate(
         personas_for_render = None
         if cfg.personas:
             personas_for_render = [
-                p.model_dump(include={"id", "name", "subtitle_color"}) for p in cfg.personas
+                p.model_dump(
+                    include={
+                        "id",
+                        "name",
+                        "subtitle_color",
+                        "character_image",
+                        "character_position",
+                        "mouth_open_image",
+                        "eye_close_image",
+                        "animation_style",
+                    }
+                )
+                for p in cfg.personas
             ]
 
         render_video_with_remotion(

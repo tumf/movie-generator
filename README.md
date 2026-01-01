@@ -9,6 +9,7 @@ Generate YouTube slide videos from blog URLs automatically.
 - **AI Script Generation**: Generate video scripts using LLM (OpenRouter)
 - **Logo Asset Management**: Automatically download product/company logos from official sources
 - **Voice Synthesis**: Text-to-speech using VOICEVOX with pronunciation dictionary
+- **Character Animation**: Static character display with configurable positioning (Phase 1)
 - **Slide Generation**: Create presentation slides using AI image generation with logo integration
 - **Video Rendering**: Compose final video with Remotion
 
@@ -305,6 +306,122 @@ The `reading` field ensures:
 - Accurate reading of numbers (e.g., "97" → "キュウジュウナナ")
 
 The LLM handles this automatically during script generation, so manual editing is rarely needed.
+
+### Character Animation
+
+Display animated character images alongside your slides to enhance visual engagement. Features include static positioning, lip sync during speech, automatic blinking, and animation styles (sway/bounce). Characters can be configured per persona in multi-speaker mode.
+
+#### Setup
+
+1. **Generate character assets from PSD (for Zundamon):**
+
+If you have the official Zundamon PSD file:
+
+```bash
+# Place PSD file in assets/
+# assets/ずんだもん立ち絵素材2.3.psd
+
+# Generate character assets automatically
+uv run python scripts/generate_zundamon_assets.py
+
+# Output: assets/characters/zundamon/
+#   - base.png
+#   - mouth_open.png
+#   - eye_close.png
+```
+
+Or **manually create character images** following the [Character Asset Guide](docs/CHARACTER_ASSET_GUIDE.md):
+
+```bash
+mkdir -p assets/characters/your-character
+# Place your character images:
+# - base.png (required) - Character with mouth closed, eyes open
+# - mouth_open.png (optional) - For lip sync animation
+# - eye_close.png (optional) - For blinking animation
+```
+
+2. **Configure personas with character images:**
+
+```yaml
+personas:
+  - id: "zundamon"
+    name: "ずんだもん"
+    character: "元気で明るい東北の妖精"
+    synthesizer:
+      speaker_id: 3
+      speed_scale: 1.0
+    subtitle_color: "#8FCF4F"
+    # Character animation settings
+    character_image: "assets/characters/zundamon/base.png"
+    character_position: "left"  # left, right, or center
+    # Lip sync and blinking (optional)
+    mouth_open_image: "assets/characters/zundamon/mouth_open.png"
+    eye_close_image: "assets/characters/zundamon/eye_close.png"
+    animation_style: "sway"      # bounce, sway, or static (Phase 3)
+```
+
+#### Configuration Options
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `character_image` | `str \| None` | `None` | Path to base character image (PNG with transparency recommended) |
+| `character_position` | `"left" \| "right" \| "center"` | `"left"` | Screen position for character |
+| `mouth_open_image` | `str \| None` | `None` | Path to mouth-open image for lip sync (toggles every 0.1s during speech) |
+| `eye_close_image` | `str \| None` | `None` | Path to eye-closed image for blinking (blinks every 3 seconds for 0.2s) |
+| `animation_style` | `"bounce" \| "sway" \| "static"` | `"sway"` | Animation motion: `sway` (gentle horizontal), `bounce` (vertical), or `static` (none) |
+
+#### Image Specifications
+
+- **Format**: PNG with transparent background (recommended)
+- **Size**: 512x512px or similar square aspect ratio
+- **Content**: Full-body or bust-up character illustration
+- **Transparency**: Required for proper layering over slides
+
+**For Lip Sync and Blinking:**
+- All images (base, mouth_open, eye_close) should have the same dimensions and character position
+- Only the mouth or eyes should differ between images
+- Example preparation:
+  - `base.png` - Mouth closed, eyes open
+  - `mouth_open.png` - Mouth open, eyes open (for speech)
+  - `eye_close.png` - Mouth closed, eyes closed (for blinking)
+
+#### Multi-Speaker Positioning
+
+For 2-speaker dialogue, position characters on opposite sides:
+
+```yaml
+personas:
+  - id: "zundamon"
+    character_position: "left"
+  - id: "metan"
+    character_position: "right"
+```
+
+#### Animation Styles
+
+Choose from three animation styles to add motion to your characters:
+
+- **`sway` (default)**: Gentle side-to-side swaying motion (2-second cycle, ±5px)
+- **`bounce`**: Vertical bouncing motion (1.5-second cycle, 0-10px)
+- **`static`**: No animation (character stays still)
+
+Example configuration:
+
+```yaml
+personas:
+  - id: "energetic"
+    animation_style: "bounce"  # For energetic characters
+  - id: "calm"
+    animation_style: "sway"    # For calm, gentle characters
+  - id: "serious"
+    animation_style: "static"  # For serious, professional tone
+```
+
+#### Phase Roadmap
+
+- **Phase 1 (✅ Complete)**: Static character display with positioning
+- **Phase 2 (✅ Complete)**: Lip sync (0.1s toggle during speech) and blinking (every 3s)
+- **Phase 3 (✅ Complete)**: Sway/bounce animations
 
 ## Architecture
 

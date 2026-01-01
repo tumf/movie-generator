@@ -31,6 +31,13 @@ personas:
       speaker_id: 3
       speed_scale: 1.0
     subtitle_color: "#8FCF4F"
+    # Character animation settings
+    character_image: "assets/characters/zundamon/base.png"
+    character_position: "left"  # left, right, or center
+    # Lip sync and blinking
+    mouth_open_image: "assets/characters/zundamon/mouth_open.png"  # For speech animation
+    eye_close_image: "assets/characters/zundamon/eye_close.png"    # For blinking
+    animation_style: "sway"  # Animation: sway (gentle), bounce (energetic), static (none)
   - id: "metan"
     name: "四国めたん"
     character: "優しくて落ち着いた四国の妖精"
@@ -38,6 +45,8 @@ personas:
       speaker_id: 2
       speed_scale: 1.0
     subtitle_color: "#FF69B4"
+    # character_image: "assets/characters/metan/base.png"
+    # character_position: "right"
 
 content:
   llm:

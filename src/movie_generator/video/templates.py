@@ -54,6 +54,11 @@ export interface PhraseData {
   personaId?: string;
   personaName?: string;
   subtitleColor?: string;
+  characterImage?: string;
+  characterPosition?: 'left' | 'right' | 'center';
+  mouthOpenImage?: string;
+  eyeCloseImage?: string;
+  animationStyle?: 'bounce' | 'sway' | 'static';
 }
 
 // Props interface
@@ -82,6 +87,11 @@ const getScenesWithTiming = (phrases: PhraseData[]) => {
       personaId: phrase.personaId,
       personaName: phrase.personaName,
       subtitleColor: phrase.subtitleColor,
+      characterImage: phrase.characterImage,
+      characterPosition: phrase.characterPosition,
+      mouthOpenImage: phrase.mouthOpenImage,
+      eyeCloseImage: phrase.eyeCloseImage,
+      animationStyle: phrase.animationStyle,
     };
     currentFrame += durationFrames;
     return scene;
@@ -220,6 +230,117 @@ const SlideLayer: React.FC<{
   );
 };
 
+const CharacterLayer: React.FC<{
+  characterImage?: string;
+  characterPosition?: 'left' | 'right' | 'center';
+  mouthOpenImage?: string;
+  eyeCloseImage?: string;
+  animationStyle?: 'bounce' | 'sway' | 'static';
+  isSpeaking?: boolean;
+  startFrame?: number;
+  endFrame?: number;
+}> = ({
+  characterImage,
+  characterPosition = 'left',
+  mouthOpenImage,
+  eyeCloseImage,
+  animationStyle = 'sway',
+  isSpeaking = true,
+}) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  if (!characterImage) {
+    return null;
+  }
+
+  // Position calculation
+  const getPosition = () => {
+    const positions = {
+      left: { left: '50px', bottom: '100px' },
+      right: { right: '50px', bottom: '100px' },
+      center: { left: '50%', bottom: '100px', transform: 'translateX(-50%)' },
+    };
+    return positions[characterPosition];
+  };
+
+  // Phase 3: Animation transform (sway/bounce)
+  const getAnimationTransform = () => {
+    if (animationStyle === 'static') {
+      return '';
+    }
+
+    const time = frame / fps;
+
+    if (animationStyle === 'sway') {
+      // Gentle side-to-side sway (2-second cycle)
+      const swayAmount = Math.sin(time * Math.PI) * 5; // ±5px
+      return `translateX(${swayAmount}px)`;
+    }
+
+    if (animationStyle === 'bounce') {
+      // Vertical bounce (1.5-second cycle)
+      const bounceAmount = Math.abs(Math.sin(time * Math.PI * 1.333)) * 10; // 0-10px
+      return `translateY(-${bounceAmount}px)`;
+    }
+
+    return '';
+  };
+
+  // Phase 2: Lip sync and blinking
+  // Lip sync: Toggle mouth open/closed every 0.1 seconds during speech
+  const lipSyncFrameInterval = Math.floor(fps * 0.1); // 0.1 second intervals
+  const isMouthOpen = isSpeaking && lipSyncFrameInterval > 0 &&
+    Math.floor(frame / lipSyncFrameInterval) % 2 === 0;
+
+  // Blinking: Blink every 2-4 seconds for 0.2 seconds
+  const blinkInterval = fps * 3; // 3 seconds between blinks
+  const blinkDuration = Math.floor(fps * 0.2); // 0.2 second blink
+  const blinkCycleFrame = frame % blinkInterval;
+  const isBlinking = blinkCycleFrame < blinkDuration;
+
+  // Determine which image to display
+  let currentImage = characterImage;
+
+  // Priority: blinking overrides mouth state
+  if (isBlinking && eyeCloseImage) {
+    currentImage = eyeCloseImage;
+  } else if (isMouthOpen && mouthOpenImage) {
+    currentImage = mouthOpenImage;
+  }
+
+  const position = getPosition();
+  const animationTransform = getAnimationTransform();
+
+  // Combine position transform (for center) with animation transform
+  const baseTransform = position.transform || '';
+  const combinedTransform = baseTransform
+    ? `${baseTransform} ${animationTransform}`
+    : animationTransform;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        ...position,
+        width: '300px',
+        height: '300px',
+        zIndex: 10,
+        transform: combinedTransform || undefined,
+      }}
+    >
+      <Img
+        src={staticFile(currentImage)}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+        }}
+      />
+    </div>
+  );
+};
+
 const AudioSubtitleLayer: React.FC<{
   audioFile: string;
   subtitle?: string;
@@ -306,6 +427,26 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
           </React.Fragment>
         ))}
       </TransitionSeries>
+
+      {/* Character layer - changes with each phrase */}
+      {scenes.map((scene) => (
+        <Sequence
+          key={`character-${scene.id}`}
+          from={scene.startFrame}
+          durationInFrames={scene.durationFrames}
+        >
+          <CharacterLayer
+            characterImage={scene.characterImage}
+            characterPosition={scene.characterPosition}
+            mouthOpenImage={scene.mouthOpenImage}
+            eyeCloseImage={scene.eyeCloseImage}
+            animationStyle={scene.animationStyle}
+            isSpeaking={true}
+            startFrame={scene.startFrame}
+            endFrame={scene.endFrame}
+          />
+        </Sequence>
+      ))}
 
       {/* Audio and subtitle layer - changes with each phrase */}
       {scenes.map((scene) => (

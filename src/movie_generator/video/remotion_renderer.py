@@ -9,7 +9,6 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
 from rich.console import Console
 
 from ..constants import SubtitleConstants
@@ -173,6 +172,11 @@ def update_composition_json(
                 persona_id=persona_fields.get("personaId"),
                 persona_name=persona_fields.get("personaName"),
                 subtitle_color=persona_fields.get("subtitleColor"),
+                character_image=persona_fields.get("characterImage"),
+                character_position=persona_fields.get("characterPosition"),
+                mouth_open_image=persona_fields.get("mouthOpenImage"),
+                eye_close_image=persona_fields.get("eyeCloseImage"),
+                animation_style=persona_fields.get("animationStyle"),
             )
         )
 
@@ -203,7 +207,7 @@ def _get_persona_fields(phrase: Phrase, persona_map: dict[str, dict[str, Any]]) 
         persona_map: Map of persona ID to persona config.
 
     Returns:
-        Dictionary with personaId, personaName, and subtitleColor fields.
+        Dictionary with personaId, personaName, subtitleColor, and character image fields.
     """
     if not phrase.persona_id or not persona_map:
         return {}
@@ -215,11 +219,46 @@ def _get_persona_fields(phrase: Phrase, persona_map: dict[str, dict[str, Any]]) 
             "personaName": phrase.persona_name,
         }
 
-    return {
+    # Build character image paths relative to Remotion public/ directory
+    character_fields: dict[str, Any] = {
         "personaId": phrase.persona_id,
         "personaName": persona.get("name", phrase.persona_name),
         "subtitleColor": persona.get("subtitle_color", SubtitleConstants.DEFAULT_COLOR),
     }
+
+    # Add character images if configured
+    if character_image := persona.get("character_image"):
+        # Convert to path relative to public/ (e.g., "characters/zundamon/base.png")
+        character_fields["characterImage"] = _convert_to_public_path(character_image)
+
+    if character_position := persona.get("character_position"):
+        character_fields["characterPosition"] = character_position
+
+    if mouth_open_image := persona.get("mouth_open_image"):
+        character_fields["mouthOpenImage"] = _convert_to_public_path(mouth_open_image)
+
+    if eye_close_image := persona.get("eye_close_image"):
+        character_fields["eyeCloseImage"] = _convert_to_public_path(eye_close_image)
+
+    if animation_style := persona.get("animation_style"):
+        character_fields["animationStyle"] = animation_style
+
+    return character_fields
+
+
+def _convert_to_public_path(asset_path: str) -> str:
+    """Convert asset path to path relative to Remotion public/ directory.
+
+    Args:
+        asset_path: Original asset path (e.g., "assets/characters/zundamon/base.png").
+
+    Returns:
+        Path relative to public/ directory (e.g., "characters/zundamon/base.png").
+    """
+    # If path starts with "assets/", remove it (assets are symlinked to public/)
+    if asset_path.startswith("assets/"):
+        return asset_path[7:]  # Remove "assets/" prefix
+    return asset_path
 
 
 def render_video_with_remotion(
@@ -270,10 +309,11 @@ def render_video_with_remotion(
         # Only show initial message when progress is hidden
         if not show_progress:
             console.print(
-                f"[cyan]🎬 Rendering video with Remotion ({total_duration:.1f}s, {total_frames} frames)...[/cyan]"
+                f"[cyan]🎬 Rendering video with Remotion "
+                f"({total_duration:.1f}s, {total_frames} frames)...[/cyan]"
             )
 
-        result = subprocess.run(
+        subprocess.run(
             [
                 "npx",
                 "remotion",

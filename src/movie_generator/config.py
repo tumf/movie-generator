@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 from .constants import SubtitleConstants
@@ -35,7 +35,32 @@ class PersonaConfig(BaseModel):
         default=SubtitleConstants.DEFAULT_COLOR,
         description="Subtitle text color (hex). See SubtitleConstants for default.",
     )
-    avatar_image: str | None = Field(default=None, description="Path to avatar image (future use)")
+    character_image: str | None = Field(
+        default=None,
+        description="Path to character base image (mouth closed, eyes open)",
+    )
+    character_position: Literal["left", "right", "center"] = Field(
+        default="left", description="Character display position on screen"
+    )
+    mouth_open_image: str | None = Field(
+        default=None, description="Path to character image with mouth open (for lip sync)"
+    )
+    eye_close_image: str | None = Field(
+        default=None, description="Path to character image with eyes closed (for blinking)"
+    )
+    animation_style: Literal["bounce", "sway", "static"] = Field(
+        default="sway", description="Character animation style"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_avatar_image_alias(cls, data: Any) -> Any:
+        """Support avatar_image as alias for character_image during validation."""
+        if isinstance(data, dict):
+            if "avatar_image" in data and "character_image" not in data:
+                data = data.copy()
+                data["character_image"] = data.pop("avatar_image")
+        return data
 
 
 class StyleConfig(BaseModel):
@@ -287,6 +312,11 @@ def generate_default_config_yaml() -> str:
         "#       speaker_id: 3",
         "#       speed_scale: 1.0",
         '#     subtitle_color: "#8FCF4F"',
+        '#     character_image: "assets/characters/zundamon/base.png"  # Base character image',
+        '#     character_position: "left"  # Position: left, right, center',
+        '#     mouth_open_image: "assets/characters/zundamon/mouth_open.png"  # For lip sync',
+        '#     eye_close_image: "assets/characters/zundamon/eye_close.png"  # For blinking',
+        '#     animation_style: "sway"  # Animation style: bounce, sway, static',
         '#   - id: "metan"',
         '#     name: "四国めたん"',
         '#     character: "優しくて落ち着いた四国の妖精"',
@@ -295,6 +325,8 @@ def generate_default_config_yaml() -> str:
         "#       speaker_id: 2",
         "#       speed_scale: 1.0",
         '#     subtitle_color: "#FF69B4"',
+        '#     character_image: "assets/characters/metan/base.png"',
+        '#     character_position: "right"',
         "",
         "# Content generation settings",
         "content:",

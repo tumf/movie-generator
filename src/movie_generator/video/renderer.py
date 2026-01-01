@@ -27,6 +27,11 @@ class CompositionPhrase(BaseModel):
     persona_id: str | None = Field(default=None, serialization_alias="personaId")
     persona_name: str | None = Field(default=None, serialization_alias="personaName")
     subtitle_color: str | None = Field(default=None, serialization_alias="subtitleColor")
+    character_image: str | None = Field(default=None, serialization_alias="characterImage")
+    character_position: str | None = Field(default=None, serialization_alias="characterPosition")
+    mouth_open_image: str | None = Field(default=None, serialization_alias="mouthOpenImage")
+    eye_close_image: str | None = Field(default=None, serialization_alias="eyeCloseImage")
+    animation_style: str | None = Field(default=None, serialization_alias="animationStyle")
 
 
 class CompositionData(BaseModel):

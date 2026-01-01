@@ -1,0 +1,36 @@
+# Zundamon character animation demo script
+# Generated script format with reading field
+
+title: "ずんだもんキャラクターアニメーションデモ"
+description: "リップシンク・まばたき・アニメーション機能のデモ動画"
+
+sections:
+  - title: "はじめに"
+    narrations:
+      - text: "こんにちはなのだ！"
+        reading: "コンニチワナノダ！"
+        persona_id: "zundamon"
+      - text: "ずんだもんだよ！"
+        reading: "ズンダモンダヨ！"
+        persona_id: "zundamon"
+    slide_prompt: "Welcome screen with title 'キャラクターアニメーション' in bold text, modern and colorful design"
+
+  - title: "リップシンク機能"
+    narrations:
+      - text: "まず一つ目はリップシンク機能なのだ！"
+        reading: "マズヒトツメワリップシンクキノーナノダ！"
+        persona_id: "zundamon"
+      - text: "話している間、口がパクパク動くのだ！"
+        reading: "ハナシテイルアイダ、クチガパクパクウゴクノダ！"
+        persona_id: "zundamon"
+    slide_prompt: "Diagram showing lip sync feature with mouth movement icons"
+
+  - title: "まとめ"
+    narrations:
+      - text: "これで動画がもっと楽しくなるのだ！"
+        reading: "コレデドーガガモットタノシクナルノダ！"
+        persona_id: "zundamon"
+      - text: "それじゃあまたねなのだ！"
+        reading: "ソレジャアマタネナノダ！"
+        persona_id: "zundamon"
+    slide_prompt: "Goodbye screen with cheerful Zundamon waving, bright and friendly"

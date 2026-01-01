@@ -111,6 +111,7 @@ class Project:
         self.audio_dir = self.assets_dir / "audio"
         self.slides_dir = self.assets_dir / "slides"
         self.logos_dir = self.assets_dir / "logos"
+        self.characters_dir = self.assets_dir / "characters"
         self.output_dir = self.project_dir / "output"
         self.config_file = self.project_dir / "project.yaml"
         self.phrases_file = self.project_dir / "phrases.json"
@@ -139,6 +140,7 @@ class Project:
         self.audio_dir.mkdir(exist_ok=True)
         self.slides_dir.mkdir(exist_ok=True)
         self.logos_dir.mkdir(exist_ok=True)
+        self.characters_dir.mkdir(exist_ok=True)
         self.output_dir.mkdir(exist_ok=True)
 
         # Write configuration
@@ -216,6 +218,32 @@ class Project:
         with self.phrases_file.open("w", encoding="utf-8") as f:
             phrases_data = [p.model_dump() for p in phrases]
             json.dump(phrases_data, f, ensure_ascii=False, indent=2)
+
+    def copy_character_assets(self, source_root: Path | None = None) -> None:
+        """Copy character assets from source to project assets directory.
+
+        Args:
+            source_root: Root directory containing assets/ folder.
+                        Defaults to current working directory.
+        """
+        if source_root is None:
+            source_root = Path.cwd()
+
+        source_characters = source_root / "assets" / "characters"
+        if not source_characters.exists():
+            return
+
+        # Copy all character directories
+        for character_dir in source_characters.iterdir():
+            if character_dir.is_dir():
+                dest_dir = self.characters_dir / character_dir.name
+                dest_dir.mkdir(parents=True, exist_ok=True)
+
+                # Copy all PNG files
+                for png_file in character_dir.glob("*.png"):
+                    dest_file = dest_dir / png_file.name
+                    if not dest_file.exists():
+                        shutil.copy2(png_file, dest_file)
 
     def copy_to_remotion(self, remotion_dir: Path | None = None) -> None:
         """Copy project assets to Remotion public directory.
@@ -351,9 +379,10 @@ class Project:
         public_dir = remotion_dir / "public"
         public_dir.mkdir(exist_ok=True)
 
-        # Create symbolic links to audio and slides
+        # Create symbolic links to audio, slides, and characters
         _create_symlink_safe(self.audio_dir, public_dir / "audio")
         _create_symlink_safe(self.slides_dir, public_dir / "slides")
+        _create_symlink_safe(self.characters_dir, public_dir / "characters")
 
         # Load project config to get transition settings
         try:
