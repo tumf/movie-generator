@@ -313,10 +313,11 @@ Display animated character images alongside your slides to enhance visual engage
 
 #### Setup
 
-1. **Generate character assets from PSD (for Zundamon):**
+1. **Generate character assets from PSD:**
 
-If you have the official Zundamon PSD file:
+If you have the official character PSD files:
 
+**For Zundamon:**
 ```bash
 # Place PSD file in assets/
 # assets/ずんだもん立ち絵素材2.3.psd
@@ -325,6 +326,20 @@ If you have the official Zundamon PSD file:
 uv run python scripts/generate_zundamon_assets.py
 
 # Output: assets/characters/zundamon/
+#   - base.png
+#   - mouth_open.png
+#   - eye_close.png
+```
+
+**For Shikoku Metan:**
+```bash
+# Place PSD file in assets/
+# assets/四国めたん立ち絵素材2.1.psd
+
+# Generate character assets automatically
+uv run python scripts/generate_metan_assets.py
+
+# Output: assets/characters/shikoku-metan/
 #   - base.png
 #   - mouth_open.png
 #   - eye_close.png
@@ -392,10 +407,23 @@ For 2-speaker dialogue, position characters on opposite sides:
 ```yaml
 personas:
   - id: "zundamon"
+    name: "ずんだもん"
+    character_image: "assets/characters/zundamon/base.png"
     character_position: "left"
+    mouth_open_image: "assets/characters/zundamon/mouth_open.png"
+    eye_close_image: "assets/characters/zundamon/eye_close.png"
+    subtitle_color: "#8FCF4F"  # Green
+
   - id: "metan"
+    name: "四国めたん"
+    character_image: "assets/characters/shikoku-metan/base.png"
     character_position: "right"
+    mouth_open_image: "assets/characters/shikoku-metan/mouth_open.png"
+    eye_close_image: "assets/characters/shikoku-metan/eye_close.png"
+    subtitle_color: "#F09CB2"  # Pink
 ```
+
+See `config-zundamon.yaml` and `config-metan.yaml` for complete examples.
 
 #### Animation Styles
 

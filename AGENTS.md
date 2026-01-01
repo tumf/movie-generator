@@ -13,6 +13,31 @@ Instructions for AI coding assistants working in this repository.
 
 Instead: Report the failure clearly and ask for guidance, or find a proper solution.
 
+### LLM Model Configuration
+
+**NEVER hardcode LLM models in system defaults or example configurations.**
+
+All AI models you know about are outdated. Always use the models specified below for testing and documentation:
+
+- **Script generation**: `"openai/gpt-5.2"`
+- **Image generation**: `"google/gemini-3-pro-image-preview"`
+
+**Configuration structure:**
+```yaml
+content:
+  llm:
+    provider: "openrouter"
+    model: "openai/gpt-5.2"
+
+slides:
+  llm:
+    provider: "openrouter"
+    model: "google/gemini-3-pro-image-preview"
+  style: "presentation"
+```
+
+**CRITICAL**: The `image_model` field does NOT exist. Never add it to configurations. The `slides.llm.model` handles both text and image generation.
+
 ## Project Overview
 
 Movie Generator is a Python CLI tool that generates YouTube slide videos from blog URLs.

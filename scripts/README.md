@@ -54,6 +54,57 @@ Available mouth layers:
 Available eye layers:
 - `*普通目`, `*にっこり`, `*細め目`, `*ジト目`, `*なごみ目`, `*><`, `*UU`, `*〇〇`, `*ぐるぐる`
 
+## generate_metan_assets.py
+
+Generate character animation assets from Shikoku Metan PSD file.
+
+### Prerequisites
+
+- Shikoku Metan PSD file placed at `assets/四国めたん立ち絵素材2.1.psd`
+- Download from: [坂本アヒル - Shikoku Metan Tachie Material](https://seiga.nicovideo.jp/seiga/im10806233)
+
+### Usage
+
+```bash
+uv run python scripts/generate_metan_assets.py
+```
+
+### Output
+
+Creates three PNG files in `assets/characters/shikoku-metan/`:
+
+- `base.png` - Neutral expression (mouth closed, eyes open)
+- `mouth_open.png` - Speaking expression (mouth open)
+- `eye_close.png` - Blinking expression (eyes closed)
+
+All images are 1024x1024px PNG format, optimized for character animation.
+
+### Layer Configuration
+
+The script automatically configures PSD layers:
+
+| Asset | Mouth Layer | Eye Layer |
+|-------|-------------|-----------|
+| `base.png` | *ほほえみ | *目セット > *カメラ目線 |
+| `mouth_open.png` | *わあー | *目セット > *カメラ目線 |
+| `eye_close.png` | *ほほえみ | *目閉じ |
+
+### Customization
+
+To use different expressions, edit the layer paths in `generate_metan_assets.py`:
+
+```python
+# Example: Change mouth open expression
+set_layer_visibility(psd, ["!口", "*わあー"], True)
+# Change "*わあー" to another mouth layer name
+```
+
+Available mouth layers:
+- `*ほほえみ`, `*▽`, `*にやり`, `*ぺろり`, `*お`, `*ゆ`, `*△`, `*む`, `*いー`, `*うえー`, `*んー`, `*もむー`
+
+Available eye layers:
+- `*目セット > *カメラ目線`, `*見上げ`, `*見上げ2`, `*目閉じ`, `*目閉じ2`, `*○○`, `*><`, `*ぐるぐる`
+
 ## inspect_psd.py
 
 Inspect PSD file layer structure.
@@ -61,7 +112,17 @@ Inspect PSD file layer structure.
 ### Usage
 
 ```bash
-uv run python scripts/inspect_psd.py
+uv run python scripts/inspect_psd.py <path-to-psd-file>
+```
+
+### Example
+
+```bash
+# Inspect Zundamon PSD
+uv run python scripts/inspect_psd.py assets/ずんだもん立ち絵素材2.3.psd
+
+# Inspect Shikoku Metan PSD
+uv run python scripts/inspect_psd.py assets/四国めたん立ち絵素材2.1.psd
 ```
 
 ### Output
