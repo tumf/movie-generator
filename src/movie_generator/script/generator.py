@@ -122,11 +122,21 @@ JSON形式で以下を出力してください：
   - text: "道案内図を見る" → reading: "ミチアンナイズオミル"
   - text: "97個あります" → reading: "キュウジュウナナコアリマス"
 
-【スライド画像について】
+【スライド画像について - 重要な選択基準】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
 - source_image_url: 元記事の画像リストから適切な画像を選択する場合に使用
 - slide_prompt: AI生成する場合に使用
-- 元記事に適切な図解やスクリーンショットがある場合は、source_image_urlを優先してください
+
+**画像採用の判断基準（必ず従ってください）:**
+- 画像リストに含まれる各画像の「Alt」「Title」「Description」を**総合的に判断**してください
+- **採用すべき場合**: 画像の説明テキストが、そのセクションで説明する内容と**直接的に関連**している場合のみ
+  - 例: セクションが「助成金の実績」を説明 → 画像altが「2024年の助成金配分グラフ」→ 採用OK
+  - 例: セクションが「Commit-Boost」を説明 → 画像altが「Commit-Boost architecture diagram」→ 採用OK
+- **採用すべきでない場合**:
+  - 画像の説明が「背景」「バナー」「ロゴ」「アイコン」「装飾」などの汎用的・装飾的な内容
+  - 画像の説明がセクション内容と無関係または曖昧
+  - 例: セクションが「ESPの概要」を説明 → 画像altが「ETH上部背景開始画像」→ 採用NG（AI生成を使用）
+- **迷った場合はAI生成を優先**: 関連性が不明確な場合は、source_image_urlを指定せずslide_promptでAI生成してください
 
 【読み方辞書（pronunciations）について】
 - ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
@@ -192,11 +202,21 @@ Output in JSON format:
 - For English narration, simply copy the text field to reading field (no special pronunciation rules)
 - Example: text: "Hello world" → reading: "Hello world"
 
-[About Slide Images]
+[About Slide Images - Critical Selection Criteria]
 - For each section, specify either source_image_url OR slide_prompt (not both)
 - source_image_url: Use when selecting an appropriate image from the blog's image list
 - slide_prompt: Use when generating a new slide with AI
-- Prefer source_image_url if the blog contains suitable diagrams or screenshots
+
+**Image Adoption Criteria (MUST follow):**
+- Evaluate each image's "Alt", "Title", and "Description" **holistically**
+- **ADOPT only when**: The image description is **directly relevant** to what the section is explaining
+  - Example: Section explains "grant achievements" → Image alt is "2024 grant allocation chart" → ADOPT
+  - Example: Section explains "Commit-Boost" → Image alt is "Commit-Boost architecture diagram" → ADOPT
+- **DO NOT ADOPT when**:
+  - Image description contains generic/decorative terms like "background", "banner", "logo", "icon", "decoration"
+  - Image description is unrelated or ambiguous to the section content
+  - Example: Section explains "ESP overview" → Image alt is "ETH top background start image" → DO NOT ADOPT (use AI generation)
+- **When in doubt, prefer AI generation**: If relevance is unclear, do NOT set source_image_url and use slide_prompt instead
 
 Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
 """
@@ -290,11 +310,21 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
   ]
 }}
 
-【スライド画像について】
+【スライド画像について - 重要な選択基準】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
 - source_image_url: 元記事の画像リストから適切な画像を選択する場合に使用
 - slide_prompt: AI生成する場合に使用
-- 元記事に適切な図解やスクリーンショットがある場合は、source_image_urlを優先してください
+
+**画像採用の判断基準（必ず従ってください）:**
+- 画像リストに含まれる各画像の「Alt」「Title」「Description」を**総合的に判断**してください
+- **採用すべき場合**: 画像の説明テキストが、そのセクションで説明する内容と**直接的に関連**している場合のみ
+  - 例: セクションが「助成金の実績」を説明 → 画像altが「2024年の助成金配分グラフ」→ 採用OK
+  - 例: セクションが「Commit-Boost」を説明 → 画像altが「Commit-Boost architecture diagram」→ 採用OK
+- **採用すべきでない場合**:
+  - 画像の説明が「背景」「バナー」「ロゴ」「アイコン」「装飾」などの汎用的・装飾的な内容
+  - 画像の説明がセクション内容と無関係または曖昧
+  - 例: セクションが「ESPの概要」を説明 → 画像altが「ETH上部背景開始画像」→ 採用NG（AI生成を使用）
+- **迷った場合はAI生成を優先**: 関連性が不明確な場合は、source_image_urlを指定せずslide_promptでAI生成してください
 
 【読み方辞書（pronunciations）について】
 - ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
@@ -387,11 +417,21 @@ Output in JSON format. **MUST include reading field for each narration**:
   "pronunciations": []
 }}
 
-[About Slide Images]
+[About Slide Images - Critical Selection Criteria]
 - For each section, specify either source_image_url OR slide_prompt (not both)
 - source_image_url: Use when selecting an appropriate image from the blog's image list
 - slide_prompt: Use when generating a new slide with AI
-- Prefer source_image_url if the blog contains suitable diagrams or screenshots
+
+**Image Adoption Criteria (MUST follow):**
+- Evaluate each image's "Alt", "Title", and "Description" **holistically**
+- **ADOPT only when**: The image description is **directly relevant** to what the section is explaining
+  - Example: Section explains "grant achievements" → Image alt is "2024 grant allocation chart" → ADOPT
+  - Example: Section explains "Commit-Boost" → Image alt is "Commit-Boost architecture diagram" → ADOPT
+- **DO NOT ADOPT when**:
+  - Image description contains generic/decorative terms like "background", "banner", "logo", "icon", "decoration"
+  - Image description is unrelated or ambiguous to the section content
+  - Example: Section explains "ESP overview" → Image alt is "ETH top background start image" → DO NOT ADOPT (use AI generation)
+- **When in doubt, prefer AI generation**: If relevance is unclear, do NOT set source_image_url and use slide_prompt instead
 
 Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
 """
