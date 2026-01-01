@@ -395,6 +395,29 @@ for prompt in JA EN DIALOGUE_JA DIALOGUE_EN; do
 done
 ```
 
+### Reading Field Quality Checklist
+
+When modifying `reading` field generation rules (katakana pronunciation):
+
+1. **Verify ALL 4 prompts contain identical rules**:
+   - Particle pronunciation (は→ワ, へ→エ, を→オ)
+   - Alphabet acronym long vowels (ESP→イーエスピー, NOT イーエスピージ)
+   - Sokuon notation (って→ッテ, った→ッタ)
+   - No spaces in katakana
+   - Sufficient examples covering edge cases
+
+2. **Test with actual LLM calls**:
+   ```bash
+   # Run reading quality test
+   uv run python test_reading_quality.py
+   ```
+
+3. **Check common mistakes**:
+   - ESP/API/CPU missing final long vowel mark (ー)
+   - Incorrect sokuon (small ッ) in particles like って
+   - Spaces in katakana (should be removed)
+   - Hiragana instead of katakana
+
 ### Summary
 
 **Golden Rule**: If you add a field to the LLM output schema, you must add explicit generation instructions to ALL prompt variants. Half-updated prompts lead to silent failures in production.

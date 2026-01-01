@@ -6,8 +6,6 @@ Generates video scripts from source content using LLM providers.
 import httpx
 from pydantic import BaseModel
 
-from ..utils.text import clean_katakana_reading  # type: ignore[import]
-
 
 class Narration(BaseModel):
     """A single narration line, optionally with persona information."""
@@ -26,15 +24,6 @@ class ScriptSection(BaseModel):
     source_image_url: str | None = None
 
 
-class PronunciationEntry(BaseModel):
-    """Pronunciation dictionary entry."""
-
-    word: str
-    reading: str
-    word_type: str = "COMMON_NOUN"  # PROPER_NOUN, COMMON_NOUN, VERB, ADJECTIVE, SUFFIX
-    accent: int = 0  # 0=auto
-
-
 class RoleAssignment(BaseModel):
     """Role assignment for a persona in the video script."""
 
@@ -49,7 +38,6 @@ class VideoScript(BaseModel):
     title: str
     description: str
     sections: list[ScriptSection]
-    pronunciations: list[PronunciationEntry] | None = None
     role_assignments: list[RoleAssignment] | None = None
 
 
@@ -98,14 +86,6 @@ JSON形式で以下を出力してください：
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
       "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
     }}
-  ],
-  "pronunciations": [
-    {{
-      "word": "ENGINE",
-      "reading": "エンジン",
-      "word_type": "COMMON_NOUN",
-      "accent": 1
-    }}
   ]
 }}
 
@@ -116,11 +96,21 @@ JSON形式で以下を出力してください：
   - 「は」→「ワ」（例: 「これは」→「コレワ」）
   - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
   - 「を」→「オ」（例: 「本を」→「ホンオ」）
+- **アルファベット略語の音引き**: 英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
+  - 「ESP」→「イーエスピー」（×イーエスピージ）
+  - 「API」→「エーピーアイ」
+  - 「CPU」→「シーピーユー」
+  - 「USB」→「ユーエスビー」
+- **促音の表記**: 小さい「ッ」を正しく使用してください
+  - 「って」→「ッテ」（例: 「聞いたって」→「キイタッテ」）
+  - 「った」→「ッタ」（例: 「言った」→「イッタ」）
 - **スペース不要**: カタカナにスペースを含めないでください
 - **例**:
   - text: "明日は晴れです" → reading: "アシタワハレデス"
   - text: "道案内図を見る" → reading: "ミチアンナイズオミル"
   - text: "97個あります" → reading: "キュウジュウナナコアリマス"
+  - text: "ESPが次の章" → reading: "イーエスピーガツギノショウ"
+  - text: "APIって何？" → reading: "エーピーアイッテナニ？"
 
 【スライド画像について - 重要な選択基準】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -137,15 +127,6 @@ JSON形式で以下を出力してください：
   - 画像の説明がセクション内容と無関係または曖昧
   - 例: セクションが「ESPの概要」を説明 → 画像altが「ETH上部背景開始画像」→ 採用NG（AI生成を使用）
 - **迷った場合はAI生成を優先**: 関連性が不明確な場合は、source_image_urlを指定せずslide_promptでAI生成してください
-
-【読み方辞書（pronunciations）について】
-- ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
-- **数字は登録しないでください**（音声合成エンジンが正しく読めます）
-- 各単語について、正しいカタカナ読みを指定してください
-- **重要**: カタカナ読みにはスペースを含めないでください（例: "カイジュウエンジン" ○、"カイジュウ エンジン" ×）
-- word_typeは以下から選択: PROPER_NOUN（固有名詞）, COMMON_NOUN（普通名詞）, VERB（動詞）, ADJECTIVE（形容詞）
-- accentは0（自動）または1-N（アクセント位置）を指定
-- 例: "API" → "エーピーアイ", "GitHub" → "ギットハブ", "Unity" → "ユニティ", "Kaiju Engine" → "カイジュウエンジン"
 """
 
 SCRIPT_GENERATION_PROMPT_EN = """
@@ -193,8 +174,7 @@ Output in JSON format:
       "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)",
       "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
     }}
-  ],
-  "pronunciations": []
+  ]
 }}
 
 [Reading Field]
@@ -217,8 +197,6 @@ Output in JSON format:
   - Image description is unrelated or ambiguous to the section content
   - Example: Section explains "ESP overview" → Image alt is "ETH top background start image" → DO NOT ADOPT (use AI generation)
 - **When in doubt, prefer AI generation**: If relevance is unclear, do NOT set source_image_url and use slide_prompt instead
-
-Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
 """
 
 SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
@@ -266,11 +244,20 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
   - 「は」→「ワ」（例: 「これは」→「コレワ」）
   - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
   - 「を」→「オ」（例: 「本を」→「ホンオ」）
+- **アルファベット略語の音引き**: 英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
+  - 「ESP」→「イーエスピー」（×イーエスピージ）
+  - 「API」→「エーピーアイ」
+  - 「CPU」→「シーピーユー」
+  - 「USB」→「ユーエスビー」
+- **促音の表記**: 小さい「ッ」を正しく使用してください
+  - 「って」→「ッテ」（例: 「聞いたって」→「キイタッテ」）
+  - 「った」→「ッタ」（例: 「言った」→「イッタ」）
 - **スペース不要**: カタカナにスペースを含めない
 - **例**:
   - text: "ねえねえ！" → reading: "ネエネエ！"
   - text: "これは便利だね" → reading: "コレワベンリダネ"
   - text: "東京へ行こう" → reading: "トウキョウエイコウ"
+  - text: "ESPが次の章って聞いた！" → reading: "イーエスピーガツギノショウッテキイタ！"
   - text: "RAGって何？" → reading: "ラグッテナニ？"
   - text: "97%削減！" → reading: "キュウジュウナナパーセントサクゲン！"
 
@@ -299,14 +286,6 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
       "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
     }}
-  ],
-  "pronunciations": [
-    {{
-      "word": "ENGINE",
-      "reading": "エンジン",
-      "word_type": "COMMON_NOUN",
-      "accent": 1
-    }}
   ]
 }}
 
@@ -325,15 +304,6 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
   - 画像の説明がセクション内容と無関係または曖昧
   - 例: セクションが「ESPの概要」を説明 → 画像altが「ETH上部背景開始画像」→ 採用NG（AI生成を使用）
 - **迷った場合はAI生成を優先**: 関連性が不明確な場合は、source_image_urlを指定せずslide_promptでAI生成してください
-
-【読み方辞書（pronunciations）について】
-- ナレーション中に登場する英単語、固有名詞、専門用語で、音声合成エンジンが誤読する可能性のある単語をリストアップしてください
-- **数字は登録しないでください**（音声合成エンジンが正しく読めます）
-- 各単語について、正しいカタカナ読みを指定してください
-- **重要**: カタカナ読みにはスペースを含めないでください（例: "カイジュウエンジン" ○、"カイジュウ エンジン" ×）
-- word_typeは以下から選択: PROPER_NOUN（固有名詞）, COMMON_NOUN（普通名詞）, VERB（動詞）, ADJECTIVE（形容詞）
-- accentは0（自動）または1-N（アクセント位置）を指定
-- 例: "API" → "エーピーアイ", "GitHub" → "ギットハブ", "Unity" → "ユニティ", "Kaiju Engine" → "カイジュウエンジン"
 """
 
 SCRIPT_GENERATION_PROMPT_DIALOGUE_EN = """
@@ -413,8 +383,7 @@ Output in JSON format. **MUST include reading field for each narration**:
       "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
       "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
     }}
-  ],
-  "pronunciations": []
+  ]
 }}
 
 [About Slide Images - Critical Selection Criteria]
@@ -432,8 +401,6 @@ Output in JSON format. **MUST include reading field for each narration**:
   - Image description is unrelated or ambiguous to the section content
   - Example: Section explains "ESP overview" → Image alt is "ETH top background start image" → DO NOT ADOPT (use AI generation)
 - **When in doubt, prefer AI generation**: If relevance is unclear, do NOT set source_image_url and use slide_prompt instead
-
-Note: For English narration, pronunciations dictionary is not needed, so return an empty array.
 """
 
 SCRIPT_GENERATION_PROMPTS = {
@@ -630,20 +597,6 @@ async def generate_script(
             )
         )
 
-    # Parse pronunciations if provided
-    pronunciations = None
-    if "pronunciations" in script_data and script_data["pronunciations"]:
-        pronunciations = [
-            PronunciationEntry(
-                word=entry["word"],
-                # Remove spaces from reading (VOICEVOX requires katakana-only)
-                reading=clean_katakana_reading(entry["reading"]),
-                word_type=entry.get("word_type", "COMMON_NOUN"),
-                accent=entry.get("accent", 0),
-            )
-            for entry in script_data["pronunciations"]
-        ]
-
     # Parse role_assignments if provided (for backward compatibility)
     role_assignments = None
     if "role_assignments" in script_data and script_data["role_assignments"]:
@@ -669,6 +622,5 @@ async def generate_script(
         title=script_data["title"],
         description=script_data["description"],
         sections=sections,
-        pronunciations=pronunciations,
         role_assignments=role_assignments,
     )
