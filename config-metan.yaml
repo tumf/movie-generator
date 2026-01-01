@@ -1,0 +1,28 @@
+# Configuration for Shikoku Metan character
+# Usage: uv run movie-generator generate config-metan.yaml
+
+llm:
+  provider: "openrouter"
+  model: "google/gemini-2.0-flash-exp:free"
+
+personas:
+  - id: "metan"
+    name: "四国めたん"
+    voicevox_speaker_id: 2  # Shikoku Metan's VOICEVOX speaker ID
+    subtitle_color: "#F09CB2"  # Pink color for Shikoku Metan
+    character_image: "assets/characters/shikoku-metan/base.png"
+    character_position: "left"
+    character_scale: 0.45
+    mouth_open_image: "assets/characters/shikoku-metan/mouth_open.png"
+    eye_close_image: "assets/characters/shikoku-metan/eye_close.png"
+    animation_style: "sway"
+
+video:
+  fps: 30
+  width: 1920
+  height: 1080
+
+slides:
+  provider: "openrouter"
+  model: "google/gemini-2.0-flash-exp:free"
+  image_model: "black-forest-labs/flux-1.1-pro"

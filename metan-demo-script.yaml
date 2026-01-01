@@ -1,0 +1,29 @@
+title: "四国めたんデモンストレーション"
+sections:
+  - title: "はじめに"
+    narrations:
+      - persona_id: "metan"
+        text: "こんにちは！四国めたんです！"
+        reading: "コンニチワ！シコクメタンデス！"
+    slide_prompt: "A cute pink-themed title screen with 'Introduction' text"
+
+  - title: "自己紹介"
+    narrations:
+      - persona_id: "metan"
+        text: "私はVOICEVOXの音声合成エンジンで話すことができる、四国出身のキャラクターです。"
+        reading: "ワタシワボイスボックスノオンセイゴウセイエンジンデハナスコトガデキル、シコクシュッシンノキャラクターデス。"
+    slide_prompt: "A friendly character introduction slide with icon and bio text"
+
+  - title: "アニメーション機能"
+    narrations:
+      - persona_id: "metan"
+        text: "口パク、まばたき、そして揺れるアニメーションに対応しています！"
+        reading: "クチパク、マバタキ、ソシテユレルアニメーションニタイオウシテイマス！"
+    slide_prompt: "An animation demo slide showing motion features"
+
+  - title: "おわりに"
+    narrations:
+      - persona_id: "metan"
+        text: "以上、四国めたんでした！ご視聴ありがとうございました！"
+        reading: "イジョウ、シコクメタンデシタ！ゴシチョウアリガトウゴザイマシタ！"
+    slide_prompt: "A pink-themed thank you slide with 'Thanks for watching!' text"

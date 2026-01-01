@@ -1,0 +1,74 @@
+# Multi-speaker configuration with Zundamon and Shikoku Metan
+# Usage: uv run movie-generator generate <url> -c config-dialogue.yaml --scenes 1
+
+project:
+  name: "AI Industry 2025 Recap"
+  output_dir: "./output"
+
+style:
+  resolution: [1920, 1080]
+  fps: 30
+  font_family: "Noto Sans JP"
+  primary_color: "#FFFFFF"
+  background_color: "#1a1a2e"
+
+audio:
+  engine: "voicevox"
+  speaker_id: 3
+  speed_scale: 1.0
+
+narration:
+  character: ""
+  style: "casual"
+
+personas:
+  - id: "zundamon"
+    name: "ずんだもん"
+    character: "元気で明るい東北の妖精。テクノロジーに詳しく、分かりやすく説明するのが得意"
+    synthesizer:
+      speaker_id: 3
+      speed_scale: 1.0
+    subtitle_color: "#8FCF4F"
+    character_image: "assets/characters/zundamon/base.png"
+    character_position: "left"
+    character_scale: 0.45
+    mouth_open_image: "assets/characters/zundamon/mouth_open.png"
+    eye_close_image: "assets/characters/zundamon/eye_close.png"
+    animation_style: "bounce"
+
+  - id: "metan"
+    name: "四国めたん"
+    character: "優しく穏やかな四国出身の女の子。質問したり、相槌を打ったりする役割"
+    synthesizer:
+      speaker_id: 2
+      speed_scale: 1.0
+    subtitle_color: "#F09CB2"
+    character_image: "assets/characters/shikoku-metan/base.png"
+    character_position: "right"
+    character_scale: 0.45
+    mouth_open_image: "assets/characters/shikoku-metan/mouth_open.png"
+    eye_close_image: "assets/characters/shikoku-metan/eye_close.png"
+    animation_style: "sway"
+
+content:
+  llm:
+    provider: "openrouter"
+    model: "openai/gpt-5.2"
+
+slides:
+  llm:
+    provider: "openrouter"
+    model: "google/gemini-3-pro-image-preview"
+  style: "presentation"
+
+video:
+  renderer: "remotion"
+  template: "default"
+  output_format: "mp4"
+  transition:
+    type: "fade"
+    duration_frames: 15
+    timing: "linear"
+
+pronunciation:
+  custom: {}
