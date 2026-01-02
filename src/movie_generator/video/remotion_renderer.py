@@ -19,6 +19,38 @@ from .renderer import CompositionPhrase
 console = Console()
 
 
+def _get_video_duration_frames(video_path: Path, fps: int = 30) -> int | None:
+    """Get video duration in frames using ffprobe.
+
+    Args:
+        video_path: Path to the video file.
+        fps: Frames per second (default: 30).
+
+    Returns:
+        Duration in frames, or None if unable to determine.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(video_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        duration_seconds = float(result.stdout.strip())
+        return int(duration_seconds * fps)
+    except (subprocess.CalledProcessError, ValueError, FileNotFoundError):
+        return None
+
+
 def create_remotion_input(
     phrases: list[Phrase],
     audio_paths: list[Path],
@@ -236,6 +268,9 @@ def update_composition_json(
     project_name: str = "video",
     transition: dict[str, Any] | None = None,
     personas: list[dict[str, Any]] | None = None,
+    background: dict[str, Any] | None = None,
+    bgm: dict[str, Any] | None = None,
+    section_backgrounds: dict[int, dict[str, Any]] | None = None,
 ) -> None:
     """Update composition.json with current phrase data.
 
@@ -247,6 +282,9 @@ def update_composition_json(
         project_name: Name of the project.
         transition: Transition configuration (type, duration_frames, timing).
         personas: Optional list of persona configurations for multi-speaker dialogue.
+        background: Optional global background configuration (type, path, fit).
+        bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
+        section_backgrounds: Optional map of section_index to background override.
     """
     # Build slide map for efficient lookup
     slide_map = _build_slide_map(slide_paths) if slide_paths else {}
@@ -267,6 +305,16 @@ def update_composition_json(
     composition_phrases = []
     for phrase in phrases:
         persona_fields = _get_persona_fields(phrase, persona_map, persona_position_map)
+        # Get background override for this section
+        bg_override = None
+        if section_backgrounds and phrase.section_index in section_backgrounds:
+            bg_dict = section_backgrounds[phrase.section_index].copy()
+            # Convert background path to public-relative
+            bg_dict["path"] = _copy_asset_to_public(
+                Path(bg_dict["path"]), remotion_root, "backgrounds"
+            )
+            bg_override = bg_dict
+
         composition_phrases.append(
             CompositionPhrase(
                 text=phrase.get_subtitle_text(),
@@ -282,6 +330,7 @@ def update_composition_json(
                 mouth_open_image=persona_fields.get("mouthOpenImage"),
                 eye_close_image=persona_fields.get("eyeCloseImage"),
                 animation_style=persona_fields.get("animationStyle"),
+                background_override=bg_override,
             )
         )
 
@@ -296,6 +345,26 @@ def update_composition_json(
     # Add transition config if provided
     if transition:
         composition_data["transition"] = transition
+
+    # Add background config if provided (convert path to public-relative)
+    if background:
+        bg_config = background.copy()
+        original_path = Path(background["path"])
+        bg_config["path"] = _copy_asset_to_public(original_path, remotion_root, "backgrounds")
+
+        # For video backgrounds, get the video duration for proper looping
+        if background.get("type") == "video":
+            loop_frames = _get_video_duration_frames(original_path)
+            if loop_frames:
+                bg_config["loopDurationInFrames"] = loop_frames
+
+        composition_data["background"] = bg_config
+
+    # Add BGM config if provided (convert path to public-relative)
+    if bgm:
+        bgm_config = bgm.copy()
+        bgm_config["path"] = _copy_asset_to_public(Path(bgm["path"]), remotion_root, "bgm")
+        composition_data["bgm"] = bgm_config
 
     # Add personas config if provided (for persistent character display)
     if personas:
@@ -402,6 +471,41 @@ def _convert_to_public_path(asset_path: str | None) -> str | None:
     return asset_path
 
 
+def _copy_asset_to_public(asset_path: Path, remotion_root: Path, category: str) -> str:
+    """Copy asset file to Remotion public directory.
+
+    Args:
+        asset_path: Path to asset file (can be relative or absolute).
+        remotion_root: Path to Remotion project root.
+        category: Asset category (e.g., "backgrounds", "bgm").
+
+    Returns:
+        Path relative to public/ directory (e.g., "backgrounds/bg.png").
+
+    Raises:
+        FileNotFoundError: If asset file doesn't exist.
+    """
+    import shutil
+
+    # Resolve relative paths from current working directory
+    if not asset_path.is_absolute():
+        asset_path = Path.cwd() / asset_path
+
+    if not asset_path.exists():
+        raise FileNotFoundError(f"Asset file not found: {asset_path}")
+
+    # Create category directory in public/
+    public_category_dir = remotion_root / "public" / category
+    public_category_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy file to public directory
+    dest_file = public_category_dir / asset_path.name
+    shutil.copy2(asset_path, dest_file)
+
+    # Return path relative to public/
+    return f"{category}/{asset_path.name}"
+
+
 def render_video_with_remotion(
     phrases: list[Phrase],
     audio_paths: list[Path],
@@ -412,6 +516,9 @@ def render_video_with_remotion(
     show_progress: bool = False,
     transition: dict[str, Any] | None = None,
     personas: list[dict[str, Any]] | None = None,
+    background: dict[str, Any] | None = None,
+    bgm: dict[str, Any] | None = None,
+    section_backgrounds: dict[int, dict[str, Any]] | None = None,
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
 
@@ -425,6 +532,9 @@ def render_video_with_remotion(
         show_progress: If True, show real-time rendering progress. Default False.
         transition: Transition configuration (type, duration_frames, timing).
         personas: Optional list of persona configurations for multi-speaker dialogue.
+        background: Optional global background configuration (type, path, fit).
+        bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
+        section_backgrounds: Optional map of section_index to background override.
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
@@ -438,7 +548,16 @@ def render_video_with_remotion(
 
     # Update composition.json with current data
     update_composition_json(
-        remotion_root, phrases, audio_paths, slide_paths, project_name, transition, personas
+        remotion_root,
+        phrases,
+        audio_paths,
+        slide_paths,
+        project_name,
+        transition,
+        personas,
+        background,
+        bgm,
+        section_backgrounds,
     )
 
     # Ensure output directory exists

@@ -254,6 +254,7 @@ def generate(
                         narrations=narrations,
                         slide_prompt=section.get("slide_prompt"),
                         source_image_url=section.get("source_image_url"),
+                        background=section.get("background"),
                     )
                 )
 
@@ -631,8 +632,24 @@ def generate(
             console.print("[yellow]⚠ Skipping slides (no API key provided)[/yellow]")
             slide_paths = []
 
-        # Step 6: Prepare transition config for Remotion
+        # Step 6: Prepare transition, background, and BGM config for Remotion
         transition_config = cfg.video.transition.model_dump()
+
+        # Prepare background config
+        background_config = None
+        if cfg.video.background:
+            background_config = cfg.video.background.model_dump()
+
+        # Prepare BGM config
+        bgm_config = None
+        if cfg.video.bgm:
+            bgm_config = cfg.video.bgm.model_dump()
+
+        # Prepare section-level background overrides
+        section_backgrounds: dict[int, dict[str, Any]] = {}
+        for i, section in enumerate(script.sections):
+            if section.background:
+                section_backgrounds[i] = section.background
 
         # Step 7: Setup Remotion project and render video
         # Generate output filename based on scene range and language
@@ -705,6 +722,9 @@ def generate(
             show_progress=show_progress,
             transition=transition_config,
             personas=personas_for_render,
+            background=background_config,
+            bgm=bgm_config,
+            section_backgrounds=section_backgrounds,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")

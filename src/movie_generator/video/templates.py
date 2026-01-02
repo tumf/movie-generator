@@ -35,7 +35,7 @@ def get_video_generator_tsx(
         Configuration is read from composition.json at runtime.
     """
     return """import React from 'react';
-import { AbsoluteFill, Audio, Img, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, Img, Loop, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { TransitionSeries, springTiming, linearTiming } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
 import { slide } from '@remotion/transitions/slide';
@@ -59,6 +59,11 @@ export interface PhraseData {
   mouthOpenImage?: string;
   eyeCloseImage?: string;
   animationStyle?: 'bounce' | 'sway' | 'static';
+  backgroundOverride?: {
+    type: 'image' | 'video';
+    path: string;
+    fit?: 'cover' | 'contain' | 'fill';
+  };
 }
 
 // Props interface
@@ -186,6 +191,56 @@ const getTransitionTiming = (timing: string, durationInFrames: number) => {
     return springTiming({ config: { damping: 200 } });
   }
   return linearTiming({ durationInFrames });
+};
+
+// BackgroundLayer component
+// Uses OffthreadVideo with Loop for smooth video background playback
+const BackgroundLayer: React.FC<{
+  type?: 'image' | 'video';
+  path?: string;
+  fit?: 'cover' | 'contain' | 'fill';
+  loopDurationInFrames?: number;
+}> = ({ type, path, fit = 'cover', loopDurationInFrames = 150 }) => {
+  if (!path) {
+    // No background configured - return black background
+    return <AbsoluteFill style={{ backgroundColor: '#000000' }} />;
+  }
+
+  const objectFit = fit === 'fill' ? 'fill' : fit;
+
+  if (type === 'video') {
+    // Use Loop + OffthreadVideo for smooth looping
+    // OffthreadVideo extracts frames using FFmpeg for accurate frame rendering
+    return (
+      <AbsoluteFill>
+        <Loop durationInFrames={loopDurationInFrames}>
+          <OffthreadVideo
+            src={staticFile(path)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: objectFit,
+            }}
+            muted
+          />
+        </Loop>
+      </AbsoluteFill>
+    );
+  }
+
+  // Default to image
+  return (
+    <AbsoluteFill>
+      <Img
+        src={staticFile(path)}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: objectFit,
+        }}
+      />
+    </AbsoluteFill>
+  );
 };
 
 const SlideLayer: React.FC<{
@@ -388,6 +443,40 @@ const AudioSubtitleLayer: React.FC<{
   );
 };
 
+// BgmAudio component
+const BgmAudio: React.FC<{
+  path: string;
+  volume?: number;
+  fadeInSeconds?: number;
+  fadeOutSeconds?: number;
+  loop?: boolean;
+}> = ({ path, volume = 0.3, fadeInSeconds = 2.0, fadeOutSeconds = 2.0, loop = true }) => {
+  const frame = useCurrentFrame();
+  const { fps, durationInFrames } = useVideoConfig();
+
+  // Calculate fade-in
+  const fadeInFrames = fadeInSeconds * fps;
+  const fadeInProgress = Math.min(1, frame / fadeInFrames);
+
+  // Calculate fade-out
+  const fadeOutFrames = fadeOutSeconds * fps;
+  const fadeOutStartFrame = durationInFrames - fadeOutFrames;
+  const fadeOutProgress = frame >= fadeOutStartFrame
+    ? 1 - Math.min(1, (frame - fadeOutStartFrame) / fadeOutFrames)
+    : 1;
+
+  // Combine fades
+  const currentVolume = volume * fadeInProgress * fadeOutProgress;
+
+  return (
+    <Audio
+      src={staticFile(path)}
+      volume={currentVolume}
+      loop={loop}
+    />
+  );
+};
+
 export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
   const scenes = getScenesWithTiming(phrases);
   const { fps, durationInFrames } = useVideoConfig();
@@ -421,8 +510,20 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
     );
   };
 
+  // Get background and BGM configuration
+  const background = (compositionData as any).background;
+  const bgm = (compositionData as any).bgm;
+
   return (
     <AbsoluteFill style={{ backgroundColor: '#1a1a1a' }}>
+      {/* Background layer - lowest z-index */}
+      <BackgroundLayer
+        type={background?.type}
+        path={background?.path}
+        fit={background?.fit}
+        loopDurationInFrames={background?.loopDurationInFrames || durationInFrames}
+      />
+
       {/* TransitionSeries for slides */}
       <TransitionSeries>
         {slideGroups.map((group, index) => (
@@ -468,6 +569,17 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
           />
         </Sequence>
       ))}
+
+      {/* BGM audio - plays throughout the video */}
+      {bgm && (
+        <BgmAudio
+          path={bgm.path}
+          volume={bgm.volume}
+          fadeInSeconds={bgm.fade_in_seconds}
+          fadeOutSeconds={bgm.fade_out_seconds}
+          loop={bgm.loop}
+        />
+      )}
     </AbsoluteFill>
   );
 };

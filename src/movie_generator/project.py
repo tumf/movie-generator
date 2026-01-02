@@ -384,6 +384,15 @@ class Project:
         _create_symlink_safe(self.slides_dir, public_dir / "slides")
         _create_symlink_safe(self.characters_dir, public_dir / "characters")
 
+        # Create directories for backgrounds and BGM (assets will be copied when needed)
+        backgrounds_dir = self.project_dir / "assets" / "backgrounds"
+        backgrounds_dir.mkdir(parents=True, exist_ok=True)
+        _create_symlink_safe(backgrounds_dir, public_dir / "backgrounds")
+
+        bgm_dir = self.project_dir / "assets" / "bgm"
+        bgm_dir.mkdir(parents=True, exist_ok=True)
+        _create_symlink_safe(bgm_dir, public_dir / "bgm")
+
         # Load project config to get transition settings
         try:
             project_config = self.load_config()

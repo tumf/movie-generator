@@ -32,6 +32,9 @@ class CompositionPhrase(BaseModel):
     mouth_open_image: str | None = Field(default=None, serialization_alias="mouthOpenImage")
     eye_close_image: str | None = Field(default=None, serialization_alias="eyeCloseImage")
     animation_style: str | None = Field(default=None, serialization_alias="animationStyle")
+    background_override: dict[str, Any] | None = Field(
+        default=None, serialization_alias="backgroundOverride"
+    )
 
 
 class CompositionData(BaseModel):

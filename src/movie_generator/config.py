@@ -157,6 +157,75 @@ class TransitionConfig(BaseModel):
             )
 
 
+class BackgroundConfig(BaseModel):
+    """Background configuration for video rendering."""
+
+    type: Literal["image", "video"] = Field(description="Background type: image or video")
+    path: str = Field(description="Path to background file (relative or absolute)")
+    fit: Literal["cover", "contain", "fill"] = Field(
+        default="cover",
+        description="How to fit background: cover (fill maintaining aspect), "
+        "contain (fit inside), fill (stretch)",
+    )
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validate background file existence."""
+        bg_path = Path(self.path)
+        if not bg_path.is_absolute():
+            # Relative paths will be resolved from project root later
+            return
+
+        if not bg_path.exists():
+            raise ConfigurationError(f"Background file not found: {self.path}")
+
+        # Validate file extension matches type
+        image_exts = {".png", ".jpg", ".jpeg", ".webp"}
+        video_exts = {".mp4", ".webm", ".mov"}
+
+        ext = bg_path.suffix.lower()
+        if self.type == "image" and ext not in image_exts:
+            raise ConfigurationError(
+                f"Invalid image extension '{ext}'. Expected: {', '.join(sorted(image_exts))}"
+            )
+        elif self.type == "video" and ext not in video_exts:
+            raise ConfigurationError(
+                f"Invalid video extension '{ext}'. Expected: {', '.join(sorted(video_exts))}"
+            )
+
+
+class BgmConfig(BaseModel):
+    """Background music configuration."""
+
+    path: str = Field(description="Path to BGM audio file (relative or absolute)")
+    volume: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)",
+    )
+    fade_in_seconds: float = Field(default=2.0, ge=0.0, description="Fade-in duration in seconds")
+    fade_out_seconds: float = Field(default=2.0, ge=0.0, description="Fade-out duration in seconds")
+    loop: bool = Field(default=True, description="Loop BGM if shorter than video duration")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validate BGM file existence."""
+        bgm_path = Path(self.path)
+        if not bgm_path.is_absolute():
+            # Relative paths will be resolved from project root later
+            return
+
+        if not bgm_path.exists():
+            raise ConfigurationError(f"BGM file not found: {self.path}")
+
+        # Validate audio file extension
+        audio_exts = {".mp3", ".wav", ".ogg", ".m4a", ".aac"}
+        ext = bgm_path.suffix.lower()
+        if ext not in audio_exts:
+            raise ConfigurationError(
+                f"Invalid audio extension '{ext}'. Expected: {', '.join(sorted(audio_exts))}"
+            )
+
+
 class VideoConfig(BaseModel):
     """Video rendering configuration."""
 
@@ -164,6 +233,10 @@ class VideoConfig(BaseModel):
     template: str = Field(default="default")
     output_format: str = Field(default="mp4")
     transition: TransitionConfig = Field(default_factory=TransitionConfig)
+    background: BackgroundConfig | None = Field(
+        default=None, description="Optional background image/video for entire video"
+    )
+    bgm: BgmConfig | None = Field(default=None, description="Optional background music")
 
 
 class PronunciationWord(BaseModel):

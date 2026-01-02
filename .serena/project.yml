@@ -78,7 +78,25 @@ excluded_tools: []
 
 # initial prompt for the project. It will always be given to the LLM upon activating the project
 # (contrary to the memories, which are loaded on demand).
-initial_prompt: ""
+initial_prompt: |
+  This is the Movie Generator project - a Python CLI tool for generating YouTube slide videos from blog URLs.
+
+  Key points:
+  - Multi-language support (Japanese, English, etc.)
+  - Multi-speaker dialogue with character animation
+  - VOICEVOX for audio synthesis (requires manual installation)
+  - OpenRouter for LLM/image generation
+  - Remotion for video rendering
+  - Pydantic models for all data structures
+
+  Before making changes:
+  - Read AGENTS.md for coding standards and critical rules
+  - Always use `model_dump()` for Pydantic serialization
+  - Use SubtitleConstants.DEFAULT_COLOR, never hardcode colors
+  - Update ALL 4 LLM prompts when adding output fields
+  - Test with actual LLM calls, not just mocks
+
+  See openspec/project.md for detailed architecture and conventions.
 
 project_name: "movie-generator"
 included_optional_tools: []
