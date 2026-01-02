@@ -276,8 +276,8 @@ const CharacterLayer: React.FC<{
   // Position calculation
   const getPosition = () => {
     const positions = {
-      left: { left: '50px', bottom: '100px' },
-      right: { right: '50px', bottom: '100px' },
+      left: { left: '-100px', bottom: '100px' },
+      right: { right: '-100px', bottom: '100px' },
       center: { left: '50%', bottom: '100px', transform: 'translateX(-50%)' },
     };
     return positions[characterPosition];
