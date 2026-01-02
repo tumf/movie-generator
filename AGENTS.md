@@ -72,9 +72,28 @@ uv run ruff format .
 
 # Type check
 uv run mypy src/
+```
 
-# Run CLI
-uv run movie-generator generate <script.yaml> --scenes 1-3
+### CLI Commands
+
+```bash
+# All-in-one generation (backward compatible)
+uv run movie-generator generate <URL|script.yaml> [--scenes 1-3]
+
+# Step-by-step workflow
+uv run movie-generator script create <URL> [--output DIR]
+uv run movie-generator audio generate <script.yaml> [--scenes 1-3]
+uv run movie-generator slides generate <script.yaml> [--scenes 1-3]
+uv run movie-generator video render <script.yaml> [--scenes 1-3] [--output FILE]
+
+# Common options (available on all commands)
+--force / -f          # Force overwrite existing files
+--quiet / -q          # Suppress progress output
+--verbose / -v        # Show detailed debug info
+--dry-run             # Preview without executing
+
+# Configuration
+uv run movie-generator config init [--output config.yaml]
 ```
 
 ### Environment Variables

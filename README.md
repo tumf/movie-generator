@@ -88,7 +88,7 @@ synth = VoicevoxSynthesizer(allow_placeholder=True)
 # Set API key
 export OPENROUTER_API_KEY="your-api-key"
 
-# Generate video from URL
+# Generate video from URL (all-in-one command)
 uv run movie-generator generate https://example.com/blog-post
 
 # Generate from existing script.yaml
@@ -102,6 +102,64 @@ uv run movie-generator generate https://example.com/blog-post -o ./my-videos
 
 # Testing mode without VOICEVOX
 uv run movie-generator generate https://example.com/blog-post --allow-placeholder
+```
+
+### Step-by-Step Workflow
+
+For more control over the generation process, use individual subcommands:
+
+```bash
+# Step 1: Generate script from URL
+uv run movie-generator script create https://example.com/blog-post
+
+# Step 2: Generate audio from script
+uv run movie-generator audio generate script.yaml
+
+# Step 3: Generate slides from script
+uv run movie-generator slides generate script.yaml
+
+# Step 4: Render final video
+uv run movie-generator video render script.yaml
+```
+
+#### Common Options
+
+All subcommands support these options:
+
+- `--force` / `-f`: Force overwrite existing files without confirmation
+- `--quiet` / `-q`: Suppress progress output, only show final result
+- `--verbose` / `-v`: Show detailed debug information
+- `--dry-run`: Show what would be done without actually executing
+
+**Examples:**
+
+```bash
+# Preview what would be generated without actually doing it
+uv run movie-generator script create https://example.com --dry-run
+
+# Generate audio quietly (only show final output)
+uv run movie-generator audio generate script.yaml --quiet
+
+# Generate slides with verbose output
+uv run movie-generator slides generate script.yaml --verbose
+
+# Force regenerate video even if output exists
+uv run movie-generator video render script.yaml --force
+```
+
+#### Scene Range Filtering
+
+Generate only specific scenes:
+
+```bash
+# Generate audio for scenes 1-3 only
+uv run movie-generator audio generate script.yaml --scenes 1-3
+
+# Generate slides for scene 5 only
+uv run movie-generator slides generate script.yaml --scenes 5
+
+# Render video from scene 2 onwards
+uv run movie-generator video render script.yaml --scenes 2-
 ```
 
 ### MCP Integration (Optional)
