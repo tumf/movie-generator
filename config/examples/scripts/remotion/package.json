@@ -1,0 +1,10 @@
+{
+  "name": "@projects/scripts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "render": "remotion render VideoGenerator ../output.mp4"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

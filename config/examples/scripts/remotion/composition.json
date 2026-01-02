@@ -1,0 +1,47 @@
+{
+  "title": "scripts",
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "phrases": [
+    {
+      "text": "こんにちは。動画背景のテストです",
+      "duration": 3.7866666666666666,
+      "start_time": 0.0,
+      "audioFile": "audio/phrase_0000.wav",
+      "slideFile": "slides/ja/slide_0000.png"
+    },
+    {
+      "text": "背景が動いているのがわかりますか？",
+      "duration": 4.288,
+      "start_time": 3.7866666666666666,
+      "audioFile": "audio/phrase_0001.wav",
+      "slideFile": "slides/ja/slide_0001.png"
+    },
+    {
+      "text": "動画背景のデモでした",
+      "duration": 2.368,
+      "start_time": 8.074666666666667,
+      "audioFile": "audio/phrase_0002.wav",
+      "slideFile": "slides/ja/slide_0002.png"
+    }
+  ],
+  "transition": {
+    "type": "fade",
+    "duration_frames": 15,
+    "timing": "linear"
+  },
+  "background": {
+    "type": "video",
+    "path": "backgrounds/abstract-loop.mp4",
+    "fit": "cover",
+    "loopDurationInFrames": 303
+  },
+  "bgm": {
+    "path": "bgm/calm-ambient.mp3",
+    "volume": 0.3,
+    "fade_in_seconds": 2.0,
+    "fade_out_seconds": 2.0,
+    "loop": true
+  }
+}

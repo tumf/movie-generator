@@ -1,0 +1,40 @@
+# Script example with section-level background override
+
+title: "Product Demo Video"
+description: "Demonstrating different sections with custom backgrounds"
+
+sections:
+  - title: "Introduction"
+    narrations:
+      - text: "Welcome to our product demo!"
+        reading: "ウェルカム トゥ アワー プロダクト デモ"
+    slide_prompt: "Title slide with 'Product Demo' text, modern design"
+    # Uses global background from config
+
+  - title: "Feature 1: Dashboard"
+    narrations:
+      - text: "Our dashboard provides real-time insights."
+        reading: "アワー ダッシュボード プロバイズ リアルタイム インサイツ"
+    slide_prompt: "Dashboard interface screenshot, clean UI"
+    # Override with specific background for this section
+    background:
+      type: "image"
+      path: "assets/backgrounds/dashboard-bg.png"
+      fit: "cover"
+
+  - title: "Feature 2: Analytics"
+    narrations:
+      - text: "Analytics help you make data-driven decisions."
+        reading: "アナリティクス ヘルプ ユー メイク データ ドリブン ディシジョンズ"
+    slide_prompt: "Analytics charts and graphs, professional look"
+    background:
+      type: "video"
+      path: "assets/backgrounds/analytics-loop.mp4"
+      fit: "cover"
+
+  - title: "Conclusion"
+    narrations:
+      - text: "Thank you for watching! Try it today."
+        reading: "サンキュー フォー ウォッチング トライ イット トゥデイ"
+    slide_prompt: "Call-to-action slide with company logo"
+    # Back to global background

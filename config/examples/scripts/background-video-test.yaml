@@ -1,0 +1,24 @@
+# Test script for video background feature
+# Usage: uv run movie-generator generate config/examples/scripts/background-video-test.yaml
+
+title: "Video Background Test"
+description: "動画背景機能のテスト"
+
+sections:
+  - title: "Introduction"
+    slide_prompt: "A simple transparent slide with 'Video Background Demo' text"
+    narrations:
+      - text: "こんにちは。動画背景のテストです。"
+        reading: "コンニチワ。ドウガハイケイノテストデス。"
+
+  - title: "Feature Demo"
+    slide_prompt: "A slide showing 'Loop Animation' text with minimal design"
+    narrations:
+      - text: "背景が動いているのがわかりますか？"
+        reading: "ハイケイガウゴイテイルノガワカリマスカ？"
+
+  - title: "Conclusion"
+    slide_prompt: "A 'Thank you' slide with simple design"
+    narrations:
+      - text: "動画背景のデモでした。"
+        reading: "ドウガハイケイノデモデシタ。"

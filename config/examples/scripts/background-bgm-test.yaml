@@ -1,0 +1,24 @@
+# Test script for background and BGM feature
+# Usage: uv run movie-generator generate config/examples/scripts/background-bgm-test.yaml
+
+title: "Background and BGM Test"
+description: "背景画像とBGM機能のテスト動画"
+
+sections:
+  - title: "Introduction"
+    slide_prompt: "A simple blue gradient slide with 'Welcome' text"
+    narrations:
+      - text: "こんにちは。背景とBGMのテストです。"
+        reading: "コンニチワ。ハイケイトビージーエムノテストデス。"
+
+  - title: "Feature Demo"
+    slide_prompt: "A slide showing music notes and background imagery"
+    narrations:
+      - text: "背景画像とBGMが同時に再生されています。"
+        reading: "ハイケイガゾウトビージーエムガドウジニサイセイサレテイマス。"
+
+  - title: "Conclusion"
+    slide_prompt: "A 'Thank you' slide with simple design"
+    narrations:
+      - text: "ご視聴ありがとうございました。"
+        reading: "ゴシチョウアリガトウゴザイマシタ。"
