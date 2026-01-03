@@ -441,6 +441,53 @@ When modifying `reading` field generation rules (katakana pronunciation):
 
 **Golden Rule**: If you add a field to the LLM output schema, you must add explicit generation instructions to ALL prompt variants. Half-updated prompts lead to silent failures in production.
 
+### Script Quality Enhancement Guidelines
+
+**As of January 2025**, the script generation prompts have been significantly enhanced to improve overall quality. When further modifying these prompts:
+
+#### Core Quality Principles
+
+1. **Storytelling Structure**: All prompts now enforce a narrative arc:
+   - Hook (first 15 seconds) → Context → Core Content → Conclusion
+   - Ensure any modifications maintain this structure across all 4 prompt variants
+
+2. **Multi-Speaker Dialogue Quality**: Dialogue prompts include:
+   - Specific role pattern examples (Explainer × Questioner, etc.)
+   - Conversation rhythm guidance (avoid monotonous turn-taking)
+   - Personality development instructions
+   - When modifying, verify natural conversation flow is preserved
+
+3. **Content Deepening**: All prompts emphasize:
+   - Anticipating viewer questions ("What is X?", "Why does this matter?")
+   - Concrete examples and analogies (not just abstract explanations)
+   - Progressive explanation (overview → details → application)
+   - Any additions should reinforce these principles
+
+4. **Self-Evaluation Checklists**: Each prompt includes quality verification questions
+   - Update checklists when adding new quality criteria
+   - Ensure checklist items are actionable and measurable
+
+#### When Modifying Script Prompts
+
+**CRITICAL**: Script quality depends on **consistency across all 4 prompt variants**:
+- `SCRIPT_GENERATION_PROMPT_JA`
+- `SCRIPT_GENERATION_PROMPT_EN`
+- `SCRIPT_GENERATION_PROMPT_DIALOGUE_JA`
+- `SCRIPT_GENERATION_PROMPT_DIALOGUE_EN`
+
+**Before committing prompt changes**:
+1. Verify all 4 prompts have equivalent quality instructions
+2. Check that storytelling structure guidance is consistent
+3. Ensure dialogue-specific guidance is present in both DIALOGUE prompts
+4. Confirm self-evaluation checklists cover the same quality dimensions
+5. Test with actual LLM calls, not just schema validation
+
+**Common mistakes to avoid**:
+- Adding quality guidance to only single-speaker or only dialogue prompts
+- Translating Japanese→English prompts without preserving intent
+- Forgetting to update self-evaluation checklists
+- Adding complexity that contradicts existing storytelling structure
+
 ## Subtitle Color Management
 
 ### Single Source of Truth

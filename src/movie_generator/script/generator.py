@@ -47,9 +47,9 @@ class VideoScript(BaseModel):
 
 SCRIPT_GENERATION_PROMPT_JA = """
 あなたはYouTube動画の台本作成の専門家です。
-以下のコンテンツから、視聴者にわかりやすく説明するための動画台本を作成してください。
+以下のコンテンツから、視聴者を引き込み、深く理解させる動画台本を作成してください。
 
-【要件】
+【基本要件】
 - ナレーションは自然な話し言葉で、「{character}」のキャラクターで話してください
 - スタイル: {style}
 - 各セクションは3-6文程度で構成してください
@@ -59,11 +59,55 @@ SCRIPT_GENERATION_PROMPT_JA = """
 - **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
   - 例: "A slide with text 'データベース設計' in the center, modern design"
 
+【ストーリーテリング構造 - 起承転結を意識】
+台本は以下の流れで構成してください：
+
+**1. Hook（掴み）- 最初の15秒が勝負**
+- 驚きの事実、問題提起、視聴者の「知りたい！」を引き出す一言から始める
+- 例: 「実は○○の97%が知らない事実があるんです」「なぜ△△が失敗するのか、その理由は...」
+- このセクションで視聴者の離脱を防ぐ
+
+**2. Context（背景・なぜ重要か）- 動機付け**
+- なぜこのトピックが視聴者にとって重要なのかを説明
+- 「こんな悩みありませんか？」「実はこれ、皆さんの○○に直結します」
+- 視聴者が「自分ごと」として捉えられるよう工夫する
+
+**3. Core Content（本編）- 3〜5のメインポイント**
+- 各ポイントは論理的につながるよう構成（原因→結果、問題→解決策など）
+- セクション間の接続を意識し、「では次に...」「これに関連して...」などのつなぎ言葉を使う
+- 抽象的な説明だけでなく、**必ず具体例・比喩・実例**を含める
+  - 悪い例: 「効率が上がります」
+  - 良い例: 「例えば、従来1時間かかった作業が10分で終わります」
+
+**4. Conclusion（まとめ・次のアクション）**
+- 要点を3つ以内で再確認
+- 視聴者が次に何をすべきか明確にする（「まずは○○から始めてみましょう」）
+
+【内容理解の深化 - 視聴者視点を最優先】
+- **初めて聞く人が疑問に思うこと**を先回りして答える
+  - 「○○って何？」「なぜそうなるの？」「自分には関係ある？」
+- **段階的な説明**: 概要→詳細→応用の順で説明
+  - まず全体像を示してから、細かい話に入る
+- **具体例必須**: 抽象的な概念には必ず身近な例や比喩を添える
+  - 例: 「データベースは図書館のようなもの。本を整理して、必要な時にすぐ取り出せるようにします」
+
 【台本構成の必須ルール】
 - 論理的な構成で最後まで完成させてください
 - 最低6セクション以上を目安に構成してください
+  - Hook（1セクション）
+  - Context（1セクション）
+  - Core Content（3〜5セクション）
+  - Conclusion（1セクション）
 - 最後のセクションは必ず「まとめ」「結論」「次のステップ」のいずれかを含めてください
 - 途中で終わらせず、視聴者に結論を伝えてください
+
+【自己評価チェックリスト】
+台本作成後、以下を自己確認してください：
+✓ 最初の15秒で視聴者の興味を引けるか？
+✓ 専門知識ゼロの人でも理解できるか？
+✓ 各セクションが論理的につながっているか？
+✓ 抽象的な説明に具体例が添えられているか？
+✓ 視聴者が「見てよかった」と思える結論があるか？
 
 【元コンテンツ】
 タイトル: {title}
@@ -135,23 +179,66 @@ JSON形式で以下を出力してください：
 
 SCRIPT_GENERATION_PROMPT_EN = """
 You are an expert YouTube video script writer.
-Create a video script from the following content that explains clearly to viewers.
+Create a video script that captivates viewers and ensures deep understanding from the following content.
 
-[Requirements]
+[Basic Requirements]
 - Write narration in natural spoken language with the character of "{character}"
 - Style: {style}
 - Each section should be 3-6 sentences
 - **IMPORTANT**: Split each narration into approximately 40 characters. Use punctuation (. , ! ?) as natural break points
 - Avoid or clearly explain technical terms
 - Include visual descriptions
-- **IMPORTANT**: Write slide_prompt in English, but specify text to display on slides in English
+- **IMPORTANT**: Write slide_prompt in English, and specify text to display on slides in English
   - Example: "A slide with text 'Database Design' in the center, modern design"
+
+[Storytelling Structure - Follow Narrative Arc]
+Structure your script with the following flow:
+
+**1. Hook - The First 15 Seconds Are Critical**
+- Start with a surprising fact, problem statement, or question that sparks curiosity
+- Examples: "Did you know 97% of people don't know this fact about X?" "Why do Y fail? The reason is..."
+- Prevent viewer drop-off at this crucial moment
+
+**2. Context - Why This Matters**
+- Explain why this topic is important to the viewer
+- "Ever had this problem?" "This actually impacts your X directly"
+- Help viewers see this as personally relevant
+
+**3. Core Content - 3 to 5 Main Points**
+- Structure points logically (cause→effect, problem→solution, etc.)
+- Use transitional phrases between sections: "Next, let's look at...", "Related to this..."
+- **Always include concrete examples, analogies, or real-world cases**, not just abstract explanations
+  - Bad: "This improves efficiency"
+  - Good: "For example, tasks that took 1 hour now finish in 10 minutes"
+
+**4. Conclusion - Summary & Next Actions**
+- Recap key points (max 3)
+- Give viewers clear next steps ("Start by trying X first")
+
+[Deepening Understanding - Viewer Perspective First]
+- **Anticipate first-time viewer questions**: Answer "What is X?", "Why does this happen?", "How does this apply to me?"
+- **Progressive explanation**: Overview → Details → Application
+  - Show the big picture first, then dive into specifics
+- **Examples are mandatory**: Always pair abstract concepts with relatable examples or analogies
+  - Example: "A database is like a library. It organizes information so you can retrieve it instantly when needed"
 
 [Script Structure Rules - MANDATORY]
 - **Complete the script with a logical structure**
-- Create at least 6 sections minimum
+- Create at least 6 sections minimum:
+  - Hook (1 section)
+  - Context (1 section)
+  - Core Content (3-5 sections)
+  - Conclusion (1 section)
 - The final section MUST include "Summary", "Conclusion", or "Next Steps"
 - Do NOT end the script abruptly. Always provide viewers with a conclusion
+
+[Self-Evaluation Checklist]
+After creating the script, verify:
+✓ Does the first 15 seconds grab viewer attention?
+✓ Can someone with zero background knowledge understand this?
+✓ Are sections logically connected?
+✓ Are abstract explanations supported with concrete examples?
+✓ Will viewers feel satisfied with the conclusion?
 
 [Source Content]
 Title: {title}
@@ -205,17 +292,39 @@ Output in JSON format:
 
 SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 あなたはYouTube動画の台本作成の専門家です。
-以下のコンテンツから、複数のキャラクターが掛け合いで説明する動画台本を作成してください。
+以下のコンテンツから、複数のキャラクターが自然な掛け合いで視聴者を引き込み、深く理解させる動画台本を作成してください。
 
 【登場キャラクター】
 {personas_description}
 
-【役割割り当て】
-このスクリプトでは、各キャラクターに明確な役割を割り当ててください。
-役割は対話の一貫性と視聴者の理解を助けるために重要です。
-各キャラクターの役割（例: 解説役、質問役、ツッコミ役など）を自由に設定してください。
+【役割割り当てと個性の引き出し方】
+各キャラクターに明確で具体的な役割を割り当て、その個性を最大限活かしてください。
 
-【要件】
+**推奨役割パターン（2話者の場合）**:
+1. **解説役 × 質問役**: 解説役が説明し、質問役が視聴者目線で疑問を投げかける
+   - 質問役の例: 「ちょっと待って！それって○○ってこと？」「具体的にはどう使うの？」
+2. **解説役 × リアクション役**: 解説役が説明し、リアクション役が驚きや感想で盛り上げる
+   - リアクション役の例: 「えー！すごい！」「なるほど、そういうことか！」
+3. **共同解説役**: 2人で補完し合いながら説明（一方が概要、もう一方が詳細など）
+
+**3話者以上の拡張パターン**:
+- 解説役 + 質問役 + ツッコミ役
+- メイン解説役 + サブ解説役 + 聞き役
+
+**キャラクター個性の活かし方**:
+- 各キャラの口調・語尾を一貫させる（「〜だよ」「〜です」「〜なのだ」など）
+- 性格に合った反応をさせる（元気系→「わー！」、冷静系→「なるほど」）
+- 得意分野を活かす（技術系キャラは詳細説明、初心者系キャラは基本質問）
+
+【会話リズムとテンポ】
+単調な交互発言を避け、自然な会話の流れを作ってください：
+
+- **短い相槌を活用**: 「うん」「そうそう」「えー！」などで会話を活性化
+- **連続発言もOK**: 重要な説明は1人が2〜3ターン連続で話してもよい
+- **割り込みや補足**: 「あ、それ言おうと思ってた！」「補足すると...」など自然な流れ
+- **感情の起伏**: 驚き→理解→納得の流れで視聴者も引き込む
+
+【基本要件】
 - 各キャラクターの個性を活かした自然な会話形式で台本を作成してください
 - スタイル: {style}
 - 各セクションは5-10ターン程度の対話で構成してください
@@ -225,11 +334,55 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 - **重要**: slide_promptは英語で記述しますが、スライドに表示するテキストは日本語で指定してください
   - 例: "A slide with text 'データベース設計' in the center, modern design"
 
+【ストーリーテリング構造 - 対話形式での起承転結】
+
+**1. Hook（掴み）- 会話で視聴者を引き込む**
+- 驚きの事実を共有したり、問題を提起したりする掛け合いから始める
+- 例:
+  - A: 「ねえねえ、○○って知ってる？」
+  - B: 「何それ！気になる！」
+  - A: 「実は97%の人が知らないんだけど...」
+
+**2. Context（背景）- なぜ重要か対話で動機付け**
+- 視聴者の「自分ごと」として捉えさせる会話
+- 例:
+  - A: 「こんな悩み、ない？」
+  - B: 「あるある！いつも困ってたんだよね」
+  - A: 「実はそれ、今日の話で解決できるかも」
+
+**3. Core Content（本編）- 対話で深く理解**
+- 解説役が説明→質問役が確認→解説役が具体例、のサイクルを回す
+- **視聴者視点の疑問を質問役に代弁させる**
+  - 質問役: 「待って、それって○○ってこと？」「初心者でもできる？」
+- **具体例・比喩を必ず含める**
+  - 解説役: 「例えばね、これは図書館みたいなもので...」
+  - 質問役: 「なるほど！わかりやすい！」
+
+**4. Conclusion（まとめ）- 対話で振り返り**
+- 2人で要点を確認し合う
+- 視聴者への次のアクションを提案
+- 例:
+  - A: 「じゃあまとめると、ポイントは3つだね」
+  - B: 「まずは○○から試してみよう！」
+
 【台本構成の必須ルール】
 - 論理的な構成で最後まで完成させてください
 - 最低6セクション以上を目安に構成してください
+  - Hook（1セクション）
+  - Context（1セクション）
+  - Core Content（3〜5セクション）
+  - Conclusion（1セクション）
 - 最後のセクションは必ず「まとめ」「結論」「次のステップ」のいずれかを含めてください
 - 途中で終わらせず、視聴者に結論を伝えてください
+
+【自己評価チェックリスト】
+台本作成後、以下を自己確認してください：
+✓ 会話が棒読みでなく、自然な掛け合いになっているか？
+✓ 各キャラクターの個性と役割が明確か？
+✓ 視聴者の疑問を先回りして質問役が聞いているか？
+✓ 単調な交互発言になっていないか？（リズムに変化があるか）
+✓ 最初の15秒で興味を引けるか？
+✓ 最後まで視聴者を飽きさせない展開か？
 
 【元コンテンツ】
 タイトル: {title}
@@ -312,17 +465,39 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
 
 SCRIPT_GENERATION_PROMPT_DIALOGUE_EN = """
 You are an expert YouTube video script writer.
-Create a video script with multiple characters having a dialogue-style conversation to explain the content.
+Create a video script with multiple characters having natural, engaging dialogue that captivates viewers and ensures deep understanding.
 
 [Characters]
 {personas_description}
 
-[Role Assignments]
-In this script, assign clear roles to each character.
-Roles are important for dialogue consistency and viewer understanding.
-Define each character's role freely (e.g., explainer, questioner, commentator, etc.).
+[Role Assignment and Character Development]
+Assign clear, specific roles to each character and leverage their unique personalities to the fullest.
 
-[Requirements]
+**Recommended Role Patterns (2 characters)**:
+1. **Explainer × Questioner**: Explainer provides information, Questioner asks from viewer's perspective
+   - Questioner examples: "Wait, does that mean X?", "How exactly do you use it?"
+2. **Explainer × Reactor**: Explainer teaches, Reactor responds with surprise and enthusiasm
+   - Reactor examples: "Wow! Amazing!", "Oh, I see what you mean!"
+3. **Co-Explainers**: Both complement each other (one covers overview, other handles details)
+
+**Extended Patterns (3+ characters)**:
+- Explainer + Questioner + Commentator
+- Main Explainer + Sub Explainer + Listener
+
+**Bringing Out Character Personalities**:
+- Maintain consistent speech patterns for each character ("you know", "indeed", "like", etc.)
+- Give personality-appropriate reactions (energetic→"Whoa!", calm→"I see")
+- Leverage expertise (tech character gives details, beginner character asks basics)
+
+[Conversation Rhythm and Pacing]
+Avoid monotonous turn-taking and create natural conversational flow:
+
+- **Use short acknowledgments**: "Yeah", "Right", "Wow!" to energize dialogue
+- **Consecutive turns OK**: Important explanations can have 2-3 consecutive lines from one character
+- **Interruptions and additions**: "Oh, I was about to say that!", "To add to that..." for natural flow
+- **Emotional arc**: Surprise → Understanding → Conviction to pull viewers along
+
+[Basic Requirements]
 - Create natural dialogue that leverages each character's personality
 - Style: {style}
 - Each section should have 5-10 dialogue turns
@@ -332,11 +507,55 @@ Define each character's role freely (e.g., explainer, questioner, commentator, e
 - **IMPORTANT**: Write slide_prompt in English, and specify text to display on slides in English
   - Example: "A slide with text 'Database Design' in the center, modern design"
 
+[Storytelling Structure - Narrative Arc in Dialogue]
+
+**1. Hook - Engage Through Conversation**
+- Start with dialogue sharing surprising facts or raising problems
+- Example:
+  - A: "Hey, do you know about X?"
+  - B: "What's that? Now I'm curious!"
+  - A: "97% of people don't know this, but..."
+
+**2. Context - Motivate Through Dialogue**
+- Make it personally relevant through conversation
+- Example:
+  - A: "Ever had this problem?"
+  - B: "All the time! It's so frustrating"
+  - A: "Well, today's topic might just solve that"
+
+**3. Core Content - Deepen Understanding Through Dialogue**
+- Cycle: Explainer explains → Questioner confirms → Explainer gives examples
+- **Have Questioner voice viewer questions**
+  - Questioner: "Wait, does that mean X?", "Can beginners do this?"
+- **Always include concrete examples and analogies**
+  - Explainer: "Think of it like a library..."
+  - Questioner: "Oh! That makes sense!"
+
+**4. Conclusion - Recap Through Dialogue**
+- Characters review key points together
+- Suggest next actions to viewers
+- Example:
+  - A: "So in summary, there are 3 key points"
+  - B: "Let's start by trying X first!"
+
 [Script Structure Rules - MANDATORY]
 - **Complete the script with a logical structure**
-- Create at least 6 sections minimum
+- Create at least 6 sections minimum:
+  - Hook (1 section)
+  - Context (1 section)
+  - Core Content (3-5 sections)
+  - Conclusion (1 section)
 - The final section MUST include "Summary", "Conclusion", or "Next Steps"
 - Do NOT end the script abruptly. Always provide viewers with a conclusion
+
+[Self-Evaluation Checklist]
+After creating the script, verify:
+✓ Does dialogue sound natural, not robotic?
+✓ Are character roles and personalities clear?
+✓ Does Questioner anticipate viewer questions?
+✓ Is there rhythm variation (not just alternating turns)?
+✓ Does the first 15 seconds grab attention?
+✓ Will viewers stay engaged until the end?
 
 [Source Content]
 Title: {title}

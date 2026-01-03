@@ -4,6 +4,17 @@
 
 When generating slides for multiple languages, the slide prompts are written in English (for better compatibility with image generation APIs), but the **text to be displayed on slides** is specified in the target language.
 
+## Script Quality Improvements
+
+**Note**: As of January 2025, the script generation prompts have been significantly enhanced to improve storytelling quality, multi-speaker dialogue naturalness, and content depth. The improvements include:
+
+- **Storytelling Structure**: Scripts now follow a structured narrative arc (Hook → Context → Core Content → Conclusion) to better engage viewers
+- **Multi-Speaker Dynamics**: Dialogue mode now includes detailed role patterns, conversation rhythm guidance, and personality development instructions
+- **Content Deepening**: Emphasis on anticipating viewer questions, providing concrete examples, and progressive explanation (overview → details → application)
+- **Self-Evaluation**: LLM prompts include built-in quality checklists to ensure engaging introductions, logical flow, and satisfying conclusions
+
+These enhancements ensure that generated scripts are more engaging, easier to understand, and maintain viewer attention throughout the video.
+
 ## Format
 
 ```
