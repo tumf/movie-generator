@@ -511,3 +511,43 @@ grep -n "#8FCF4F" src/movie_generator/video/templates.py
 # Verify constant is used
 grep -r "SubtitleConstants.DEFAULT_COLOR" src/
 ```
+
+## Remotion Integration
+
+### Documentation Requirement
+
+**When discovering new Remotion-related issues or solutions, update `docs/REMOTION_BEST_PRACTICES.md`.**
+
+This document captures:
+- Audio/video format requirements
+- Known issues and workarounds
+- Component best practices
+- Debugging procedures
+
+### Critical: BGM Audio Files
+
+**BGM files with embedded album art (attached_pic) cause video playback to stop at irregular intervals.**
+
+The system automatically strips album art from BGM files, but be aware of this issue when:
+- Adding new audio processing features
+- Debugging playback issues
+- Changing the asset copying pipeline
+
+**Detection**:
+```bash
+# Check if audio file has attached picture
+ffprobe -v error -show_entries stream=codec_type -of csv=p=0 file.mp3
+# Bad: audio,mp3 + video,mjpeg (two lines)
+# Good: audio,mp3 (one line)
+```
+
+**Implementation**: See `_has_attached_picture()` and `_strip_attached_picture()` in `remotion_renderer.py`.
+
+### When to Update Remotion Docs
+
+Update `docs/REMOTION_BEST_PRACTICES.md` when you:
+1. Discover a new Remotion-related bug or limitation
+2. Find a workaround for a playback issue
+3. Add new audio/video processing features
+4. Change the composition.json structure
+5. Modify Remotion component templates

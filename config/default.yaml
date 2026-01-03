@@ -63,6 +63,16 @@ video:
     type: "flip" # fade, slide, wipe, flip, clockWipe, none
     duration_frames: 15 # Transition duration in frames (0.5s at 30fps)
     timing: "linear" # linear, spring
+  background:
+    type: "video" # image or video
+    path: "assets/backgrounds/default-background.mp4" # Default background video
+    fit: "cover" # cover (fill maintaining aspect), contain (fit inside), fill (stretch)
+  bgm:
+    path: "assets/bgm/default-bgm.mp3" # Default background music
+    volume: 0.3 # BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)
+    fade_in_seconds: 2.0 # Fade-in duration in seconds
+    fade_out_seconds: 2.0 # Fade-out duration in seconds
+    loop: true # Loop BGM if shorter than video duration
 
 pronunciation:
   custom:

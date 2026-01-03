@@ -10,14 +10,24 @@ video:
   output_format: "mp4"
 
   # Background configuration (optional)
+  # Available background options:
+  # Videos:
+  # - assets/backgrounds/default-background.mp4 (general purpose, default)
+  # - assets/backgrounds/abstract-loop.mp4 (modern, abstract)
+  # Images:
+  # - assets/backgrounds/gradient-blue.jpg (simple, clean)
   background:
-    type: "image"  # or "video"
-    path: "assets/backgrounds/gradient-blue.jpg"
+    type: "video"  # or "image"
+    path: "assets/backgrounds/default-background.mp4"  # Default background video
     fit: "cover"  # Options: cover, contain, fill
 
   # BGM configuration (optional)
+  # Available BGM options:
+  # - assets/bgm/default-bgm.mp3 (やさしい解説ループ - gentle/soft mood)
+  # - assets/bgm/high-tempo.mp3 (ループする解説ハイテンポ - energetic/upbeat mood)
+  # - assets/bgm/calm-ambient.mp3 (calm/ambient mood)
   bgm:
-    path: "assets/bgm/calm-ambient.mp3"
+    path: "assets/bgm/default-bgm.mp3"  # Change to high-tempo.mp3 for energetic videos
     volume: 0.3  # 0.0-1.0 (default: 0.3 to avoid overpowering narration)
     fade_in_seconds: 2.0  # Fade-in duration at start
     fade_out_seconds: 2.0  # Fade-out duration at end

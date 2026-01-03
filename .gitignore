@@ -40,9 +40,14 @@ Thumbs.db
 
 # Project specific
 output/
+output2/
 *.wav
 *.mp4
 *.mp3
+
+# Ad-hoc test configuration files
+/2026-*.yaml
+/*-test*.yaml
 
 # Generated artifacts (Remotion builds)
 artifacts/

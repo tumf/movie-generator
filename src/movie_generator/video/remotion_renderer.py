@@ -471,8 +471,82 @@ def _convert_to_public_path(asset_path: str | None) -> str | None:
     return asset_path
 
 
+def _has_attached_picture(file_path: Path) -> bool:
+    """Check if an audio file has an attached picture (album art).
+
+    MP3 files with embedded album art contain a video stream (usually mjpeg)
+    marked as attached_pic. This can cause playback issues in Remotion.
+
+    Args:
+        file_path: Path to the audio file.
+
+    Returns:
+        True if the file has an attached picture stream.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "stream=codec_type:stream_disposition=attached_pic",
+                "-of",
+                "csv=p=0",
+                str(file_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        # Look for lines indicating video stream with attached_pic=1
+        for line in result.stdout.strip().split("\n"):
+            if "video" in line and "1" in line:
+                return True
+        return False
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def _strip_attached_picture(src_path: Path, dest_path: Path) -> bool:
+    """Remove attached picture from audio file.
+
+    Creates a clean copy of the audio file with only the audio stream,
+    removing any embedded album art that could cause Remotion issues.
+
+    Args:
+        src_path: Source audio file path.
+        dest_path: Destination path for cleaned audio.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(src_path),
+                "-map",
+                "0:a:0",  # Select only first audio stream
+                "-c:a",
+                "copy",  # Copy without re-encoding
+                str(dest_path),
+            ],
+            capture_output=True,
+            check=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
 def _copy_asset_to_public(asset_path: Path, remotion_root: Path, category: str) -> str:
     """Copy asset file to Remotion public directory.
+
+    For BGM files, automatically strips attached pictures (album art) which
+    can cause playback issues in Remotion-rendered videos.
 
     Args:
         asset_path: Path to asset file (can be relative or absolute).
@@ -498,9 +572,20 @@ def _copy_asset_to_public(asset_path: Path, remotion_root: Path, category: str) 
     public_category_dir = remotion_root / "public" / category
     public_category_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy file to public directory
     dest_file = public_category_dir / asset_path.name
-    shutil.copy2(asset_path, dest_file)
+
+    # For BGM files, strip attached pictures (album art) to avoid playback issues
+    if category == "bgm" and _has_attached_picture(asset_path):
+        console.print(f"[yellow]Stripping album art from BGM: {asset_path.name}[/yellow]")
+        if not _strip_attached_picture(asset_path, dest_file):
+            # Fallback to simple copy if stripping fails
+            console.print(
+                "[yellow]Warning: Could not strip album art, using original file[/yellow]"
+            )
+            shutil.copy2(asset_path, dest_file)
+    else:
+        # Copy file to public directory
+        shutil.copy2(asset_path, dest_file)
 
     # Return path relative to public/
     return f"{category}/{asset_path.name}"

@@ -638,6 +638,11 @@ def get_remotion_config_ts() -> str:
 
 Config.setVideoImageFormat('jpeg');
 Config.setOverwriteOutput(true);
+Config.setDelayRenderTimeoutInMilliseconds(120000); // 2 minutes timeout
+
+// Encoding settings for better compatibility and seeking
+Config.setCodec('h264');
+Config.setPixelFormat('yuv420p'); // Widely compatible pixel format
 """
 
 
