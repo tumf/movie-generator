@@ -421,8 +421,8 @@ When modifying `reading` field generation rules (katakana pronunciation):
 1. **Verify ALL 4 prompts contain identical rules**:
    - Particle pronunciation (は→ワ, へ→エ, を→オ)
    - Alphabet acronym long vowels (ESP→イーエスピー, NOT イーエスピージ)
-   - Sokuon notation (って→ッテ, った→ッタ)
-   - No spaces in katakana
+   - Sokuon notation (って→ッテ, った→ッタ) - **CRITICAL with 9+ examples**
+   - Spacing rules (適切なスペースを挿入) - **NEW as of Jan 2025**
    - Sufficient examples covering edge cases
 
 2. **Test with actual LLM calls**:
@@ -433,9 +433,16 @@ When modifying `reading` field generation rules (katakana pronunciation):
 
 3. **Check common mistakes**:
    - ESP/API/CPU missing final long vowel mark (ー)
-   - Incorrect sokuon (small ッ) in particles like って
-   - Spaces in katakana (should be removed)
+   - Incorrect sokuon (「ツッテ」× instead of 「ッテ」○)
+   - Missing spaces in long sentences (should be added for readability)
+   - Too many spaces (単語区切りのみ)
    - Hiragana instead of katakana
+
+4. **Critical sections in prompts**:
+   - CRITICAL REQUIREMENT section at the top (added Jan 2025)
+   - Sokuon examples: minimum 9 patterns (って、った、っぱ、っと、っか、っこ、っち、っぷ、っき)
+   - Spacing examples: good vs bad examples with explanations
+   - Self-evaluation checklist items for reading quality
 
 ### Summary
 

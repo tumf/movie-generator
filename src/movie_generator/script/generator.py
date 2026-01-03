@@ -108,6 +108,9 @@ SCRIPT_GENERATION_PROMPT_JA = """
 ✓ 各セクションが論理的につながっているか？
 ✓ 抽象的な説明に具体例が添えられているか？
 ✓ 視聴者が「見てよかった」と思える結論があるか？
+✓ すべてのreadingフィールドで促音が正しく使われているか？（「ツッテ」×、「ッテ」○）
+✓ 長い文にスペースが適切に挿入されているか？
+✓ 助詞の発音ルールが適用されているか？（は→ワ、へ→エ、を→オ）
 
 【元コンテンツ】
 タイトル: {title}
@@ -117,48 +120,101 @@ SCRIPT_GENERATION_PROMPT_JA = """
 
 {images_section}
 
+【CRITICAL REQUIREMENT - 最重要】
+reading フィールドの品質はシステムの成否を左右します。以下を必ず守ってください：
+1. 促音（小さい「ッ」）を正確に使用
+2. 適切なスペースを挿入
+3. 助詞の発音ルールを適用（は→ワ、へ→エ、を→オ）
+4. アルファベット略語の音引きルール適用
+
+これらのルールを破ると、音声合成が失敗します。
+
 【出力形式】
 JSON形式で以下を出力してください：
-{{
+{
   "title": "動画タイトル",
   "description": "動画の説明",
   "sections": [
-    {{
+    {
       "title": "セクションタイトル",
       "narrations": [
-        {{
+        {
           "text": "ナレーション文",
-          "reading": "ナレーションブン"
-        }}
+          "reading": "ナレーション ブン"
+        }
       ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
       "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
-    }}
+    }
   ]
-}}
+}
 
-【reading フィールドについて】
+【reading フィールドについて - CRITICAL】
 - **必須フィールド**: 各ナレーションには必ず reading フィールドを含めてください
 - **カタカナ形式**: すべてカタカナで記述してください（ひらがな不可）
-- **助詞の発音**: 助詞は発音通りに変換してください
+
+**助詞の発音ルール**:
   - 「は」→「ワ」（例: 「これは」→「コレワ」）
   - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
   - 「を」→「オ」（例: 「本を」→「ホンオ」）
-- **アルファベット略語の音引き**: 英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
+
+**アルファベット略語の音引き**:
+英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
   - 「ESP」→「イーエスピー」（×イーエスピージ）
   - 「API」→「エーピーアイ」
   - 「CPU」→「シーピーユー」
   - 「USB」→「ユーエスビー」
-- **促音の表記**: 小さい「ッ」を正しく使用してください
-  - 「って」→「ッテ」（例: 「聞いたって」→「キイタッテ」）
-  - 「った」→「ッタ」（例: 「言った」→「イッタ」）
-- **スペース不要**: カタカナにスペースを含めないでください
-- **例**:
-  - text: "明日は晴れです" → reading: "アシタワハレデス"
-  - text: "道案内図を見る" → reading: "ミチアンナイズオミル"
-  - text: "97個あります" → reading: "キュウジュウナナコアリマス"
-  - text: "ESPが次の章" → reading: "イーエスピーガツギノショウ"
-  - text: "APIって何？" → reading: "エーピーアイッテナニ？"
+
+**促音の表記（CRITICAL - 最重要）**:
+小さい「ッ」を正しく使用してください。「ツッテ」は誤りです。
+  ✅ 正しい例:
+    - 「って」→「ッテ」
+      - 「聞いたって」→「キイタッテ」
+      - 「APIって何？」→「エーピーアイッテナニ？」
+      - 「Web3って難しい」→「ウェブスリー ッテ ムズカシイ」
+    - 「った」→「ッタ」
+      - 「言った」→「イッタ」
+      - 「使った」→「ツカッタ」
+    - 「っぱ」→「ッパ」
+      - 「やっぱり」→「ヤッパリ」
+    - 「っと」→「ット」
+      - 「ちょっと」→「チョット」
+    - 「っか」→「ッカ」
+      - 「せっかく」→「セッカク」
+    - 「っこ」→「ッコ」
+      - 「びっくり」→「ビックリ」
+    - 「っち」→「ッチ」
+      - 「もっと」→「モット」
+    - 「っぷ」→「ップ」
+      - 「アップ」→「アップ」
+    - 「っき」→「ッキ」
+      - 「すっきり」→「スッキリ」
+  ❌ 誤った例:
+    - 「って」→「ツッテ」（×「ツ」が大きい）
+    - 「って」→「テ」（×促音なし）
+
+**スペースルール（NEW - 読みやすさ向上のため）**:
+カタカナ読み仮名に適切なスペースを入れてください。
+  - 単語の区切りにスペースを入れる
+  - 助詞の前にスペースを入れる（短い場合は省略可）
+  - 長い文（20文字以上）では必ずスペースを入れる
+  - 句読点（。！？）の後はスペース不要
+
+  ✅ 良い例:
+    - 「ウェブスリー ッテ ムズカシイノニ」
+    - 「コレワ ベンリダネ」
+    - 「トウキョウニ イク」
+  ❌ 悪い例:
+    - 「ウェブスリーッテムズカシイノニ」（スペースなし）
+    - 「コレ ワ ベン リ ダ ネ」（スペース多すぎ）
+
+**例**:
+  - text: "明日は晴れです" → reading: "アシタワ ハレデス"
+  - text: "道案内図を見る" → reading: "ミチアンナイズオ ミル"
+  - text: "97個あります" → reading: "キュウジュウナナコ アリマス"
+  - text: "ESPが次の章" → reading: "イーエスピーガ ツギノショウ"
+  - text: "APIって何？" → reading: "エーピーアイッテ ナニ？"
+  - text: "Web3って難しいのに。操作できるの！？" → reading: "ウェブスリー ッテ ムズカシイノニ。ソウサデキルノ！？"
 
 【スライド画像について - 重要な選択基準】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -239,6 +295,7 @@ After creating the script, verify:
 ✓ Are sections logically connected?
 ✓ Are abstract explanations supported with concrete examples?
 ✓ Will viewers feel satisfied with the conclusion?
+✓ Does every narration have a reading field?
 
 [Source Content]
 Title: {title}
@@ -247,6 +304,13 @@ Description: {description}
 {content}
 
 {images_section}
+
+[CRITICAL REQUIREMENT]
+The reading field quality is critical to system success. You MUST:
+1. Include a reading field for EVERY narration
+2. For English scripts, copy the text field to reading field
+
+Failure to include reading fields will cause audio synthesis to fail.
 
 [Output Format]
 Output in JSON format:
@@ -268,8 +332,8 @@ Output in JSON format:
   ]
 }}
 
-[Reading Field]
-- **Required field**: Each narration must include a reading field
+[Reading Field - CRITICAL]
+- **Required field**: Each narration MUST include a reading field
 - For English narration, simply copy the text field to reading field (no special pronunciation rules)
 - Example: text: "Hello world" → reading: "Hello world"
 
@@ -383,6 +447,9 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 ✓ 単調な交互発言になっていないか？（リズムに変化があるか）
 ✓ 最初の15秒で興味を引けるか？
 ✓ 最後まで視聴者を飽きさせない展開か？
+✓ すべてのreadingフィールドで促音が正しく使われているか？（「ツッテ」×、「ッテ」○）
+✓ 長い文にスペースが適切に挿入されているか？
+✓ 助詞の発音ルールが適用されているか？（は→ワ、へ→エ、を→オ）
 
 【元コンテンツ】
 タイトル: {title}
@@ -392,31 +459,14 @@ SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
 
 {images_section}
 
-【重要：reading フィールドについて】
-各ナレーションには必ず reading フィールドを含めてください。これは音声合成で正しい発音を実現するために必須です。
+【CRITICAL REQUIREMENT - 最重要】
+reading フィールドの品質はシステムの成否を左右します。以下を必ず守ってください：
+1. 促音（小さい「ッ」）を正確に使用
+2. 適切なスペースを挿入
+3. 助詞の発音ルールを適用（は→ワ、へ→エ、を→オ）
+4. アルファベット略語の音引きルール適用
 
-- **必須フィールド**: 各セリフには必ず reading フィールドを含める
-- **カタカナ形式**: すべてカタカナで記述（ひらがな不可）
-- **助詞の発音**: 助詞は発音通りに変換
-  - 「は」→「ワ」（例: 「これは」→「コレワ」）
-  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
-  - 「を」→「オ」（例: 「本を」→「ホンオ」）
-- **アルファベット略語の音引き**: 英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
-  - 「ESP」→「イーエスピー」（×イーエスピージ）
-  - 「API」→「エーピーアイ」
-  - 「CPU」→「シーピーユー」
-  - 「USB」→「ユーエスビー」
-- **促音の表記**: 小さい「ッ」を正しく使用してください
-  - 「って」→「ッテ」（例: 「聞いたって」→「キイタッテ」）
-  - 「った」→「ッタ」（例: 「言った」→「イッタ」）
-- **スペース不要**: カタカナにスペースを含めない
-- **例**:
-  - text: "ねえねえ！" → reading: "ネエネエ！"
-  - text: "これは便利だね" → reading: "コレワベンリダネ"
-  - text: "東京へ行こう" → reading: "トウキョウエイコウ"
-  - text: "ESPが次の章って聞いた！" → reading: "イーエスピーガツギノショウッテキイタ！"
-  - text: "RAGって何？" → reading: "ラグッテナニ？"
-  - text: "97%削減！" → reading: "キュウジュウナナパーセントサクゲン！"
+これらのルールを破ると、音声合成が失敗します。
 
 【出力形式】
 JSON形式で以下を出力してください。**必ず各ナレーションに reading フィールドを含めること**：
@@ -437,7 +487,7 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
         {{
           "persona_id": "キャラクターID（例: zundamon, metan）",
           "text": "セリフ",
-          "reading": "セリフのカタカナ読み（必須）"
+          "reading": "セリフ ノ カタカナ ヨミ"
         }}
       ],
       "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
@@ -445,6 +495,76 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
     }}
   ]
 }}
+
+【reading フィールドについて - CRITICAL】
+各ナレーションには必ず reading フィールドを含めてください。これは音声合成で正しい発音を実現するために必須です。
+
+- **必須フィールド**: 各セリフには必ず reading フィールドを含める
+- **カタカナ形式**: すべてカタカナで記述（ひらがな不可）
+
+**助詞の発音ルール**:
+  - 「は」→「ワ」（例: 「これは」→「コレワ」）
+  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
+  - 「を」→「オ」（例: 「本を」→「ホンオ」）
+
+**アルファベット略語の音引き**:
+英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
+  - 「ESP」→「イーエスピー」（×イーエスピージ）
+  - 「API」→「エーピーアイ」
+  - 「CPU」→「シーピーユー」
+  - 「USB」→「ユーエスビー」
+
+**促音の表記（CRITICAL - 最重要）**:
+小さい「ッ」を正しく使用してください。「ツッテ」は誤りです。
+  ✅ 正しい例:
+    - 「って」→「ッテ」
+      - 「聞いたって」→「キイタッテ」
+      - 「RAGって何？」→「ラグッテ ナニ？」
+      - 「APIって何？」→「エーピーアイッテ ナニ？」
+    - 「った」→「ッタ」
+      - 「言った」→「イッタ」
+      - 「使った」→「ツカッタ」
+    - 「っぱ」→「ッパ」
+      - 「やっぱり」→「ヤッパリ」
+    - 「っと」→「ット」
+      - 「ちょっと」→「チョット」
+    - 「っか」→「ッカ」
+      - 「せっかく」→「セッカク」
+    - 「っこ」→「ッコ」
+      - 「びっくり」→「ビックリ」
+    - 「っち」→「ッチ」
+      - 「もっと」→「モット」
+    - 「っぷ」→「ップ」
+      - 「アップ」→「アップ」
+    - 「っき」→「ッキ」
+      - 「すっきり」→「スッキリ」
+  ❌ 誤った例:
+    - 「って」→「ツッテ」（×「ツ」が大きい）
+    - 「って」→「テ」（×促音なし）
+
+**スペースルール（NEW - 読みやすさ向上のため）**:
+カタカナ読み仮名に適切なスペースを入れてください。
+  - 単語の区切りにスペースを入れる
+  - 助詞の前にスペースを入れる（短い場合は省略可）
+  - 長い文（20文字以上）では必ずスペースを入れる
+  - 句読点（。！？）の後はスペース不要
+
+  ✅ 良い例:
+    - 「ネエネエ！」（短い場合はスペース不要）
+    - 「コレワ ベンリダネ」
+    - 「トウキョウエ イコウ」
+    - 「イーエスピーガ ツギノショウッテ キイタ！」
+  ❌ 悪い例:
+    - 「イーエスピーガツギノショウッテキイタ」（スペースなし）
+    - 「コレ ワ ベン リ ダ ネ」（スペース多すぎ）
+
+**例**:
+  - text: "ねえねえ！" → reading: "ネエネエ！"
+  - text: "これは便利だね" → reading: "コレワ ベンリダネ"
+  - text: "東京へ行こう" → reading: "トウキョウエ イコウ"
+  - text: "ESPが次の章って聞いた！" → reading: "イーエスピーガ ツギノショウッテ キイタ！"
+  - text: "RAGって何？" → reading: "ラグッテ ナニ？"
+  - text: "97%削減！" → reading: "キュウジュウナナパーセント サクゲン！"
 
 【スライド画像について - 重要な選択基準】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -556,6 +676,7 @@ After creating the script, verify:
 ✓ Is there rhythm variation (not just alternating turns)?
 ✓ Does the first 15 seconds grab attention?
 ✓ Will viewers stay engaged until the end?
+✓ Does every narration have a reading field?
 
 [Source Content]
 Title: {title}
@@ -565,21 +686,13 @@ Description: {description}
 
 {images_section}
 
-[IMPORTANT: About Reading Field]
-Each narration MUST include a reading field. This is essential for accurate audio synthesis.
+[CRITICAL REQUIREMENT]
+The reading field quality is critical to system success. You MUST:
+1. Include a reading field for EVERY narration
+2. For Japanese dialogue, follow all pronunciation rules (particles, sokuon, spacing)
+3. For English dialogue, copy the text to reading field
 
-- **Required field**: Every dialogue line must have a reading field
-- **Katakana format**: Write in katakana (not hiragana or romaji)
-- **Particle pronunciation**: Convert particles to their spoken form:
-  - "は" → "ワ" (e.g., "これは" → "コレワ")
-  - "へ" → "エ" (e.g., "東京へ" → "トウキョウエ")
-  - "を" → "オ" (e.g., "本を" → "ホンオ")
-- **No spaces**: Do not include spaces in katakana
-- **Examples**:
-  - text: "Hello there!" → reading: "ハローゼアー！"
-  - text: "Let's go to Tokyo" → reading: "レッツゴートゥートウキョウ"
-  - text: "What is RAG?" → reading: "ホワットイズラグ？"
-  - text: "97% reduction!" → reading: "ナインティセブンパーセントリダクション！"
+Failure to include reading fields will cause audio synthesis to fail.
 
 [Output Format]
 Output in JSON format. **MUST include reading field for each narration**:
@@ -608,6 +721,21 @@ Output in JSON format. **MUST include reading field for each narration**:
     }}
   ]
 }}
+
+[Reading Field - CRITICAL]
+Each narration MUST include a reading field. This is essential for accurate audio synthesis.
+
+- **Required field**: Every dialogue line must have a reading field
+- **Katakana format**: Write in katakana (not hiragana or romaji)
+- **Particle pronunciation**: Convert particles to their spoken form:
+  - "は" → "ワ" (e.g., "これは" → "コレワ")
+  - "へ" → "エ" (e.g., "東京へ" → "トウキョウエ")
+  - "を" → "オ" (e.g., "本を" → "ホンオ")
+- **Examples**:
+  - text: "Hello there!" → reading: "ハローゼアー！"
+  - text: "Let's go to Tokyo" → reading: "レッツゴートゥートウキョウ"
+  - text: "What is RAG?" → reading: "ホワットイズラグ？"
+  - text: "97% reduction!" → reading: "ナインティセブンパーセントリダクション！"
 
 [About Slide Images - Critical Selection Criteria]
 - For each section, specify either source_image_url OR slide_prompt (not both)
