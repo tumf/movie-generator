@@ -1,6 +1,6 @@
 """Tests for phrase splitting and subtitle text generation."""
 
-from movie_generator.script.phrases import Phrase, split_into_phrases
+from movie_generator.script.phrases import Phrase, calculate_phrase_timings, split_into_phrases
 
 
 class TestPhrase:
@@ -109,3 +109,83 @@ class TestSplitIntoPhrases:
         # Each punctuation should create a phrase (but they'll be empty after strip)
         # Actually, after strip they become empty and are not added
         assert len(phrases) == 0
+
+
+class TestCalculatePhraseTimings:
+    """Tests for calculate_phrase_timings function."""
+
+    def test_basic_timing_without_speakers(self) -> None:
+        """Test basic timing calculation without speaker changes."""
+        phrases = [
+            Phrase(text="First", duration=1.0),
+            Phrase(text="Second", duration=2.0),
+            Phrase(text="Third", duration=1.5),
+        ]
+
+        result = calculate_phrase_timings(phrases, speaker_pause=0.5)
+
+        assert result[0].start_time == 0.0
+        assert result[1].start_time == 1.0
+        assert result[2].start_time == 3.0
+
+    def test_speaker_pause_added_on_change(self) -> None:
+        """Test that pause is added when speaker changes."""
+        phrases = [
+            Phrase(text="Hello", duration=1.0, persona_id="zundamon"),
+            Phrase(text="Hi", duration=1.0, persona_id="metan"),
+            Phrase(text="How are you?", duration=1.5, persona_id="zundamon"),
+        ]
+
+        result = calculate_phrase_timings(phrases, speaker_pause=0.5)
+
+        assert result[0].start_time == 0.0  # First phrase
+        assert result[1].start_time == 1.5  # 1.0 + 0.5 pause
+        assert result[2].start_time == 3.0  # 1.5 + 1.0 + 0.5 pause
+
+    def test_no_pause_for_same_speaker(self) -> None:
+        """Test that no pause is added when speaker doesn't change."""
+        phrases = [
+            Phrase(text="Hello", duration=1.0, persona_id="zundamon"),
+            Phrase(text="World", duration=1.0, persona_id="zundamon"),
+            Phrase(text="!", duration=0.5, persona_id="zundamon"),
+        ]
+
+        result = calculate_phrase_timings(phrases, speaker_pause=0.5)
+
+        assert result[0].start_time == 0.0
+        assert result[1].start_time == 1.0  # No pause
+        assert result[2].start_time == 2.0  # No pause
+
+    def test_speaker_pause_disabled(self) -> None:
+        """Test that pause can be disabled by setting to 0."""
+        phrases = [
+            Phrase(text="Hello", duration=1.0, persona_id="zundamon"),
+            Phrase(text="Hi", duration=1.0, persona_id="metan"),
+        ]
+
+        result = calculate_phrase_timings(phrases, speaker_pause=0.0)
+
+        assert result[0].start_time == 0.0
+        assert result[1].start_time == 1.0  # No pause even though speaker changed
+
+    def test_no_pause_for_first_phrase(self) -> None:
+        """Test that no pause is added before the first phrase."""
+        phrases = [
+            Phrase(text="First", duration=1.0, persona_id="zundamon"),
+        ]
+
+        result = calculate_phrase_timings(phrases, speaker_pause=0.5)
+
+        assert result[0].start_time == 0.0  # No pause before first phrase
+
+    def test_no_pause_for_single_speaker_mode(self) -> None:
+        """Test that no pause is added in single-speaker mode (empty persona_id)."""
+        phrases = [
+            Phrase(text="First", duration=1.0, persona_id=""),
+            Phrase(text="Second", duration=1.0, persona_id=""),
+        ]
+
+        result = calculate_phrase_timings(phrases, speaker_pause=0.5)
+
+        assert result[0].start_time == 0.0
+        assert result[1].start_time == 1.0  # No pause in single-speaker mode

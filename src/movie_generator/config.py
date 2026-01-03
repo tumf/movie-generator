@@ -96,6 +96,11 @@ class NarrationConfig(BaseModel):
 
     character: str = Field(default="ずんだもん")
     style: str = Field(default="casual")
+    speaker_pause: float = Field(
+        default=0.5,
+        description="Pause duration (seconds) between speaker changes in dialogue mode. "
+        "Set to 0 to disable.",
+    )
 
 
 class LLMConfig(BaseModel):

@@ -536,7 +536,7 @@ def generate(
                 audio_paths.extend(phrase_paths)
                 metadata_list.extend(phrase_metadata)
 
-            calculate_phrase_timings(all_phrases)
+            calculate_phrase_timings(all_phrases, speaker_pause=cfg.narration.speaker_pause)
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
             if existing_audio_count > 0:
@@ -582,7 +582,7 @@ def generate(
                 and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
             )
             audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
-            calculate_phrase_timings(all_phrases)
+            calculate_phrase_timings(all_phrases, speaker_pause=cfg.narration.speaker_pause)
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
             if existing_audio_count > 0:
@@ -1206,7 +1206,7 @@ def generate_audio_cmd(
                 )
                 audio_paths.extend(phrase_paths)
 
-            calculate_phrase_timings(all_phrases)
+            calculate_phrase_timings(all_phrases, speaker_pause=cfg.narration.speaker_pause)
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
             if existing_audio_count > 0:
@@ -1250,7 +1250,7 @@ def generate_audio_cmd(
                 and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
             )
             audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
-            calculate_phrase_timings(all_phrases)
+            calculate_phrase_timings(all_phrases, speaker_pause=cfg.narration.speaker_pause)
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
             if existing_audio_count > 0:
@@ -1700,7 +1700,7 @@ def render_video_cmd(
             console.print(f"[red]Error reading audio file {audio_file}: {e}[/red]")
             raise click.Abort()
 
-    calculate_phrase_timings(all_phrases)
+    calculate_phrase_timings(all_phrases, speaker_pause=cfg.narration.speaker_pause)
 
     # Load slide paths
     slide_paths = []
