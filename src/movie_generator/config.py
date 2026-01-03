@@ -106,6 +106,11 @@ class NarrationConfig(BaseModel):
         description="Pause duration (seconds) when transitioning between slides/sections. "
         "Set to 0 to disable.",
     )
+    ending_pause: float = Field(
+        default=1.0,
+        description="Pause duration (seconds) after the last phrase ends. "
+        "Keeps the final slide visible for viewers to absorb information.",
+    )
     speaker_pause: float = Field(
         default=0.5,
         description="Pause duration (seconds) between speaker changes in dialogue mode. "

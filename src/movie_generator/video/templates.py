@@ -149,10 +149,12 @@ const getSlideGroups = (
 
     // Last scene
     if (index === scenes.length - 1) {
-      // For the last group, use end of last scene
+      // For the last group, extend duration by 1 second (30 frames at 30fps)
+      // to keep the final slide visible after audio ends
       const firstScene = currentScenes[0];
       const lastScene = currentScenes[currentScenes.length - 1];
-      const duration = lastScene.endFrame - firstScene.startFrame;
+      const endingPauseFrames = 30; // 1.0 second at 30fps
+      const duration = lastScene.endFrame - firstScene.startFrame + endingPauseFrames;
       groups.push({
         slideFile: currentSlide,
         scenes: currentScenes,
@@ -597,17 +599,16 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
 };
 
 // Calculate total frames for the composition
-// The total duration must match the audio duration (not the slide TransitionSeries duration)
-// because audio plays continuously while slides may overlap during transitions.
+// The total duration includes audio plus ending pause to keep final slide visible.
 export const calculateTotalFrames = (phrases: PhraseData[]): number => {
   const fps = 30;
   const scenes = getScenesWithTiming(phrases);
 
-  // Return the total audio duration (last scene's end frame)
-  // This ensures all audio plays completely, even though slides may
-  // visually overlap during transitions.
+  // Return audio duration plus 1 second ending pause (30 frames)
+  // This keeps the final slide visible after audio ends.
   if (scenes.length === 0) return 0;
-  return scenes[scenes.length - 1].endFrame;
+  const endingPauseFrames = 30; // 1.0 second at 30fps
+  return scenes[scenes.length - 1].endFrame + endingPauseFrames;
 };
 """.replace("{default_subtitle_color}", SubtitleConstants.DEFAULT_COLOR)
 
