@@ -101,6 +101,11 @@ class NarrationConfig(BaseModel):
         description="Initial pause duration (seconds) before the first phrase. "
         "Useful to show the first slide before narration starts.",
     )
+    slide_pause: float = Field(
+        default=1.0,
+        description="Pause duration (seconds) when transitioning between slides/sections. "
+        "Set to 0 to disable.",
+    )
     speaker_pause: float = Field(
         default=0.5,
         description="Pause duration (seconds) between speaker changes in dialogue mode. "

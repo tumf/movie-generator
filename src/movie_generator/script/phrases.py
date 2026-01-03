@@ -109,7 +109,10 @@ def split_into_phrases(text: str, max_chars: int = 40) -> list[Phrase]:
 
 
 def calculate_phrase_timings(
-    phrases: list[Phrase], initial_pause: float = 1.0, speaker_pause: float = 0.5
+    phrases: list[Phrase],
+    initial_pause: float = 1.0,
+    speaker_pause: float = 0.5,
+    slide_pause: float = 1.0,
 ) -> list[Phrase]:
     """Calculate cumulative start times for phrases.
 
@@ -119,16 +122,26 @@ def calculate_phrase_timings(
                       Default is 1.0 seconds. Set to 0 to disable.
         speaker_pause: Pause duration (in seconds) to add when speaker changes.
                       Default is 0.5 seconds. Set to 0 to disable.
+        slide_pause: Pause duration (in seconds) to add when slide/section changes.
+                    Default is 1.0 seconds. Set to 0 to disable.
 
     Returns:
         Updated list with start_time filled.
     """
     cumulative_time = initial_pause  # Start with initial pause
     previous_persona_id = None
+    previous_section_index = None
 
     for phrase in phrases:
-        # Add pause when speaker changes (only for multi-speaker dialogue)
+        # Add pause when section changes (new slide)
         if (
+            slide_pause > 0
+            and previous_section_index is not None
+            and phrase.section_index != previous_section_index
+        ):
+            cumulative_time += slide_pause
+        # Add pause when speaker changes (only for multi-speaker dialogue within same section)
+        elif (
             speaker_pause > 0
             and phrase.persona_id
             and previous_persona_id is not None
@@ -139,5 +152,6 @@ def calculate_phrase_timings(
         phrase.start_time = cumulative_time
         cumulative_time += phrase.duration
         previous_persona_id = phrase.persona_id
+        previous_section_index = phrase.section_index
 
     return phrases

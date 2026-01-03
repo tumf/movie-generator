@@ -540,6 +540,7 @@ def generate(
                 all_phrases,
                 initial_pause=cfg.narration.initial_pause,
                 speaker_pause=cfg.narration.speaker_pause,
+                slide_pause=cfg.narration.slide_pause,
             )
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
@@ -590,6 +591,7 @@ def generate(
                 all_phrases,
                 initial_pause=cfg.narration.initial_pause,
                 speaker_pause=cfg.narration.speaker_pause,
+                slide_pause=cfg.narration.slide_pause,
             )
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
@@ -1218,6 +1220,7 @@ def generate_audio_cmd(
                 all_phrases,
                 initial_pause=cfg.narration.initial_pause,
                 speaker_pause=cfg.narration.speaker_pause,
+                slide_pause=cfg.narration.slide_pause,
             )
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
@@ -1266,6 +1269,7 @@ def generate_audio_cmd(
                 all_phrases,
                 initial_pause=cfg.narration.initial_pause,
                 speaker_pause=cfg.narration.speaker_pause,
+                slide_pause=cfg.narration.slide_pause,
             )
             progress.update(task, completed=True)
             new_audio_count = len(audio_paths) - existing_audio_count
@@ -1720,6 +1724,7 @@ def render_video_cmd(
         all_phrases,
         initial_pause=cfg.narration.initial_pause,
         speaker_pause=cfg.narration.speaker_pause,
+        slide_pause=cfg.narration.slide_pause,
     )
 
     # Load slide paths

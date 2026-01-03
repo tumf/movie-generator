@@ -117,12 +117,14 @@ class TestCalculatePhraseTimings:
     def test_basic_timing_without_speakers(self) -> None:
         """Test basic timing calculation without speaker changes."""
         phrases = [
-            Phrase(text="First", duration=1.0),
-            Phrase(text="Second", duration=2.0),
-            Phrase(text="Third", duration=1.5),
+            Phrase(text="First", duration=1.0, section_index=0),
+            Phrase(text="Second", duration=2.0, section_index=0),
+            Phrase(text="Third", duration=1.5, section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=0.0, speaker_pause=0.5)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.5, slide_pause=1.0
+        )
 
         assert result[0].start_time == 0.0
         assert result[1].start_time == 1.0
@@ -131,12 +133,14 @@ class TestCalculatePhraseTimings:
     def test_speaker_pause_added_on_change(self) -> None:
         """Test that pause is added when speaker changes."""
         phrases = [
-            Phrase(text="Hello", duration=1.0, persona_id="zundamon"),
-            Phrase(text="Hi", duration=1.0, persona_id="metan"),
-            Phrase(text="How are you?", duration=1.5, persona_id="zundamon"),
+            Phrase(text="Hello", duration=1.0, persona_id="zundamon", section_index=0),
+            Phrase(text="Hi", duration=1.0, persona_id="metan", section_index=0),
+            Phrase(text="How are you?", duration=1.5, persona_id="zundamon", section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=0.0, speaker_pause=0.5)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.5, slide_pause=1.0
+        )
 
         assert result[0].start_time == 0.0  # First phrase
         assert result[1].start_time == 1.5  # 1.0 + 0.5 pause
@@ -145,12 +149,14 @@ class TestCalculatePhraseTimings:
     def test_no_pause_for_same_speaker(self) -> None:
         """Test that no pause is added when speaker doesn't change."""
         phrases = [
-            Phrase(text="Hello", duration=1.0, persona_id="zundamon"),
-            Phrase(text="World", duration=1.0, persona_id="zundamon"),
-            Phrase(text="!", duration=0.5, persona_id="zundamon"),
+            Phrase(text="Hello", duration=1.0, persona_id="zundamon", section_index=0),
+            Phrase(text="World", duration=1.0, persona_id="zundamon", section_index=0),
+            Phrase(text="!", duration=0.5, persona_id="zundamon", section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=0.0, speaker_pause=0.5)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.5, slide_pause=1.0
+        )
 
         assert result[0].start_time == 0.0
         assert result[1].start_time == 1.0  # No pause
@@ -159,11 +165,13 @@ class TestCalculatePhraseTimings:
     def test_speaker_pause_disabled(self) -> None:
         """Test that pause can be disabled by setting to 0."""
         phrases = [
-            Phrase(text="Hello", duration=1.0, persona_id="zundamon"),
-            Phrase(text="Hi", duration=1.0, persona_id="metan"),
+            Phrase(text="Hello", duration=1.0, persona_id="zundamon", section_index=0),
+            Phrase(text="Hi", duration=1.0, persona_id="metan", section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=0.0, speaker_pause=0.0)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.0, slide_pause=1.0
+        )
 
         assert result[0].start_time == 0.0
         assert result[1].start_time == 1.0  # No pause even though speaker changed
@@ -171,21 +179,25 @@ class TestCalculatePhraseTimings:
     def test_no_pause_for_first_phrase(self) -> None:
         """Test that no speaker pause is added before the first phrase."""
         phrases = [
-            Phrase(text="First", duration=1.0, persona_id="zundamon"),
+            Phrase(text="First", duration=1.0, persona_id="zundamon", section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=0.0, speaker_pause=0.5)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.5, slide_pause=1.0
+        )
 
         assert result[0].start_time == 0.0  # No speaker pause before first phrase
 
     def test_no_pause_for_single_speaker_mode(self) -> None:
         """Test that no pause is added in single-speaker mode (empty persona_id)."""
         phrases = [
-            Phrase(text="First", duration=1.0, persona_id=""),
-            Phrase(text="Second", duration=1.0, persona_id=""),
+            Phrase(text="First", duration=1.0, persona_id="", section_index=0),
+            Phrase(text="Second", duration=1.0, persona_id="", section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=0.0, speaker_pause=0.5)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.5, slide_pause=1.0
+        )
 
         assert result[0].start_time == 0.0
         assert result[1].start_time == 1.0  # No pause in single-speaker mode
@@ -193,11 +205,13 @@ class TestCalculatePhraseTimings:
     def test_initial_pause(self) -> None:
         """Test that initial pause is added before the first phrase."""
         phrases = [
-            Phrase(text="First", duration=1.0),
-            Phrase(text="Second", duration=2.0),
+            Phrase(text="First", duration=1.0, section_index=0),
+            Phrase(text="Second", duration=2.0, section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=1.0, speaker_pause=0.0)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=1.0, speaker_pause=0.0, slide_pause=1.0
+        )
 
         assert result[0].start_time == 1.0  # Initial pause
         assert result[1].start_time == 2.0  # 1.0 + 1.0
@@ -205,11 +219,47 @@ class TestCalculatePhraseTimings:
     def test_initial_pause_with_speaker_changes(self) -> None:
         """Test initial pause combined with speaker pauses."""
         phrases = [
-            Phrase(text="Hello", duration=1.0, persona_id="zundamon"),
-            Phrase(text="Hi", duration=1.0, persona_id="metan"),
+            Phrase(text="Hello", duration=1.0, persona_id="zundamon", section_index=0),
+            Phrase(text="Hi", duration=1.0, persona_id="metan", section_index=0),
         ]
 
-        result = calculate_phrase_timings(phrases, initial_pause=1.0, speaker_pause=0.5)
+        result = calculate_phrase_timings(
+            phrases, initial_pause=1.0, speaker_pause=0.5, slide_pause=1.0
+        )
 
         assert result[0].start_time == 1.0  # Initial pause
         assert result[1].start_time == 2.5  # 1.0 (initial) + 1.0 (duration) + 0.5 (speaker)
+
+    def test_slide_pause_on_section_change(self) -> None:
+        """Test that pause is added when section/slide changes."""
+        phrases = [
+            Phrase(text="Section 1", duration=1.0, section_index=0),
+            Phrase(text="Section 2", duration=1.0, section_index=1),
+            Phrase(text="Section 3", duration=1.0, section_index=2),
+        ]
+
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.0, slide_pause=1.0
+        )
+
+        assert result[0].start_time == 0.0  # First section
+        assert result[1].start_time == 2.0  # 1.0 + 1.0 slide pause
+        assert result[2].start_time == 4.0  # 2.0 + 1.0 + 1.0 slide pause
+
+    def test_slide_pause_priority_over_speaker_pause(self) -> None:
+        """Test that slide pause takes priority over speaker pause."""
+        phrases = [
+            Phrase(text="A1", duration=1.0, persona_id="zundamon", section_index=0),
+            Phrase(text="B1", duration=1.0, persona_id="metan", section_index=1),  # Section change
+            Phrase(
+                text="B2", duration=1.0, persona_id="zundamon", section_index=1
+            ),  # Speaker change
+        ]
+
+        result = calculate_phrase_timings(
+            phrases, initial_pause=0.0, speaker_pause=0.5, slide_pause=1.0
+        )
+
+        assert result[0].start_time == 0.0
+        assert result[1].start_time == 2.0  # Slide pause (not speaker pause)
+        assert result[2].start_time == 3.5  # Speaker pause within same section

@@ -260,7 +260,8 @@ narration:
   character: "ずんだもん"
   style: "casual"
   initial_pause: 1.0  # Initial pause (seconds) before first phrase starts
-  speaker_pause: 0.5  # Pause duration (seconds) between speaker changes in dialogue mode
+  slide_pause: 1.0    # Pause (seconds) when transitioning between slides
+  speaker_pause: 0.5  # Pause (seconds) between speaker changes in dialogue mode
 
 content:
   llm_provider: "openrouter"
@@ -506,6 +507,7 @@ Configure natural pauses to improve video pacing and conversation flow:
 ```yaml
 narration:
   initial_pause: 1.0   # Initial pause before first phrase (seconds)
+  slide_pause: 1.0     # Pause when transitioning between slides (seconds)
   speaker_pause: 0.5   # Pause between speaker changes (seconds)
 ```
 
@@ -514,9 +516,16 @@ narration:
 - Allows viewers to see the first slide before narration begins
 - Set to `0` to start narration immediately
 
+**Slide Pause** (default: 1.0 seconds):
+- Added when transitioning between slides (section changes)
+- Takes priority over speaker pause
+- Gives viewers time to absorb new visual information
+- Set to `0` to disable slide transition pauses
+
 **Speaker Pause** (default: 0.5 seconds):
-- Added when `persona_id` changes between phrases in multi-speaker mode
+- Added when `persona_id` changes within the same slide
 - ⏭️ No pause for the first phrase (uses `initial_pause` instead)
+- ⏭️ No pause when section changes (uses `slide_pause` instead)
 - ⏭️ No pause when the same speaker continues
 - ⏭️ No pause in single-speaker mode
 - Set to `0` to disable speaker pauses
@@ -524,11 +533,11 @@ narration:
 **Example timeline**:
 ```
 [1.0s initial pause - first slide visible]
-Speaker A: "こんにちは" (starts at 1.0s, ends at 2.5s)
+Speaker A: "こんにちは" (slide 1, starts at 1.0s, ends at 2.5s)
 [0.5s speaker pause]
-Speaker B: "よろしく" (starts at 3.0s, ends at 4.2s)
-[0.5s speaker pause]
-Speaker A: "お願いします" (starts at 4.7s)
+Speaker B: "よろしく" (slide 1, starts at 3.0s, ends at 4.2s)
+[1.0s slide pause - slide 2 transition]
+Speaker A: "次のトピックです" (slide 2, starts at 5.2s)
 ```
 
 #### Animation Styles
