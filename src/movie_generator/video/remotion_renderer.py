@@ -661,23 +661,25 @@ def render_video_with_remotion(
                 f"({total_duration:.1f}s, {total_frames} frames)...[/cyan]"
             )
 
-        subprocess.run(
-            [
-                "npx",
-                "remotion",
-                "render",
-                "VideoGenerator",
-                str(output_path.absolute()),
-                "--overwrite",
-                "--concurrency",
-                "8",  # Use 8 concurrent threads for faster rendering
-            ],
-            cwd=remotion_root,
-            check=True,
-            # Show progress only if requested
-            capture_output=not show_progress,
-            text=True,
-        )
+            subprocess.run(
+                [
+                    "npx",
+                    "remotion",
+                    "render",
+                    "VideoGenerator",
+                    str(output_path.absolute()),
+                    "--overwrite",
+                    "--concurrency",
+                    "4",  # Reduced from 8 to prevent memory issues and timeouts
+                    "--timeout",
+                    "300000",  # 5 minutes timeout for delayRender calls (default is 30s)
+                ],
+                cwd=remotion_root,
+                check=True,
+                # Show progress only if requested
+                capture_output=not show_progress,
+                text=True,
+            )
 
         # Only show completion message when progress is hidden
         if not show_progress:
