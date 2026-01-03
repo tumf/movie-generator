@@ -648,8 +648,12 @@ def render_video_with_remotion(
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Calculate total duration
-    total_duration = sum(p.duration for p in phrases)
+    # Calculate total duration including pauses
+    # Use last phrase's end time (start_time + duration) + 1 second ending pause
+    if phrases:
+        total_duration = phrases[-1].start_time + phrases[-1].duration + 1.0  # +1s ending pause
+    else:
+        total_duration = 0.0
     total_frames = int(total_duration * 30)  # 30 fps
 
     # Render video using Remotion CLI
