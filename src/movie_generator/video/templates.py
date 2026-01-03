@@ -51,6 +51,7 @@ export interface PhraseData {
   audioFile: string;
   slideFile?: string;
   duration: number;
+  start_time?: number;  // Start time in seconds (for speaker pauses)
   personaId?: string;
   personaName?: string;
   subtitleColor?: string;
@@ -72,23 +73,29 @@ export interface VideoGeneratorProps {
 }
 
 // Calculate timing for each phrase
-// Note: Audio sequences use continuous timing (no adjustment needed).
+// Note: If start_time is provided (for speaker pauses), use it directly.
+// Otherwise, calculate continuous timing based on duration.
+// Audio sequences use the provided timing (with pauses between speakers).
 // Transitions create visual overlap between slides, but audio plays continuously.
 // The total video duration accounts for transition overlaps in calculateTotalFrames().
 const getScenesWithTiming = (phrases: PhraseData[]) => {
-  let currentFrame = 0;
   const fps = 30;
 
   return phrases.map((phrase, index) => {
+    // Use start_time if provided (e.g., with speaker pauses), otherwise calculate
+    const startFrame = phrase.start_time !== undefined
+      ? Math.round(phrase.start_time * fps)
+      : (index === 0 ? 0 : Math.round(phrases.slice(0, index).reduce((sum, p) => sum + p.duration, 0) * fps));
     const durationFrames = Math.round(phrase.duration * fps);
+
     const scene = {
       id: `phrase-${index}`,
       audioFile: phrase.audioFile,
       subtitle: phrase.text,
       slideFile: phrase.slideFile,
-      startFrame: currentFrame,
+      startFrame,
       durationFrames,
-      endFrame: currentFrame + durationFrames,
+      endFrame: startFrame + durationFrames,
       personaId: phrase.personaId,
       personaName: phrase.personaName,
       subtitleColor: phrase.subtitleColor,
@@ -98,7 +105,6 @@ const getScenesWithTiming = (phrases: PhraseData[]) => {
       eyeCloseImage: phrase.eyeCloseImage,
       animationStyle: phrase.animationStyle,
     };
-    currentFrame += durationFrames;
     return scene;
   });
 };
