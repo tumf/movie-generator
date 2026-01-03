@@ -132,7 +132,11 @@ const getSlideGroups = (
     if (scene.slideFile !== currentSlide) {
       // Slide changed, save previous group
       if (index > 0 && currentScenes.length > 0) {
-        const duration = currentScenes.reduce((sum, s) => sum + s.durationFrames, 0);
+        // Calculate duration from first scene's start to last scene's end
+        // This includes speaker pauses between phrases
+        const firstScene = currentScenes[0];
+        const lastScene = currentScenes[currentScenes.length - 1];
+        const duration = lastScene.endFrame - firstScene.startFrame;
         groups.push({
           slideFile: currentSlide,
           scenes: currentScenes,
@@ -146,7 +150,10 @@ const getSlideGroups = (
 
     // Last scene
     if (index === scenes.length - 1) {
-      const duration = currentScenes.reduce((sum, s) => sum + s.durationFrames, 0);
+      // Calculate duration from first scene's start to last scene's end
+      const firstScene = currentScenes[0];
+      const lastScene = currentScenes[currentScenes.length - 1];
+      const duration = lastScene.endFrame - firstScene.startFrame;
       groups.push({
         slideFile: currentSlide,
         scenes: currentScenes,
