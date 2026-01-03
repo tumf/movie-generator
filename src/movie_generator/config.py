@@ -96,6 +96,11 @@ class NarrationConfig(BaseModel):
 
     character: str = Field(default="ずんだもん")
     style: str = Field(default="casual")
+    initial_pause: float = Field(
+        default=1.0,
+        description="Initial pause duration (seconds) before the first phrase. "
+        "Useful to show the first slide before narration starts.",
+    )
     speaker_pause: float = Field(
         default=0.5,
         description="Pause duration (seconds) between speaker changes in dialogue mode. "

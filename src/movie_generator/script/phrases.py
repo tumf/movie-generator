@@ -108,18 +108,22 @@ def split_into_phrases(text: str, max_chars: int = 40) -> list[Phrase]:
     return phrases
 
 
-def calculate_phrase_timings(phrases: list[Phrase], speaker_pause: float = 0.5) -> list[Phrase]:
+def calculate_phrase_timings(
+    phrases: list[Phrase], initial_pause: float = 1.0, speaker_pause: float = 0.5
+) -> list[Phrase]:
     """Calculate cumulative start times for phrases.
 
     Args:
         phrases: List of phrases with duration already set.
+        initial_pause: Initial pause (in seconds) before the first phrase.
+                      Default is 1.0 seconds. Set to 0 to disable.
         speaker_pause: Pause duration (in seconds) to add when speaker changes.
                       Default is 0.5 seconds. Set to 0 to disable.
 
     Returns:
         Updated list with start_time filled.
     """
-    cumulative_time = 0.0
+    cumulative_time = initial_pause  # Start with initial pause
     previous_persona_id = None
 
     for phrase in phrases:

@@ -259,6 +259,7 @@ audio:
 narration:
   character: "ずんだもん"
   style: "casual"
+  initial_pause: 1.0  # Initial pause (seconds) before first phrase starts
   speaker_pause: 0.5  # Pause duration (seconds) between speaker changes in dialogue mode
 
 content:
@@ -498,33 +499,37 @@ personas:
 
 See `config-zundamon.yaml` and `config-metan.yaml` for complete examples.
 
-#### Speaker Pauses
+#### Timing and Pauses
 
-In multi-speaker dialogue mode, natural pauses are automatically added between speaker changes to improve conversation flow:
+Configure natural pauses to improve video pacing and conversation flow:
 
 ```yaml
 narration:
-  speaker_pause: 0.5  # Pause duration (seconds) between speaker changes
+  initial_pause: 1.0   # Initial pause before first phrase (seconds)
+  speaker_pause: 0.5   # Pause between speaker changes (seconds)
 ```
 
-**Default**: 0.5 seconds
+**Initial Pause** (default: 1.0 seconds):
+- Added before the first phrase starts
+- Allows viewers to see the first slide before narration begins
+- Set to `0` to start narration immediately
 
-**Behavior**:
-- ✅ Pause added when `persona_id` changes between phrases
-- ⏭️ No pause for the first phrase in the video
+**Speaker Pause** (default: 0.5 seconds):
+- Added when `persona_id` changes between phrases in multi-speaker mode
+- ⏭️ No pause for the first phrase (uses `initial_pause` instead)
 - ⏭️ No pause when the same speaker continues
-- ⏭️ No pause in single-speaker mode (only one persona configured)
+- ⏭️ No pause in single-speaker mode
+- Set to `0` to disable speaker pauses
 
 **Example timeline**:
 ```
-Speaker A: "こんにちは" (ends at 1.5s)
-[0.5s pause]
-Speaker B: "よろしく" (starts at 2.0s)
-[0.5s pause]
-Speaker A: "お願いします" (starts at 3.2s)
+[1.0s initial pause - first slide visible]
+Speaker A: "こんにちは" (starts at 1.0s, ends at 2.5s)
+[0.5s speaker pause]
+Speaker B: "よろしく" (starts at 3.0s, ends at 4.2s)
+[0.5s speaker pause]
+Speaker A: "お願いします" (starts at 4.7s)
 ```
-
-To disable speaker pauses, set `speaker_pause: 0`.
 
 #### Animation Styles
 
