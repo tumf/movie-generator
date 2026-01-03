@@ -259,6 +259,7 @@ audio:
 narration:
   character: "ずんだもん"
   style: "casual"
+  speaker_pause: 0.5  # Pause duration (seconds) between speaker changes in dialogue mode
 
 content:
   llm_provider: "openrouter"
@@ -496,6 +497,34 @@ personas:
 ```
 
 See `config-zundamon.yaml` and `config-metan.yaml` for complete examples.
+
+#### Speaker Pauses
+
+In multi-speaker dialogue mode, natural pauses are automatically added between speaker changes to improve conversation flow:
+
+```yaml
+narration:
+  speaker_pause: 0.5  # Pause duration (seconds) between speaker changes
+```
+
+**Default**: 0.5 seconds
+
+**Behavior**:
+- ✅ Pause added when `persona_id` changes between phrases
+- ⏭️ No pause for the first phrase in the video
+- ⏭️ No pause when the same speaker continues
+- ⏭️ No pause in single-speaker mode (only one persona configured)
+
+**Example timeline**:
+```
+Speaker A: "こんにちは" (ends at 1.5s)
+[0.5s pause]
+Speaker B: "よろしく" (starts at 2.0s)
+[0.5s pause]
+Speaker A: "お願いします" (starts at 3.2s)
+```
+
+To disable speaker pauses, set `speaker_pause: 0`.
 
 #### Animation Styles
 
