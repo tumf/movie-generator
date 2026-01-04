@@ -261,6 +261,7 @@ narration:
   style: "casual"
   initial_pause: 1.0  # Initial pause (seconds) before first phrase starts
   slide_pause: 1.0    # Pause (seconds) when transitioning between slides
+  ending_pause: 1.0   # Pause (seconds) after last phrase ends
   speaker_pause: 0.5  # Pause (seconds) between speaker changes in dialogue mode
 
 content:
