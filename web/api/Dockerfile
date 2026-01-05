@@ -8,15 +8,27 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy API code
-COPY . /app/api
-WORKDIR /app/api
+# Copy entire project (context is set to project root in compose)
+COPY . /app/
+WORKDIR /app/web/api
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -e .
+# Install Python dependencies directly (not as editable package)
+COPY web/api/pyproject.toml /tmp/
+RUN pip install --no-cache-dir \
+    fastapi>=0.115.0 \
+    uvicorn[standard]>=0.32.0 \
+    jinja2>=3.1.4 \
+    python-multipart>=0.0.12 \
+    httpx>=0.27.0 \
+    slowapi>=0.1.9 \
+    pydantic>=2.9.0 \
+    pydantic-settings>=2.6.0
 
 # Create directories
-RUN mkdir -p /app/data/jobs /app/api/static
+RUN mkdir -p /app/data/jobs /app/web/api/static
+
+# Set Python path to include the api directory
+ENV PYTHONPATH=/app/web/api:$PYTHONPATH
 
 # Expose port
 EXPOSE 8000

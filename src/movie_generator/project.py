@@ -314,6 +314,37 @@ class Project:
                 video.templates.get_remotion_config_ts(), encoding="utf-8"
             )
 
+            # Ensure package.json has dependencies and node_modules is populated
+            package_json_path = remotion_dir / "package.json"
+            node_modules = remotion_dir / "node_modules"
+            remotion_installed = (node_modules / "remotion").exists()
+
+            if not remotion_installed:
+                console.print("[cyan]Installing Remotion dependencies...[/cyan]")
+                # Update package.json with correct dependencies
+                package_data = video.templates.get_package_json(self.name)
+                with package_json_path.open("w", encoding="utf-8") as f:
+                    json.dump(package_data, f, indent=2)
+                try:
+                    subprocess.run(
+                        ["pnpm", "install"],
+                        cwd=remotion_dir,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    console.print("[green]✓ Dependencies installed[/green]")
+                except subprocess.CalledProcessError as e:
+                    console.print(f"[yellow]pnpm install failed, trying npm: {e.stderr}[/yellow]")
+                    subprocess.run(
+                        ["npm", "install"],
+                        cwd=remotion_dir,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
+                    console.print("[green]✓ Dependencies installed with npm[/green]")
+
             console.print("[green]✓ Templates updated[/green]")
             return remotion_dir
 

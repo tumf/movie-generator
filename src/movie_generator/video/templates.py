@@ -673,8 +673,17 @@ def get_package_json(project_name: str) -> dict[str, Any]:
         "version": "1.0.0",
         "private": True,
         "scripts": {"render": "remotion render VideoGenerator ../output.mp4"},
-        "dependencies": {},
-        "devDependencies": {},
+        "dependencies": {
+            "react": "^18.2.0",
+            "react-dom": "^18.2.0",
+            "remotion": "^4.0.234",
+            "@remotion/cli": "^4.0.234",
+            "@remotion/transitions": "^4.0.234",
+        },
+        "devDependencies": {
+            "typescript": "^5.0.0",
+            "@types/react": "^18.2.0",
+        },
     }
 
 
