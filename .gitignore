@@ -97,3 +97,4 @@ mcp-config.jsonc
 
 # openspec
 openspec/changes/
+.envrc

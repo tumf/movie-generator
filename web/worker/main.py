@@ -25,6 +25,8 @@ class Config:
     max_concurrent_jobs: int = 2
     worker_poll_interval: int = 5  # seconds
     job_data_dir: Path = Path("/app/data/jobs")
+    config_path: Path | None = None
+    mcp_config_path: Path | None = None
 
     def __init__(self) -> None:
         """Initialize configuration from environment variables."""
@@ -39,6 +41,15 @@ class Config:
         )
         job_data_dir_str = os.getenv("JOB_DATA_DIR", str(self.job_data_dir))
         self.job_data_dir = Path(job_data_dir_str)
+
+        # MCP agent configuration
+        config_path_str = os.getenv("CONFIG_PATH")
+        if config_path_str:
+            self.config_path = Path(config_path_str)
+
+        mcp_config_path_str = os.getenv("MCP_CONFIG_PATH")
+        if mcp_config_path_str:
+            self.mcp_config_path = Path(mcp_config_path_str)
 
 
 class PocketBaseClient:
@@ -115,9 +126,10 @@ class MovieGeneratorWrapper:
     Should be refactored to call functions directly with progress callbacks.
     """
 
-    def __init__(self, job_data_dir: Path) -> None:
+    def __init__(self, job_data_dir: Path, config: Config) -> None:
         """Initialize wrapper."""
         self.job_data_dir = job_data_dir
+        self.config = config
         self.job_data_dir.mkdir(parents=True, exist_ok=True)
 
     def get_job_dir(self, job_id: str) -> Path:
@@ -240,7 +252,6 @@ class MovieGeneratorWrapper:
             logger.info(f"Generating script for job {job_id}")
 
             # Use direct API call instead of subprocess
-            from movie_generator.script import generate_script_from_url  # type: ignore
             import os
 
             api_key = os.getenv("OPENROUTER_API_KEY")
@@ -260,13 +271,35 @@ class MovieGeneratorWrapper:
                 )
                 logger.debug(f"Script progress: {current}/{total} - {message}")
 
+            # Check if MCP agent mode should be used
+            use_agent = (
+                self.config.mcp_config_path is not None and self.config.mcp_config_path.exists()
+            )
+
             try:
-                script_path = await generate_script_from_url(
-                    url=url,
-                    output_dir=job_dir,
-                    api_key=api_key,
-                    progress_callback=script_progress,
-                )
+                if use_agent:
+                    logger.info(f"Using MCP agent mode with config: {self.config.mcp_config_path}")
+                    from movie_generator.script import generate_script_from_url_with_agent  # type: ignore
+
+                    script_path = await generate_script_from_url_with_agent(
+                        url=url,
+                        output_dir=job_dir,
+                        mcp_config_path=self.config.mcp_config_path,
+                        config_path=self.config.config_path,
+                        api_key=api_key,
+                        progress_callback=script_progress,
+                    )
+                else:
+                    logger.info("Using standard content fetching mode")
+                    from movie_generator.script import generate_script_from_url  # type: ignore
+
+                    script_path = await generate_script_from_url(
+                        url=url,
+                        output_dir=job_dir,
+                        config_path=self.config.config_path,
+                        api_key=api_key,
+                        progress_callback=script_progress,
+                    )
             except Exception as e:
                 logger.error(f"Script generation failed: {e}", exc_info=True)
                 raise RuntimeError(f"Script generation failed: {e}")
@@ -411,7 +444,7 @@ class Worker:
         """Initialize worker."""
         self.config = config
         self.pb_client = PocketBaseClient(config.pocketbase_url)
-        self.generator = MovieGeneratorWrapper(config.job_data_dir)
+        self.generator = MovieGeneratorWrapper(config.job_data_dir, config)
         self.semaphore = asyncio.Semaphore(config.max_concurrent_jobs)
         self.running = False
 

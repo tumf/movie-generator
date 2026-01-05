@@ -1,0 +1,25 @@
+// MCP (Model Context Protocol) Configuration
+// This file defines MCP servers that the agent can use for content fetching
+{
+  "mcpServers": {
+    // Firecrawl server for web scraping
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "@mendable/firecrawl-mcp"],
+      "env": {
+        // Set FIRECRAWL_API_KEY environment variable before running
+        "FIRECRAWL_API_KEY": "{env:FIRECRAWL_API_KEY}"
+      }
+    },
+
+    // Optional: Brave Search for web search capabilities
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        // Set BRAVE_API_KEY environment variable to enable
+        "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
+      }
+    }
+  }
+}
