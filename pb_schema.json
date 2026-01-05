@@ -1,0 +1,144 @@
+[
+  {
+    "id": "jobs_collection",
+    "name": "jobs",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "url_field",
+        "name": "url",
+        "type": "text",
+        "required": true,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "status_field",
+        "name": "status",
+        "type": "text",
+        "required": true,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "progress_field",
+        "name": "progress",
+        "type": "number",
+        "required": true,
+        "options": {
+          "min": 0,
+          "max": 100
+        }
+      },
+      {
+        "id": "progress_message_field",
+        "name": "progress_message",
+        "type": "text",
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "current_step_field",
+        "name": "current_step",
+        "type": "text",
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "client_ip_field",
+        "name": "client_ip",
+        "type": "text",
+        "required": true,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "video_path_field",
+        "name": "video_path",
+        "type": "text",
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "video_size_field",
+        "name": "video_size",
+        "type": "number",
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "id": "error_message_field",
+        "name": "error_message",
+        "type": "text",
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "started_at_field",
+        "name": "started_at",
+        "type": "date",
+        "required": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      },
+      {
+        "id": "completed_at_field",
+        "name": "completed_at",
+        "type": "date",
+        "required": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      },
+      {
+        "id": "expires_at_field",
+        "name": "expires_at",
+        "type": "date",
+        "required": true,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      }
+    ],
+    "indexes": [],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "",
+    "deleteRule": "",
+    "options": {}
+  }
+]

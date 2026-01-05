@@ -570,6 +570,21 @@ grep -n "#8FCF4F" src/movie_generator/video/templates.py
 grep -r "SubtitleConstants.DEFAULT_COLOR" src/
 ```
 
+## Pocketbase Integration
+
+### Documentation Requirement
+
+**When discovering Pocketbase-related knowledge, best practices, or solutions, update `docs/POCKETBASE.md`.**
+
+This document should capture:
+- Setup and configuration patterns
+- Schema design best practices
+- Authentication and authorization patterns
+- API usage examples
+- Common pitfalls and workarounds
+- Performance optimization tips
+- Migration strategies
+
 ## Remotion Integration
 
 ### Documentation Requirement
