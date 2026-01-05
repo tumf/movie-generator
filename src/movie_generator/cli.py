@@ -13,11 +13,17 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from .audio.voicevox import create_synthesizer_from_config
-from .config import Config, load_config, print_default_config, write_config_to_file
+from .config import (
+    Config,
+    load_config,
+    print_default_config,
+    validate_config,
+    write_config_to_file,
+)
 from .content.fetcher import fetch_url_sync
 from .content.parser import parse_html
 from .project import Project
-from .script.generator import generate_script
+from .script.generator import generate_script, validate_script
 from .script.phrases import Phrase, calculate_phrase_timings
 from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
@@ -965,6 +971,66 @@ def create(
         console.print("\n[bold green]✓ Script generation complete![/bold green]")
 
 
+@script.command("validate")
+@click.argument("path", type=click.Path(path_type=Path), required=True)
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True, path_type=Path),
+    help="Configuration file for persona_id validation (optional)",
+)
+@click.option(
+    "--quiet",
+    "-q",
+    is_flag=True,
+    help="Only show errors, suppress success message",
+)
+def validate_script_cmd(path: Path, config: Path | None, quiet: bool) -> None:
+    """Validate script file.
+
+    Checks YAML syntax, required fields, and narration format.
+    Optionally validates persona_id references against config.
+
+    Examples:
+        movie-generator script validate script.yaml
+        movie-generator script validate script.yaml --config config.yaml
+        movie-generator script validate script.yaml -c config.yaml --quiet
+    """
+    # Load config personas if provided
+    config_personas = None
+    if config:
+        try:
+            cfg = load_config(config)
+            if cfg.personas:
+                config_personas = [p.model_dump(include={"id", "name"}) for p in cfg.personas]
+        except Exception as e:
+            console.print(f"[yellow]⚠ Warning: Failed to load config file: {e}[/yellow]")
+
+    # Validate script
+    result = validate_script(path, config_personas)
+
+    # Display errors
+    if result.errors:
+        console.print("[red]✗ Script validation failed:[/red]")
+        for error in result.errors:
+            console.print(f"  [red]• {error}[/red]")
+
+    # Display warnings
+    if result.warnings:
+        for warning in result.warnings:
+            console.print(f"  [yellow]⚠ {warning}[/yellow]")
+
+    # Display success message and statistics
+    if result.is_valid:
+        if not quiet:
+            console.print("[green]✓ Script is valid[/green]")
+            console.print(f"  Sections: {result.section_count}")
+            console.print(f"  Total narrations: {result.narration_count}")
+        raise SystemExit(0)
+    else:
+        raise SystemExit(1)
+
+
 @cli.group()
 def audio() -> None:
     """Audio generation commands."""
@@ -1902,6 +1968,45 @@ def init(output: Path | None, force: bool) -> None:
             console.print(f"[red]Error: Unable to write to {output}[/red]")
             console.print(f"[red]{e}[/red]")
             raise click.Abort()
+
+
+@config.command("validate")
+@click.argument("path", type=click.Path(path_type=Path), required=True)
+@click.option(
+    "--quiet",
+    "-q",
+    is_flag=True,
+    help="Only show errors, suppress success message",
+)
+def validate_config_cmd(path: Path, quiet: bool) -> None:
+    """Validate configuration file.
+
+    Checks YAML syntax, schema validity, and referenced file existence.
+
+    Examples:
+        movie-generator config validate config.yaml
+        movie-generator config validate config.yaml --quiet
+    """
+    result = validate_config(path)
+
+    # Display errors
+    if result.errors:
+        console.print("[red]✗ Configuration validation failed:[/red]")
+        for error in result.errors:
+            console.print(f"  [red]• {error}[/red]")
+
+    # Display warnings
+    if result.warnings:
+        for warning in result.warnings:
+            console.print(f"  [yellow]⚠ {warning}[/yellow]")
+
+    # Display success message
+    if result.is_valid:
+        if not quiet:
+            console.print("[green]✓ Configuration is valid[/green]")
+        raise SystemExit(0)
+    else:
+        raise SystemExit(1)
 
 
 def main() -> None:

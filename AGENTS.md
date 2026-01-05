@@ -86,6 +86,10 @@ uv run movie-generator audio generate <script.yaml> [--scenes 1-3]
 uv run movie-generator slides generate <script.yaml> [--scenes 1-3]
 uv run movie-generator video render <script.yaml> [--scenes 1-3] [--output FILE]
 
+# Validation
+uv run movie-generator config validate <config.yaml> [--quiet]
+uv run movie-generator script validate <script.yaml> [--config config.yaml] [--quiet]
+
 # Common options (available on all commands)
 --force / -f          # Force overwrite existing files
 --quiet / -q          # Suppress progress output

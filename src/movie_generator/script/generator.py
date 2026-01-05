@@ -190,14 +190,17 @@ JSON形式で以下を出力してください：
     - 「って」→「ツッテ」（×「ツ」が大きい）
     - 「って」→「テ」（×促音なし）
 
-**スペース不要**: カタカナにスペースを含めないでください
+**スペース**: 単語の区切りが分かりにくい箇所には適切にスペースを挿入してください
+
+**数字の表記**: アラビア数字はそのまま残してください（カタカナに変換しない）
 
 **例**:
-  - text: "明日は晴れです" → reading: "アシタワハレデス"
-  - text: "97個あります" → reading: "キュウジュウナナコアリマス"
-  - text: "ESPが次の章" → reading: "イーエスピーガツギノショウ"
-  - text: "APIって何？" → reading: "エーピーアイッテナニ？"
-  - text: "Web3って難しいのに。操作できるの！？" → reading: "ウェブスリーッテムズカシイノニ。ソウサデキルノ！？"
+  - text: "明日は晴れです" → reading: "アシタワ ハレデス"
+  - text: "97個あります" → reading: "97コ アリマス"
+  - text: "2026年はヤバい" → reading: "2026ネンワ ヤバイ"
+  - text: "ESPが次の章" → reading: "イーエスピーガ ツギノ ショウ"
+  - text: "APIって何？" → reading: "エーピーアイッテ ナニ？"
+  - text: "Web3って難しいのに。操作できるの！？" → reading: "ウェブ3ッテ ムズカシイノニ。ソウサデキルノ！？"
 
 【スライド画像について - 重要な選択基準】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -522,15 +525,18 @@ JSON形式で以下を出力してください。**必ず各ナレーション�
     - 「って」→「ツッテ」（×「ツ」が大きい）
     - 「って」→「テ」（×促音なし）
 
-**スペース不要**: カタカナにスペースを含めないでください
+**スペース**: 単語の区切りが分かりにくい箇所には適切にスペースを挿入してください
+
+**数字の表記**: アラビア数字はそのまま残してください（カタカナに変換しない）
 
 **例**:
   - text: "ねえねえ！" → reading: "ネエネエ！"
   - text: "これは便利だね" → reading: "コレワ ベンリダネ"
   - text: "東京へ行こう" → reading: "トウキョウエ イコウ"
-  - text: "ESPが次の章って聞いた！" → reading: "イーエスピーガ ツギノショウッテ キイタ！"
-  - text: "RAGって何？" → reading: "ラグッテナニ？"
-  - text: "97%削減！" → reading: "キュウジュウナナパーセント サクゲン！"
+  - text: "2026年はヤバい" → reading: "2026ネンワ ヤバイ"
+  - text: "ESPが次の章って聞いた！" → reading: "イーエスピーガ ツギノ ショウッテ キイタ！"
+  - text: "RAGって何？" → reading: "ラグッテ ナニ？"
+  - text: "97%削減！" → reading: "97パーセント サクゲン！"
 
 【スライド画像について - 重要な選択基準】
 - 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
@@ -940,3 +946,203 @@ async def generate_script(
         sections=sections,
         role_assignments=role_assignments,
     )
+
+
+class ScriptValidationResult:
+    """Result of script validation."""
+
+    def __init__(self) -> None:
+        """Initialize validation result."""
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+        self.section_count: int = 0
+        self.narration_count: int = 0
+
+    def add_error(self, message: str) -> None:
+        """Add an error message."""
+        self.errors.append(message)
+
+    def add_warning(self, message: str) -> None:
+        """Add a warning message."""
+        self.warnings.append(message)
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if validation passed (no errors)."""
+        return len(self.errors) == 0
+
+    @property
+    def has_warnings(self) -> bool:
+        """Check if there are warnings."""
+        return len(self.warnings) > 0
+
+
+def validate_script(
+    script_path: Any, config_personas: list[dict[str, Any]] | None = None
+) -> ScriptValidationResult:
+    """Validate script file.
+
+    Performs the following checks:
+    1. YAML syntax validation
+    2. Required fields (title, description, sections)
+    3. Narrations format validation
+    4. Persona ID reference validation (if config provided)
+
+    Args:
+        script_path: Path to script file to validate.
+        config_personas: List of persona configs for ID validation (optional).
+
+    Returns:
+        ScriptValidationResult with errors, warnings, and statistics.
+    """
+    from pathlib import Path
+
+    import yaml
+
+    result = ScriptValidationResult()
+
+    # Convert to Path if needed
+    if not isinstance(script_path, Path):
+        script_path = Path(script_path)
+
+    # Check if file exists
+    if not script_path.exists():
+        result.add_error(f"File not found: {script_path}")
+        return result
+
+    # Step 1: YAML syntax check
+    try:
+        with script_path.open("r", encoding="utf-8") as f:
+            data: dict[str, Any] = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        error_msg = f"YAML parse error: {e}"
+        # Try to include line number if available
+        if hasattr(e, "problem_mark"):
+            mark = getattr(e, "problem_mark")
+            if mark and hasattr(mark, "line") and hasattr(mark, "column"):
+                error_msg += f" (line {mark.line + 1}, column {mark.column + 1})"
+        result.add_error(error_msg)
+        return result
+    except Exception as e:
+        result.add_error(f"Failed to read file: {e}")
+        return result
+
+    if data is None:
+        result.add_error("Script file is empty")
+        return result
+
+    # Step 2: Required fields validation
+    if "title" not in data:
+        result.add_error("Missing required field: title")
+    if "description" not in data:
+        result.add_error("Missing required field: description")
+    if "sections" not in data:
+        result.add_error("Missing required field: sections")
+        return result
+
+    sections = data["sections"]
+    if not isinstance(sections, list):
+        result.add_error("Field 'sections' must be a list")
+        return result
+
+    if len(sections) == 0:
+        result.add_warning("Script has no sections")
+
+    result.section_count = len(sections)
+
+    # Step 3: Validate each section
+    used_persona_ids: set[str] = set()
+
+    for i, section in enumerate(sections):
+        section_num = i + 1
+
+        # Check section has title
+        if "title" not in section:
+            result.add_error(f"Section {section_num}: missing 'title' field")
+
+        # Check narrations format
+        has_narrations = "narrations" in section and section["narrations"]
+        has_dialogues = "dialogues" in section and section["dialogues"]
+        has_narration = "narration" in section
+
+        if not has_narrations and not has_dialogues and not has_narration:
+            result.add_error(
+                f"Section {section_num} ('{section.get('title', 'N/A')}'): "
+                f"missing narrations/dialogues/narration field"
+            )
+            continue
+
+        # Validate narrations array format
+        if has_narrations:
+            narrations = section["narrations"]
+            if not isinstance(narrations, list):
+                result.add_error(
+                    f"Section {section_num}: 'narrations' must be a list, got {type(narrations).__name__}"
+                )
+                continue
+
+            for j, narration in enumerate(narrations):
+                # Count narrations
+                result.narration_count += 1
+
+                # Skip string format (legacy)
+                if isinstance(narration, str):
+                    continue
+
+                # Validate object format
+                if not isinstance(narration, dict):
+                    result.add_error(
+                        f"Section {section_num}, narration {j + 1}: "
+                        f"must be string or object, got {type(narration).__name__}"
+                    )
+                    continue
+
+                if "text" not in narration:
+                    result.add_error(
+                        f"Section {section_num}, narration {j + 1}: missing 'text' field"
+                    )
+
+                # Collect persona IDs
+                if "persona_id" in narration and narration["persona_id"]:
+                    used_persona_ids.add(narration["persona_id"])
+
+        # Validate dialogues array format (legacy)
+        elif has_dialogues:
+            dialogues = section["dialogues"]
+            if not isinstance(dialogues, list):
+                result.add_error(
+                    f"Section {section_num}: 'dialogues' must be a list, got {type(dialogues).__name__}"
+                )
+                continue
+
+            for j, dialogue in enumerate(dialogues):
+                result.narration_count += 1
+
+                if not isinstance(dialogue, dict):
+                    result.add_error(f"Section {section_num}, dialogue {j + 1}: must be an object")
+                    continue
+
+                if "narration" not in dialogue:
+                    result.add_error(
+                        f"Section {section_num}, dialogue {j + 1}: missing 'narration' field"
+                    )
+
+                if "persona_id" in dialogue and dialogue["persona_id"]:
+                    used_persona_ids.add(dialogue["persona_id"])
+
+        else:
+            # Single narration (legacy)
+            result.narration_count += 1
+
+    # Step 4: Persona ID reference validation (if config provided)
+    if config_personas and used_persona_ids:
+        defined_persona_ids = {p["id"] for p in config_personas}
+
+        for persona_id in used_persona_ids:
+            if persona_id not in defined_persona_ids:
+                result.add_warning(
+                    f"Unknown persona_id: {persona_id} "
+                    f"(defined: {', '.join(sorted(defined_persona_ids))})"
+                )
+
+    return result

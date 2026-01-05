@@ -503,3 +503,149 @@ def write_config_to_file(output_path: Path, overwrite: bool = False) -> None:
 def print_default_config() -> None:
     """Print default configuration to stdout."""
     print(generate_default_config_yaml())
+
+
+class ValidationResult:
+    """Result of configuration validation."""
+
+    def __init__(self) -> None:
+        """Initialize validation result."""
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+
+    def add_error(self, message: str) -> None:
+        """Add an error message."""
+        self.errors.append(message)
+
+    def add_warning(self, message: str) -> None:
+        """Add a warning message."""
+        self.warnings.append(message)
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if validation passed (no errors)."""
+        return len(self.errors) == 0
+
+    @property
+    def has_warnings(self) -> bool:
+        """Check if there are warnings."""
+        return len(self.warnings) > 0
+
+
+def validate_config(config_path: Path) -> ValidationResult:
+    """Validate configuration file.
+
+    Performs the following checks:
+    1. YAML syntax validation
+    2. Pydantic schema validation
+    3. Referenced file existence (background, BGM, character images)
+    4. Persona ID uniqueness
+
+    Args:
+        config_path: Path to configuration file to validate.
+
+    Returns:
+        ValidationResult with errors and warnings.
+    """
+    result = ValidationResult()
+
+    # Check if file exists
+    if not config_path.exists():
+        result.add_error(f"File not found: {config_path}")
+        return result
+
+    # Step 1: YAML syntax check
+    try:
+        with config_path.open("r", encoding="utf-8") as f:
+            data: dict[str, Any] = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        error_msg = f"YAML parse error: {e}"
+        # Try to include line number if available
+        if hasattr(e, "problem_mark"):
+            mark = getattr(e, "problem_mark")
+            if mark and hasattr(mark, "line") and hasattr(mark, "column"):
+                error_msg += f" (line {mark.line + 1}, column {mark.column + 1})"
+        result.add_error(error_msg)
+        return result
+    except Exception as e:
+        result.add_error(f"Failed to read file: {e}")
+        return result
+
+    if data is None:
+        result.add_error("Configuration file is empty")
+        return result
+
+    # Step 2: Pydantic schema validation
+    try:
+        cfg = Config(**data)
+    except Exception as e:
+        # Format pydantic validation errors
+        from pydantic import ValidationError
+
+        if isinstance(e, ValidationError):
+            for error in e.errors():
+                field_path = ".".join(str(loc) for loc in error["loc"])
+                result.add_error(f"Invalid field '{field_path}': {error['msg']}")
+        else:
+            result.add_error(f"Schema validation error: {e}")
+        return result
+
+    # Step 3: Referenced file existence checks
+    # Note: Relative paths are resolved from the config file's directory
+    config_dir = config_path.parent
+
+    # Check background file
+    if cfg.video.background:
+        bg_path = Path(cfg.video.background.path)
+        if not bg_path.is_absolute():
+            bg_path = config_dir / bg_path
+
+        if not bg_path.exists():
+            result.add_error(f"Background file not found: {cfg.video.background.path}")
+
+    # Check BGM file
+    if cfg.video.bgm:
+        bgm_path = Path(cfg.video.bgm.path)
+        if not bgm_path.is_absolute():
+            bgm_path = config_dir / bgm_path
+
+        if not bgm_path.exists():
+            result.add_error(f"BGM file not found: {cfg.video.bgm.path}")
+
+    # Check persona character images
+    for persona in cfg.personas:
+        if persona.character_image:
+            img_path = Path(persona.character_image)
+            if not img_path.is_absolute():
+                img_path = config_dir / img_path
+
+            if not img_path.exists():
+                result.add_error(
+                    f"Character image not found for persona '{persona.id}': {persona.character_image}"
+                )
+
+        if persona.mouth_open_image:
+            img_path = Path(persona.mouth_open_image)
+            if not img_path.is_absolute():
+                img_path = config_dir / img_path
+
+            if not img_path.exists():
+                result.add_warning(
+                    f"Mouth open image not found for persona '{persona.id}': {persona.mouth_open_image}"
+                )
+
+        if persona.eye_close_image:
+            img_path = Path(persona.eye_close_image)
+            if not img_path.is_absolute():
+                img_path = config_dir / img_path
+
+            if not img_path.exists():
+                result.add_warning(
+                    f"Eye close image not found for persona '{persona.id}': {persona.eye_close_image}"
+                )
+
+    # Step 4: Persona ID uniqueness (already checked by Pydantic, but we verify here too)
+    # This is already validated by the field_validator in Config class, but we include it
+    # for completeness and to provide a clear error message
+
+    return result

@@ -1,7 +1,9 @@
-# CLI Interface Specification (Delta)
+# CLI Interface Specification
 
-## ADDED Requirements
+## Purpose
 
+This specification defines the command-line interface for the movie-generator tool, which provides a modular workflow for generating YouTube slide videos from blog content.
+## Requirements
 ### Requirement: Script Creation Command
 
 The CLI SHALL provide a `script create` subcommand that generates a video script from a URL.
@@ -215,7 +217,86 @@ When `--dry-run` is specified:
 
 ---
 
-## MODIFIED Requirements
+### Requirement: Config Validation Command
+
+The CLI SHALL provide a `config validate` subcommand that validates configuration files.
+
+The command SHALL accept the following options:
+- `--quiet, -q`: Suppress progress output, only show errors
+
+The validation SHALL check:
+- YAML syntax correctness
+- Pydantic schema validation
+- Existence of referenced files (background images, BGM, character images)
+- Duplicate persona IDs
+
+#### Scenario: Valid configuration file
+- **GIVEN** a valid `config.yaml` file
+- **WHEN** user runs `movie-generator config validate config.yaml`
+- **THEN** the system displays a success message
+- **AND** exits with status 0
+
+#### Scenario: Invalid YAML syntax
+- **GIVEN** a config file with invalid YAML syntax
+- **WHEN** user runs `movie-generator config validate config.yaml`
+- **THEN** the system displays YAML parsing error details
+- **AND** exits with non-zero status
+
+#### Scenario: Missing referenced file
+- **GIVEN** a config file that references a non-existent background image
+- **WHEN** user runs `movie-generator config validate config.yaml`
+- **THEN** the system displays a warning about the missing file
+- **AND** exits with status 0 (warnings don't fail validation)
+
+#### Scenario: Schema validation error
+- **GIVEN** a config file with invalid field values
+- **WHEN** user runs `movie-generator config validate config.yaml`
+- **THEN** the system displays Pydantic validation errors
+- **AND** exits with non-zero status
+
+---
+
+### Requirement: Script Validation Command
+
+The CLI SHALL provide a `script validate` subcommand that validates script files.
+
+The command SHALL accept the following options:
+- `--config, -c <path>`: Path to config file for persona_id validation
+- `--quiet, -q`: Suppress progress output, only show errors
+
+The validation SHALL check:
+- YAML syntax correctness
+- Presence of required fields (title, sections)
+- Section narrations format (list of objects with text field)
+- persona_id references (when config is provided)
+- Legacy format support (dialogues, single narration)
+
+#### Scenario: Valid script file
+- **GIVEN** a valid `script.yaml` file
+- **WHEN** user runs `movie-generator script validate script.yaml`
+- **THEN** the system displays success message with statistics
+- **AND** shows section count and narration count
+- **AND** exits with status 0
+
+#### Scenario: Missing required fields
+- **GIVEN** a script file without a title field
+- **WHEN** user runs `movie-generator script validate script.yaml`
+- **THEN** the system displays an error about missing title
+- **AND** exits with non-zero status
+
+#### Scenario: Invalid persona_id reference
+- **GIVEN** a script with persona_id "unknown" and a config file
+- **WHEN** user runs `movie-generator script validate script.yaml --config config.yaml`
+- **THEN** the system displays an error about invalid persona_id
+- **AND** exits with non-zero status
+
+#### Scenario: Script validation with statistics
+- **GIVEN** a valid script with 5 sections and 20 narrations
+- **WHEN** user runs `movie-generator script validate script.yaml`
+- **THEN** the system displays "✓ Valid script: 5 sections, 20 narrations"
+- **AND** exits with status 0
+
+---
 
 ### Requirement: Generate Command
 
@@ -244,3 +325,147 @@ The `generate` command SHALL also support the new common options:
 - **WHEN** user runs `movie-generator generate <script.yaml>`
 - **THEN** the system skips script generation
 - **AND** proceeds with audio, slides, and video generation
+
+### Requirement: Config Validate Command
+
+CLI は `config validate` サブコマンドを提供しなければならない（SHALL）。
+このコマンドは設定ファイル（YAML）を検証し、エラーがあれば報告する。
+
+コマンドは以下のオプションを受け付ける:
+- `<path>`: 検証する設定ファイルのパス（必須）
+- `--quiet, -q`: エラーのみ表示
+
+#### Scenario: 有効な設定ファイルの検証
+
+- **GIVEN** 有効な YAML 形式の設定ファイル `config.yaml` が存在する
+- **WHEN** ユーザーが `movie-generator config validate config.yaml` を実行する
+- **THEN** 「✓ Configuration is valid」と表示される
+- **AND** 終了コード 0 で終了する
+
+#### Scenario: YAML 構文エラーの検出
+
+- **GIVEN** YAML 構文が不正な設定ファイルが存在する
+- **WHEN** ユーザーが `movie-generator config validate invalid.yaml` を実行する
+- **THEN** YAML パースエラーメッセージが表示される
+- **AND** エラー行番号が含まれる
+- **AND** 終了コード 1 で終了する
+
+#### Scenario: スキーマバリデーションエラーの検出
+
+- **GIVEN** YAML 構文は正しいがスキーマに違反する設定ファイルが存在する
+  ```yaml
+  audio:
+    speaker_id: "invalid"  # 数値であるべき
+  ```
+- **WHEN** ユーザーが `movie-generator config validate invalid-schema.yaml` を実行する
+- **THEN** バリデーションエラーメッセージが表示される
+- **AND** 不正なフィールド名が含まれる
+- **AND** 終了コード 1 で終了する
+
+#### Scenario: 参照ファイル不在エラーの検出
+
+- **GIVEN** 設定ファイルに存在しないファイルへのパスが含まれる
+  ```yaml
+  video:
+    background:
+      type: "image"
+      path: "/nonexistent/background.png"
+  ```
+- **WHEN** ユーザーが `movie-generator config validate config-missing-file.yaml` を実行する
+- **THEN** 「File not found」エラーメッセージが表示される
+- **AND** 不正なパスが含まれる
+- **AND** 終了コード 1 で終了する
+
+#### Scenario: ペルソナ ID 重複エラーの検出
+
+- **GIVEN** 設定ファイルに重複するペルソナ ID が含まれる
+  ```yaml
+  personas:
+    - id: "zundamon"
+      name: "ずんだもん"
+      ...
+    - id: "zundamon"  # 重複
+      name: "ずんだもん2号"
+      ...
+  ```
+- **WHEN** ユーザーが `movie-generator config validate config-duplicate-id.yaml` を実行する
+- **THEN** 「Duplicate persona ID」エラーメッセージが表示される
+- **AND** 重複した ID が含まれる
+- **AND** 終了コード 1 で終了する
+
+#### Scenario: ファイルが存在しない場合
+
+- **GIVEN** 指定されたパスにファイルが存在しない
+- **WHEN** ユーザーが `movie-generator config validate nonexistent.yaml` を実行する
+- **THEN** 「File not found」エラーメッセージが表示される
+- **AND** 終了コード 1 で終了する
+
+---
+
+### Requirement: Script Validate Command
+
+CLI は `script validate` サブコマンドを提供しなければならない（SHALL）。
+このコマンドはスクリプトファイル（YAML）を検証し、エラーがあれば報告する。
+
+コマンドは以下のオプションを受け付ける:
+- `<path>`: 検証するスクリプトファイルのパス（必須）
+- `--config, -c <path>`: 設定ファイル（persona_id 参照検証用、オプション）
+- `--quiet, -q`: エラーのみ表示
+
+#### Scenario: 有効なスクリプトファイルの検証
+
+- **GIVEN** 有効なスクリプトファイル `script.yaml` が存在する
+- **WHEN** ユーザーが `movie-generator script validate script.yaml` を実行する
+- **THEN** 「✓ Script is valid」と表示される
+- **AND** セクション数と総 narration 数が表示される
+- **AND** 終了コード 0 で終了する
+
+#### Scenario: 必須フィールド不足の検出
+
+- **GIVEN** `title` フィールドがないスクリプトファイルが存在する
+- **WHEN** ユーザーが `movie-generator script validate invalid.yaml` を実行する
+- **THEN** 「Missing required field: title」エラーメッセージが表示される
+- **AND** 終了コード 1 で終了する
+
+#### Scenario: 空の sections の検出
+
+- **GIVEN** `sections` が空のスクリプトファイルが存在する
+  ```yaml
+  title: "Test"
+  description: "Test video"
+  sections: []
+  ```
+- **WHEN** ユーザーが `movie-generator script validate empty-sections.yaml` を実行する
+- **THEN** 「Script has no sections」警告メッセージが表示される
+- **AND** 終了コード 0 で終了する（警告のみ）
+
+#### Scenario: 不正な narrations 形式の検出
+
+- **GIVEN** narrations に不正な形式のエントリが含まれるスクリプト
+  ```yaml
+  sections:
+    - title: "Section 1"
+      narrations:
+        - invalid_field: "test"  # text フィールドがない
+  ```
+- **WHEN** ユーザーが `movie-generator script validate invalid-narration.yaml` を実行する
+- **THEN** 「Invalid narration format」エラーメッセージが表示される
+- **AND** 問題のあるセクション番号が含まれる
+- **AND** 終了コード 1 で終了する
+
+#### Scenario: 存在しない persona_id の検出（config 指定時）
+
+- **GIVEN** スクリプトファイルに存在しない persona_id が含まれる
+- **AND** 設定ファイルにペルソナが定義されている
+- **WHEN** ユーザーが `movie-generator script validate script.yaml --config config.yaml` を実行する
+- **THEN** 「Unknown persona_id: xxx」警告メッセージが表示される
+- **AND** 定義されている persona_id の一覧が表示される
+- **AND** 終了コード 0 で終了する（警告のみ）
+
+#### Scenario: config 未指定時の persona_id 検証スキップ
+
+- **GIVEN** スクリプトファイルに persona_id が含まれる
+- **WHEN** ユーザーが `movie-generator script validate script.yaml` を実行する（--config なし）
+- **THEN** persona_id の参照妥当性チェックはスキップされる
+- **AND** 構文とスキーマの検証のみ実行される
+
