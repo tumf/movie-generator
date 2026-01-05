@@ -13,9 +13,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from .config import settings
-from .pocketbase_client import PocketBaseClient
-from .routes import api_routes, web_routes
+from config import settings
+from pocketbase_client import PocketBaseClient
+from routes import api_routes, web_routes
 
 # Configure logging
 logging.basicConfig(

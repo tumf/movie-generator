@@ -6,8 +6,8 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import HttpUrl, ValidationError
 
-from ..models import JobCreate
-from ..pocketbase_client import PocketBaseClient
+from models import JobCreate
+from pocketbase_client import PocketBaseClient
 
 logger = logging.getLogger(__name__)
 

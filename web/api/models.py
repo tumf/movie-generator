@@ -2,9 +2,9 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, validator
 
 
 class JobStatus(str, Enum):
@@ -29,17 +29,25 @@ class JobResponse(BaseModel):
     id: str
     url: str
     status: JobStatus
-    progress: Annotated[int, Field(ge=0, le=100)]
+    progress: Annotated[int, Field(ge=0, le=100)] = 0
     progress_message: str | None = None
     current_step: str | None = None
     video_path: str | None = None
     video_size: int | None = None
     error_message: str | None = None
-    created: datetime
-    updated: datetime
+    created: datetime | None = None
+    updated: datetime | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
     expires_at: datetime
+
+    @validator("started_at", "completed_at", "created", "updated", pre=True)
+    @classmethod
+    def empty_str_to_none(cls, v: Any) -> Any:
+        """Convert empty string to None for optional datetime fields."""
+        if v == "" or v is None:
+            return None
+        return v
 
 
 class JobStatusResponse(BaseModel):

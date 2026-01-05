@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 
-from .config import settings
-from .models import JobStatus
+from config import settings
+from models import JobStatus
 
 
 class PocketBaseClient:
@@ -104,13 +104,18 @@ class PocketBaseClient:
         Returns:
             Number of jobs created today by this IP
         """
+        # Get start of today (UTC 00:00:00)
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_iso = today_start.isoformat() + "Z"
+
+        # PocketBase filter: client_ip matches AND created >= today start
+        filter_query = f"client_ip = '{client_ip}' && created >= '{today_start_iso}'"
 
         response = await self.client.get(
             "/api/collections/jobs/records",
             params={
-                "filter": f"client_ip = '{client_ip}' && created >= '{today_start.isoformat()}Z'",
-                "perPage": 1,
+                "filter": filter_query,
+                "perPage": 1,  # We only need totalItems count
             },
         )
         response.raise_for_status()

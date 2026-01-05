@@ -6,9 +6,9 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
 
-from ..config import settings
-from ..models import ErrorResponse, JobCreate, JobResponse, JobStatusResponse, JobStatus
-from ..pocketbase_client import PocketBaseClient
+from config import settings
+from models import ErrorResponse, JobCreate, JobResponse, JobStatusResponse, JobStatus
+from pocketbase_client import PocketBaseClient
 
 logger = logging.getLogger(__name__)
 
