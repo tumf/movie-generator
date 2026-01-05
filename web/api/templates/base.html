@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Movie Generator{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <header class="bg-white shadow">
+        <div class="max-w-4xl mx-auto px-4 py-6">
+            <h1 class="text-3xl font-bold text-gray-900">
+                <a href="/" class="hover:text-blue-600">🎬 Movie Generator</a>
+            </h1>
+            <p class="text-gray-600 mt-2">ブログ記事から自動で動画を生成します</p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t mt-12">
+        <div class="max-w-4xl mx-auto px-4 py-6 text-center text-gray-600 text-sm">
+            <p>1日の利用制限: 5回 | 動画の長さ上限: 5分 | 動画保存期間: 24時間</p>
+        </div>
+    </footer>
+</body>
+</html>

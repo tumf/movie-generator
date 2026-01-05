@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}エラー - {{ status_code }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-8 text-center">
+    <h2 class="text-6xl font-bold text-gray-400 mb-4">{{ status_code }}</h2>
+    <h3 class="text-2xl font-bold text-gray-800 mb-4">エラーが発生しました</h3>
+    <p class="text-gray-600 mb-6">{{ error_message }}</p>
+    
+    <a 
+        href="/" 
+        class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200"
+    >
+        トップページに戻る
+    </a>
+</div>
+{% endblock %}

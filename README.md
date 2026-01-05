@@ -220,6 +220,46 @@ Create an MCP configuration file (supports JSON or JSONC format):
 - More robust parsing of modern web pages
 - Falls back to standard fetcher if MCP fails
 
+
+## Web Service
+
+In addition to the CLI tool, Movie Generator can be deployed as a web service for general users.
+
+### Features
+
+- **Web UI**: Simple browser-based interface for URL input
+- **Real-time Progress**: Live progress updates via htmx polling
+- **Background Processing**: Asynchronous job processing with worker queue
+- **Rate Limiting**: IP-based rate limiting and queue management
+- **Auto-cleanup**: Automatic deletion of generated videos after 24 hours
+
+### Quick Start
+
+```bash
+cd web
+cp .env.example .env
+# Edit .env with your configuration
+docker-compose up -d --build
+```
+
+Access the web service at `https://your-domain/`
+
+### Documentation
+
+- **Deployment Guide**: `web/DEPLOYMENT.md`
+- **Operations Manual**: `web/OPERATIONS.md`
+- **README**: `web/README.md`
+
+### Architecture
+
+The web service consists of three components:
+
+1. **API (FastAPI)**: Serves HTML UI and handles job creation
+2. **PocketBase**: Stores job data and provides real-time updates
+3. **Worker**: Background processor that generates videos
+
+For detailed architecture and deployment instructions, see `web/README.md`.
+
 ### Configuration
 
 #### Initialize Configuration File

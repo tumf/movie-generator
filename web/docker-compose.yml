@@ -1,0 +1,81 @@
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: movie-generator-pocketbase
+    restart: unless-stopped
+    volumes:
+      - pb_data:/pb_data
+      - ./pocketbase/pb_migrations:/pb_migrations
+    ports:
+      - "8090:8090"
+    environment:
+      - POCKETBASE_ADMIN_EMAIL=${POCKETBASE_ADMIN_EMAIL:-admin@example.com}
+      - POCKETBASE_ADMIN_PASSWORD=${POCKETBASE_ADMIN_PASSWORD:-changeme123}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - movie-generator-network
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: movie-generator-api
+    restart: unless-stopped
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    volumes:
+      - output_data:/app/data/jobs
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - MAX_QUEUE_SIZE=${MAX_QUEUE_SIZE:-10}
+      - RATE_LIMIT_PER_DAY=${RATE_LIMIT_PER_DAY:-5}
+      - MAX_VIDEO_DURATION_MINUTES=${MAX_VIDEO_DURATION_MINUTES:-5}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.movie-generator.rule=Host(`${DOMAIN:-movie.example.com}`)"
+      - "traefik.http.routers.movie-generator.entrypoints=websecure"
+      - "traefik.http.routers.movie-generator.tls.certresolver=letsencrypt"
+      - "traefik.http.services.movie-generator.loadbalancer.server.port=8000"
+    networks:
+      - movie-generator-network
+      - traefik-network
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: movie-generator-worker
+    restart: unless-stopped
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    volumes:
+      - output_data:/app/data/jobs
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - VOICEVOX_DICT_DIR=${VOICEVOX_DICT_DIR}
+      - VOICEVOX_MODEL_PATH=${VOICEVOX_MODEL_PATH}
+      - VOICEVOX_ONNXRUNTIME_PATH=${VOICEVOX_ONNXRUNTIME_PATH}
+      - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-2}
+      - WORKER_POLL_INTERVAL=${WORKER_POLL_INTERVAL:-5}
+    networks:
+      - movie-generator-network
+
+volumes:
+  pb_data:
+    driver: local
+  output_data:
+    driver: local
+
+networks:
+  movie-generator-network:
+    driver: bridge
+  traefik-network:
+    external: true
