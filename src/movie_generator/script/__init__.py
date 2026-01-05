@@ -1,5 +1,6 @@
 """Script generation and phrase management module."""
 
+from .core import generate_script_from_url, generate_script_from_url_sync
 from .generator import ScriptSection, VideoScript, generate_script
 from .phrases import Phrase, calculate_phrase_timings, split_into_phrases
 
@@ -10,4 +11,6 @@ __all__ = [
     "Phrase",
     "split_into_phrases",
     "calculate_phrase_timings",
+    "generate_script_from_url",
+    "generate_script_from_url_sync",
 ]
