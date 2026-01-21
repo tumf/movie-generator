@@ -12,10 +12,12 @@
     </div>
 
     <div 
-        id="job-status" 
-        hx-get="/jobs/{{ job.id }}/status-html" 
-        hx-trigger="{% if job.status in ['pending', 'processing'] %}every 2s{% else %}load, once{% endif %}"
+        id="job-status"
+        {% if job.status in ['pending', 'processing'] %}
+        hx-get="/jobs/{{ job.id }}/status-html"
+        hx-trigger="every 2s"
         hx-swap="innerHTML"
+        {% endif %}
     >
         {% include "partials/job_status.html" %}
     </div>
