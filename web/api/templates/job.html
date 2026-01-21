@@ -14,7 +14,7 @@
     <div 
         id="job-status" 
         hx-get="/jobs/{{ job.id }}/status-html" 
-        hx-trigger="every 2s"
+        hx-trigger="{% if job.status in ['pending', 'processing'] %}every 2s{% else %}load, once{% endif %}"
         hx-swap="innerHTML"
     >
         {% include "partials/job_status.html" %}
