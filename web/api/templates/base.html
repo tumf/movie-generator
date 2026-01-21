@@ -27,9 +27,48 @@
     </main>
 
     <footer class="bg-white border-t mt-12">
-        <div class="max-w-4xl mx-auto px-4 py-6 text-center text-gray-600 text-sm">
-            <p>1日の利用制限: 5回 | 動画の長さ上限: 5分 | 動画保存期間: 24時間</p>
+        <div class="max-w-4xl mx-auto px-4 py-6">
+            <!-- Usage Limits -->
+            <div class="text-center text-gray-600 text-sm mb-4">
+                <p>1日の利用制限: 5回 | 動画の長さ上限: 5分 | 動画保存期間: 24時間</p>
+            </div>
+            
+            <!-- Credits Section -->
+            <div class="border-t pt-4">
+                <!-- Special Thanks -->
+                <p class="text-center text-gray-700 text-sm font-semibold mb-3">Special Thanks</p>
+                
+                <!-- Voice Synthesis Credits -->
+                <div class="text-center text-gray-600 text-xs space-y-1 mb-4">
+                    <p>
+                        This service uses <a href="https://voicevox.hiroshiba.jp/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">VOICEVOX</a> for voice synthesis.
+                    </p>
+                    <p>
+                        Characters: 
+                        <a href="https://zunko.jp/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Zundamon (ずんだもん)</a>, 
+                        <a href="https://zunko.jp/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Metan (めたん)</a>, 
+                        <a href="https://zunko.jp/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Tsumugi (つむぎ)</a>
+                    </p>
+                    <p class="text-gray-500">© Sakamoto Ahiru, SSS LLC. / © Ondoku-Kaden Corporation</p>
+                </div>
+                
+                <!-- Avatar Images Credits -->
+                <div class="text-center text-gray-600 text-xs space-y-1 mb-4">
+                    <p>
+                        Avatar images: <a href="https://www.pixiv.net/artworks/92641351" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">坂本アヒル様 (Sakamoto Ahiru)</a>
+                    </p>
+                </div>
+                
+                <!-- App Copyright -->
+                <div class="text-center text-gray-700 text-sm border-t pt-3">
+                    <p>
+                        Copyright © 2026 <a href="https://blog.tumf.dev" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-semibold">tumf</a>
+                    </p>
+                </div>
+            </div>
         </div>
     </footer>
+
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

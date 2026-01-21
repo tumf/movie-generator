@@ -56,7 +56,7 @@
 </div>
 {% endif %}
 
-<!-- Completed -->
+ <!-- Completed -->
 {% if job.status == "completed" %}
 <div class="space-y-4">
     <div class="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -65,10 +65,10 @@
         <p class="text-sm text-green-700 mt-1">ファイルサイズ: {{ "%.2f"|format(job.video_size / 1024 / 1024) }} MB</p>
         {% endif %}
     </div>
-    
+
     <!-- Video Player -->
-    <div class="w-full">
-        <video 
+    <div class="w-full" id="video-player-container">
+        <video
             controls
             preload="metadata"
             loop="false"
@@ -79,8 +79,8 @@
             お使いのブラウザは動画再生に対応していません。
         </video>
     </div>
-    
-    <a 
+
+    <a
         href="/api/jobs/{{ job.id }}/download"
         download
         class="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg text-center transition duration-200"

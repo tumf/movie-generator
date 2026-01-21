@@ -2,6 +2,18 @@
 
 {% block title %}動画生成中 - Job {{ job.id[:8] }}{% endblock %}
 
+{% block extra_js %}
+<script>
+// Preserve video player during HTMX swaps to prevent blinking
+document.body.addEventListener('htmx:beforeSwap', function(evt) {
+    const existingVideoContainer = document.getElementById('video-player-container');
+    if (existingVideoContainer) {
+        evt.preventDefault();
+    }
+});
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-8">
     <h2 class="text-2xl font-bold text-gray-800 mb-4">動画生成状況</h2>
