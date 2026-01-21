@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
+from models import JobStatus
 
 from config import settings
-from models import JobStatus
 
 
 class PocketBaseClient:
@@ -142,6 +142,38 @@ class PocketBaseClient:
         response.raise_for_status()
         data = response.json()
         return data.get("items", [])
+
+    async def get_queue_position(self, job_id: str, created_at: str) -> tuple[int, int]:
+        """Get queue position and total pending count for a pending job.
+
+        Position is determined by counting pending jobs created before this job.
+
+        Args:
+            job_id: Job ID
+            created_at: Job creation timestamp (ISO format)
+
+        Returns:
+            Tuple of (position, total_pending) where position is 1-based
+        """
+        # Count jobs created before this one (earlier in queue)
+        filter_before = f"status = '{JobStatus.PENDING.value}' && created < '{created_at}'"
+        response_before = await self.client.get(
+            "/api/collections/jobs/records",
+            params={
+                "filter": filter_before,
+                "perPage": 1,
+            },
+        )
+        response_before.raise_for_status()
+        jobs_before = response_before.json().get("totalItems", 0)
+
+        # Get total pending count
+        total_pending = await self.count_pending_jobs()
+
+        # Position is jobs_before + 1 (1-based)
+        position = jobs_before + 1
+
+        return (position, total_pending)
 
     async def delete_expired_jobs(self) -> int:
         """Delete jobs that have passed their expiration time.
