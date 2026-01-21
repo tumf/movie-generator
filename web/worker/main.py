@@ -52,8 +52,12 @@ class Config:
             self.mcp_config_path = Path(mcp_config_path_str)
 
 
-def create_default_movie_config() -> "MovieConfig":
+def create_default_movie_config(config_path: Path | None = None) -> "MovieConfig":
     """Create default movie-generator Config with bundled assets.
+
+    Args:
+        config_path: Path to config file. If provided, loads config from file.
+                    Otherwise creates default config with single persona.
 
     Returns:
         Config object with default background, BGM, and persona settings.
@@ -65,7 +69,39 @@ def create_default_movie_config() -> "MovieConfig":
         PersonaConfig,
         VideoConfig,
         VoicevoxSynthesizerConfig,
+        load_config,
     )
+
+    # If config_path is provided, load config from file
+    if config_path and config_path.exists():
+        logger.info(f"Loading config from {config_path}")
+        config = load_config(config_path)
+
+        # Override background and BGM with bundled assets
+        # NOTE: Paths must be absolute for validation
+        config.video.background = BackgroundConfig(
+            type="video",
+            path="/app/backgrounds/default-background.mp4",
+            fit="cover",
+        )
+        config.video.bgm = BgmConfig(
+            path="/app/bgm/default-bgm.noart.mp3",
+            volume=0.15,  # Low volume to not overpower narration
+            fade_in_seconds=2.0,
+            fade_out_seconds=2.0,
+            loop=True,
+        )
+
+        logger.info(f"Loaded config with {len(config.personas)} personas")
+        if hasattr(config, "persona_pool") and config.persona_pool:
+            logger.info(
+                f"Persona pool enabled: selecting {config.persona_pool.count} from {len(config.personas)} personas"
+            )
+
+        return config
+
+    # Otherwise, create default config with single persona
+    logger.info("No config file provided, using default single-persona config")
 
     # Default persona: Zundamon
     # NOTE: Paths must be relative (will be resolved to public/ directory by renderer)
@@ -312,148 +348,194 @@ class MovieGeneratorWrapper:
 
         try:
             # Step 1: Generate script (0-20%)
-            await progress_callback(5, "スクリプトを生成中...", "script")
             script_path = job_dir / "script.yaml"
 
-            logger.info(f"Generating script for job {job_id}")
+            if script_path.exists():
+                logger.info(f"Script already exists for job {job_id}, skipping generation")
+                await progress_callback(20, "スクリプト既に存在", "script")
+            else:
+                await progress_callback(5, "スクリプトを生成中...", "script")
+                logger.info(f"Generating script for job {job_id}")
 
-            # Use direct API call instead of subprocess
-            import os
+                # Use direct API call instead of subprocess
+                import os
 
-            api_key = os.getenv("OPENROUTER_API_KEY")
-            if not api_key:
-                raise RuntimeError("OPENROUTER_API_KEY environment variable not set")
+                api_key = os.getenv("OPENROUTER_API_KEY")
+                if not api_key:
+                    raise RuntimeError("OPENROUTER_API_KEY environment variable not set")
 
-            def script_progress(current: int, total: int, message: str) -> None:
-                """Callback for script generation progress."""
-                # Map to 5-20% range
-                progress_percent = 5 + int((current / total) * 15) if total > 0 else 5
-                asyncio.create_task(
-                    progress_callback(
-                        progress_percent,
-                        message,
-                        "script",
+                def script_progress(current: int, total: int, message: str) -> None:
+                    """Callback for script generation progress."""
+                    # Map to 5-20% range
+                    progress_percent = 5 + int((current / total) * 15) if total > 0 else 5
+                    asyncio.create_task(
+                        progress_callback(
+                            progress_percent,
+                            message,
+                            "script",
+                        )
                     )
+                    logger.debug(f"Script progress: {current}/{total} - {message}")
+
+                # Check if MCP agent mode should be used
+                use_agent = (
+                    self.config.mcp_config_path is not None and self.config.mcp_config_path.exists()
                 )
-                logger.debug(f"Script progress: {current}/{total} - {message}")
 
-            # Check if MCP agent mode should be used
-            use_agent = (
-                self.config.mcp_config_path is not None and self.config.mcp_config_path.exists()
-            )
+                try:
+                    if use_agent:
+                        logger.info(
+                            f"Using MCP agent mode with config: {self.config.mcp_config_path}"
+                        )
+                        from movie_generator.script import generate_script_from_url_with_agent  # type: ignore
 
-            try:
-                if use_agent:
-                    logger.info(f"Using MCP agent mode with config: {self.config.mcp_config_path}")
-                    from movie_generator.script import generate_script_from_url_with_agent  # type: ignore
+                        script_path = await generate_script_from_url_with_agent(
+                            url=url,
+                            output_dir=job_dir,
+                            mcp_config_path=self.config.mcp_config_path,
+                            config_path=self.config.config_path,
+                            api_key=api_key,
+                            progress_callback=script_progress,
+                        )
+                    else:
+                        logger.info("Using standard content fetching mode")
+                        from movie_generator.script import generate_script_from_url  # type: ignore
 
-                    script_path = await generate_script_from_url_with_agent(
-                        url=url,
-                        output_dir=job_dir,
-                        mcp_config_path=self.config.mcp_config_path,
-                        config_path=self.config.config_path,
-                        api_key=api_key,
-                        progress_callback=script_progress,
-                    )
-                else:
-                    logger.info("Using standard content fetching mode")
-                    from movie_generator.script import generate_script_from_url  # type: ignore
+                        script_path = await generate_script_from_url(
+                            url=url,
+                            output_dir=job_dir,
+                            config_path=self.config.config_path,
+                            api_key=api_key,
+                            progress_callback=script_progress,
+                        )
+                except Exception as e:
+                    logger.error(f"Script generation failed: {e}", exc_info=True)
+                    raise RuntimeError(f"Script generation failed: {e}")
 
-                    script_path = await generate_script_from_url(
-                        url=url,
-                        output_dir=job_dir,
-                        config_path=self.config.config_path,
-                        api_key=api_key,
-                        progress_callback=script_progress,
-                    )
-            except Exception as e:
-                logger.error(f"Script generation failed: {e}", exc_info=True)
-                raise RuntimeError(f"Script generation failed: {e}")
-
-            await progress_callback(20, "スクリプト生成完了", "script")
+                await progress_callback(20, "スクリプト生成完了", "script")
 
             # Count phrases and slides from generated script
             phrase_count, slide_count = self._count_script_items(script_path)
             logger.info(f"Script has {phrase_count} phrases and {slide_count} slides")
 
             # Step 2: Generate audio (20-55%)
-            await progress_callback(22, f"音声を生成中 (0/{phrase_count})", "audio")
-            logger.info(f"Generating audio for job {job_id}")
+            audio_dir = job_dir / "audio"
+            existing_audio_count = len(list(audio_dir.glob("*.wav"))) if audio_dir.exists() else 0
 
-            # Use direct API call instead of subprocess
-            from movie_generator.audio import generate_audio_for_script  # type: ignore
+            if existing_audio_count >= phrase_count:
+                logger.info(
+                    f"Audio files already exist for job {job_id} ({existing_audio_count}/{phrase_count}), skipping generation"
+                )
+                await progress_callback(
+                    55, f"音声既に存在 ({existing_audio_count}/{phrase_count})", "audio"
+                )
+            else:
+                await progress_callback(
+                    22, f"音声を生成中 ({existing_audio_count}/{phrase_count})", "audio"
+                )
+                logger.info(
+                    f"Generating audio for job {job_id} (existing: {existing_audio_count}/{phrase_count})"
+                )
 
-            # Store latest progress to sync with async callback
-            latest_progress = {"percent": 22, "message": "音声を生成中 (0/0)"}
+                # Use direct API call instead of subprocess
+                from movie_generator.audio import generate_audio_for_script  # type: ignore
 
-            def audio_progress(current: int, total: int, message: str) -> None:
-                """Callback for audio generation progress."""
-                # Map to 22-55% range
-                progress_percent = 22 + int((current / total) * 33) if total > 0 else 22
-                latest_progress["percent"] = progress_percent
-                latest_progress["message"] = f"音声を生成中 ({current}/{total})"
-                logger.debug(f"Audio progress: {current}/{total}")
+                # Store latest progress to sync with async callback
+                latest_progress = {
+                    "percent": 22,
+                    "message": f"音声を生成中 ({existing_audio_count}/{phrase_count})",
+                }
 
-            # Run audio generation in thread pool to avoid blocking
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(
-                None,
-                generate_audio_for_script,
-                script_path,
-                job_dir,
-                None,  # config_path
-                None,  # config
-                None,  # scenes
-                audio_progress,
-            )
+                def audio_progress(current: int, total: int, message: str) -> None:
+                    """Callback for audio generation progress."""
+                    # Map to 22-55% range
+                    progress_percent = 22 + int((current / total) * 33) if total > 0 else 22
+                    latest_progress["percent"] = progress_percent
+                    latest_progress["message"] = f"音声を生成中 ({current}/{total})"
+                    logger.debug(f"Audio progress: {current}/{total}")
 
-            # Update final progress
-            await progress_callback(latest_progress["percent"], latest_progress["message"], "audio")
+                # Run audio generation in thread pool to avoid blocking
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(
+                    None,
+                    generate_audio_for_script,
+                    script_path,
+                    job_dir,
+                    None,  # config_path
+                    None,  # config
+                    None,  # scenes
+                    audio_progress,
+                )
+
+                # Update final progress
+                await progress_callback(
+                    latest_progress["percent"], latest_progress["message"], "audio"
+                )
 
             # Step 3: Generate slides (55-80%)
-            await progress_callback(57, f"スライドを生成中 (0/{slide_count})", "slides")
-            logger.info(f"Generating slides for job {job_id}")
+            slides_dir = job_dir / "slides"
+            existing_slide_count = len(list(slides_dir.glob("*.png"))) if slides_dir.exists() else 0
 
-            # Use direct API call instead of subprocess
-            from movie_generator.slides import generate_slides_for_script  # type: ignore
-            import os
+            if existing_slide_count >= slide_count:
+                logger.info(
+                    f"Slide files already exist for job {job_id} ({existing_slide_count}/{slide_count}), skipping generation"
+                )
+                await progress_callback(
+                    80, f"スライド既に存在 ({existing_slide_count}/{slide_count})", "slides"
+                )
+            else:
+                await progress_callback(
+                    57, f"スライドを生成中 ({existing_slide_count}/{slide_count})", "slides"
+                )
+                logger.info(
+                    f"Generating slides for job {job_id} (existing: {existing_slide_count}/{slide_count})"
+                )
 
-            api_key = os.getenv("OPENROUTER_API_KEY")
-            if not api_key:
-                raise RuntimeError("OPENROUTER_API_KEY environment variable not set")
+                # Use direct API call instead of subprocess
+                from movie_generator.slides import generate_slides_for_script  # type: ignore
+                import os
 
-            def slides_progress(current: int, total: int, message: str) -> None:
-                """Callback for slides generation progress."""
-                # Map to 57-80% range
-                progress_percent = 57 + int((current / total) * 23) if total > 0 else 57
-                asyncio.create_task(
-                    progress_callback(
-                        progress_percent,
-                        f"スライドを生成中 ({current}/{total})",
-                        "slides",
+                api_key = os.getenv("OPENROUTER_API_KEY")
+                if not api_key:
+                    raise RuntimeError("OPENROUTER_API_KEY environment variable not set")
+
+                def slides_progress(current: int, total: int, message: str) -> None:
+                    """Callback for slides generation progress."""
+                    # Map to 57-80% range
+                    progress_percent = 57 + int((current / total) * 23) if total > 0 else 57
+                    asyncio.create_task(
+                        progress_callback(
+                            progress_percent,
+                            f"スライドを生成中 ({current}/{total})",
+                            "slides",
+                        )
                     )
-                )
-                logger.debug(f"Slides progress: {current}/{total}")
+                    logger.debug(f"Slides progress: {current}/{total}")
 
-            try:
-                await generate_slides_for_script(
-                    script_path=script_path,
-                    output_dir=job_dir,
-                    api_key=api_key,
-                    progress_callback=slides_progress,
-                )
-            except Exception as e:
-                logger.error(f"Slide generation failed: {e}", exc_info=True)
-                raise RuntimeError(f"Slide generation failed: {e}")
+                try:
+                    await generate_slides_for_script(
+                        script_path=script_path,
+                        output_dir=job_dir,
+                        api_key=api_key,
+                        progress_callback=slides_progress,
+                    )
+                except Exception as e:
+                    logger.error(f"Slide generation failed: {e}", exc_info=True)
+                    raise RuntimeError(f"Slide generation failed: {e}")
 
             # Step 4: Render video (80-100%)
+            output_path = job_dir / "output.mp4"
+
+            if output_path.exists():
+                logger.info(f"Video file already exists for job {job_id}, skipping rendering")
+                await progress_callback(100, "動画既に存在", "video")
+                return output_path
+
             await progress_callback(82, "動画をレンダリング中...", "video")
             logger.info(f"Rendering video for job {job_id}")
 
             # Use direct API call instead of subprocess
             from movie_generator.video import render_video_for_script  # type: ignore
-
-            output_path = job_dir / "output.mp4"
 
             # Capture the event loop for use in the callback
             loop = asyncio.get_running_loop()
@@ -474,9 +556,10 @@ class MovieGeneratorWrapper:
                 logger.debug(f"Video progress: {current}/{total} - {message}")
 
             try:
-                # Create default config with background, BGM, and persona settings
-                movie_config = create_default_movie_config()
-                logger.info("Using default movie config with background, BGM, and persona")
+                # Create config with background, BGM, and persona settings
+                # Use CONFIG_PATH if provided, otherwise use default single-persona config
+                movie_config = create_default_movie_config(self.config.config_path)
+                logger.info("Using movie config with background, BGM, and persona")
 
                 # Run in executor since it's synchronous and may take a while
                 await loop.run_in_executor(
@@ -536,16 +619,17 @@ class Worker:
             logger.info(f"Resuming job {job_id} (was at {job.get('current_step', 'unknown')} step)")
 
         # Update job to processing status
-        # For resumed jobs, reset progress to 0 to start fresh tracking
-        await self.pb_client.update_job(
-            job_id,
-            {
-                "status": "processing",
-                "progress": 0,
-                "started_at": job.get("started_at") or datetime.now(UTC).isoformat() + "Z",
-                "progress_message": "再開中..." if is_resumed else "開始中...",
-            },
-        )
+        # Keep current progress when resuming, start at 0 for new jobs
+        update_data = {
+            "status": "processing",
+            "started_at": job.get("started_at") or datetime.now(UTC).isoformat() + "Z",
+            "progress_message": "再開中..." if is_resumed else "開始中...",
+        }
+        # Only set progress to 0 for new jobs
+        if not is_resumed:
+            update_data["progress"] = 0
+
+        await self.pb_client.update_job(job_id, update_data)
 
         async def update_progress(progress: int, message: str, step: str) -> None:
             """Update job progress."""

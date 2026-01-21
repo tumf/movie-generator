@@ -68,6 +68,8 @@ services:
       - WORKER_POLL_INTERVAL=${WORKER_POLL_INTERVAL:-5}
       # Required for proper asset path detection
       - DOCKER_ENV=true
+      # Config file for persona pool and other settings
+      - CONFIG_PATH=/app/web/config/config.yaml
     networks:
       - movie-generator-network
 
