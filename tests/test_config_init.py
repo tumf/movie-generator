@@ -164,21 +164,39 @@ class TestConfigGeneration:
         assert config.narration.character == "ずんだもん"
 
     def test_generated_config_matches_defaults(self, tmp_path):
-        """Test that generated config matches default Config values."""
+        """Test that generated config loads successfully and has core defaults.
+
+        Note: The generated YAML includes example background/bgm settings,
+        while the default Config has these as None. This is intentional -
+        the generated config serves as a documented example.
+        """
         output_file = tmp_path / "test-config.yaml"
         write_config_to_file(output_file, overwrite=False)
 
         loaded_config = load_config(output_file)
         default_config = load_config(None)
 
-        # Compare all fields
+        # Compare core fields that should match
         assert loaded_config.project == default_config.project
         assert loaded_config.style == default_config.style
         assert loaded_config.audio == default_config.audio
         assert loaded_config.narration == default_config.narration
         assert loaded_config.content == default_config.content
         assert loaded_config.slides == default_config.slides
-        assert loaded_config.video == default_config.video
+
+        # Video config: compare core fields only
+        # (generated YAML includes example background/bgm)
+        assert loaded_config.video.renderer == default_config.video.renderer
+        assert loaded_config.video.template == default_config.video.template
+        assert loaded_config.video.output_format == default_config.video.output_format
+        assert loaded_config.video.transition == default_config.video.transition
+
+        # Verify example background/bgm are present in generated config
+        assert loaded_config.video.background is not None
+        assert loaded_config.video.background.type == "video"
+        assert loaded_config.video.background.path == "assets/backgrounds/default-background.mp4"
+        assert loaded_config.video.bgm is not None
+        assert loaded_config.video.bgm.path == "assets/bgm/default-bgm.mp3"
 
     def test_write_config_to_file(self, tmp_path):
         """Test write_config_to_file function."""

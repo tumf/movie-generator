@@ -18,8 +18,17 @@ from movie_generator.mcp.config import load_mcp_config
 
 
 @pytest.fixture
-def mcp_config_path():
-    """Path to MCP configuration file."""
+def mcp_config_path(monkeypatch):
+    """Path to MCP configuration file.
+
+    Sets dummy values for all environment variables referenced in the config
+    to prevent validation errors during config loading.
+    """
+    # Set dummy values for all env vars in mcp-example.jsonc
+    # This allows the config to load even if we only use one server
+    if "BRAVE_API_KEY" not in os.environ:
+        monkeypatch.setenv("BRAVE_API_KEY", "dummy-brave-key")
+
     return Path("config/mcp-example.jsonc")
 
 

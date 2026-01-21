@@ -71,7 +71,7 @@ def test_calculate_total_frames_uses_audio_duration():
     assert "const scenes = getScenesWithTiming(phrases)" in template
     assert "return scenes[scenes.length - 1].endFrame" in template
     # Verify the comment explains the reasoning
-    assert "total duration must match the audio duration" in template
+    assert "The total duration includes audio plus ending pause" in template
 
 
 def test_template_parameters_are_documented():
