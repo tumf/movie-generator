@@ -11,28 +11,8 @@
         <p class="text-sm text-gray-600">URL: <a href="{{ job.url }}" target="_blank" class="text-blue-600 hover:underline break-all">{{ job.url }}</a></p>
     </div>
 
-    <div
-        id="job-status"
-        hx-get="/jobs/{{ job.id }}/status-html"
-        hx-trigger="every 2s"
-        hx-swap="innerHTML"
-    >
-        {% include "partials/job_status.html" %}
-    </div>
+    {% include "partials/job_status.html" %}
 </div>
-
-<script>
-// Stop polling when job is completed
-document.body.addEventListener('htmx:afterSwap', function(evt) {
-    const jobStatus = document.getElementById('job-status');
-    if (jobStatus && jobStatus.querySelector('.bg-green-100')) {
-        // Job completed - remove HTMX polling
-        jobStatus.removeAttribute('hx-get');
-        jobStatus.removeAttribute('hx-trigger');
-        jobStatus.removeAttribute('hx-swap');
-    }
-});
-</script>
 
 <div class="mt-6 text-center">
     <a href="/" class="text-blue-600 hover:underline">← トップページに戻る</a>

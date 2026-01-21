@@ -1,30 +1,45 @@
+<div
+    id="job-status"
+    {% if job.status in ['pending', 'processing'] %}
+    hx-get="/jobs/{{ job.id }}/status-html"
+    hx-trigger="every 2s"
+    hx-swap="outerHTML"
+    {% endif %}
+>
 {% if error %}
 <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
     <p>{{ error }}</p>
 </div>
 {% else %}
-<!-- Status Badge -->
-<div class="mb-6">
-    {% if job.status == "pending" %}
-    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-        ⏳ 待機中
-    </span>
-    {% elif job.status == "processing" %}
-    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-        🔄 処理中
-    </span>
-    {% elif job.status == "completed" %}
-    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-        ✅ 完了
-    </span>
-    {% elif job.status == "failed" %}
-    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-        ❌ 失敗
-    </span>
-    {% elif job.status == "cancelled" %}
-    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-        🚫 キャンセル
-    </span>
+<!-- Status Badge and Elapsed Time -->
+<div class="mb-6 flex items-center gap-4 flex-wrap">
+    <div>
+        {% if job.status == "pending" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+            ⏳ 待機中
+        </span>
+        {% elif job.status == "processing" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            🔄 処理中
+        </span>
+        {% elif job.status == "completed" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            ✅ 完了
+        </span>
+        {% elif job.status == "failed" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+            ❌ 失敗
+        </span>
+        {% elif job.status == "cancelled" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+            🚫 キャンセル
+        </span>
+        {% endif %}
+    </div>
+    {% if elapsed_time %}
+    <div class="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
+        ⏱️ 経過時間: {{ elapsed_time }}
+    </div>
     {% endif %}
 </div>
 
@@ -63,6 +78,9 @@
         <p class="text-green-800 font-medium">✅ 動画の生成が完了しました！</p>
         {% if job.video_size %}
         <p class="text-sm text-green-700 mt-1">ファイルサイズ: {{ "%.2f"|format(job.video_size / 1024 / 1024) }} MB</p>
+        {% endif %}
+        {% if elapsed_time %}
+        <p class="text-sm text-green-700 mt-1">所要時間: {{ elapsed_time }}</p>
         {% endif %}
     </div>
 
@@ -115,3 +133,4 @@
 </div>
 {% endif %}
 {% endif %}
+</div>
