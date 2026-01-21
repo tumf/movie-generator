@@ -125,17 +125,26 @@ async def job_status_html(request: Request, job_id: str) -> HTMLResponse:
     Raises:
         HTTPException: If job not found
     """
+    from fastapi.responses import HTMLResponse as FastAPIHTMLResponse
+
     pb_client: PocketBaseClient = request.app.state.pb_client
     templates = request.app.state.templates
 
     try:
         job = await pb_client.get_job(job_id)
+
+        # Stop polling when job is completed
+        headers = {}
+        if job.get("status") in ["completed", "failed", "cancelled"]:
+            headers["HX-Stop-Polling"] = "true"
+
         return templates.TemplateResponse(
             "partials/job_status.html",
             {
                 "request": request,
                 "job": job,
             },
+            headers=headers,
         )
     except Exception as e:
         logger.error(f"Failed to get job status {job_id}: {e}")
