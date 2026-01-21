@@ -74,7 +74,7 @@ htmlcov/
 
 # Node.js
 node_modules/
-pnpm-lock.yaml
+# pnpm-lock.yaml is tracked for reproducible builds
 
 # Global cache directories
 .cache/

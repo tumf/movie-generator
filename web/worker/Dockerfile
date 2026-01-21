@@ -44,11 +44,15 @@ RUN apt-get update && apt-get install -y \
 
 # Pre-install Remotion and download Chrome Headless Shell
 # This prevents "Chrome not found" errors during video rendering
+# Chrome is cached at /opt/remotion/chrome-headless-shell for reuse
 WORKDIR /tmp/remotion-setup
 RUN npm init -y \
     && npm install remotion@4.0.234 @remotion/cli@4.0.234 \
     && npx remotion browser ensure \
     && echo "Chrome Headless Shell installed successfully" \
+    && mkdir -p /opt/remotion \
+    && mv node_modules/.remotion/chrome-headless-shell /opt/remotion/ \
+    && echo "Chrome cached at /opt/remotion/chrome-headless-shell" \
     && cd / \
     && rm -rf /tmp/remotion-setup
 
@@ -82,9 +86,24 @@ ENV LD_LIBRARY_PATH=/opt/voicevox/onnxruntime/lib:$LD_LIBRARY_PATH
 
 WORKDIR /app
 
+# Copy package files first for better Docker layer caching
+COPY package.json pnpm-workspace.yaml /app/
+
+# Pre-install shared Remotion dependencies in workspace
+# This prevents re-downloading dependencies for each project
+RUN pnpm install --frozen-lockfile=false \
+    && echo "Workspace dependencies installed" \
+    && du -sh node_modules
+
 # Copy movie-generator source code from parent directory
 COPY . /app/
 WORKDIR /app
+
+# Create cache directory and link Chrome from global cache
+# This allows the application to find Chrome without re-downloading
+RUN mkdir -p /app/.cache/remotion \
+    && ln -s /opt/remotion/chrome-headless-shell /app/.cache/remotion/chrome-headless-shell \
+    && echo "Chrome linked to application cache directory"
 
 # Install movie-generator with all dependencies
 RUN pip install --no-cache-dir -e ".[dev]"

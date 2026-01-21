@@ -440,7 +440,7 @@ const AudioSubtitleLayer: React.FC<{
             transform: 'translateX(-50%)',
             color: 'white',
             fontSize: '36px',
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: '"Noto Sans JP", "Noto Sans CJK JP", "Yu Gothic", "Hiragino Sans", "Meiryo", Arial, sans-serif',
             fontWeight: 'bold',
             width: '80%',
             textAlign: 'center',

@@ -9,11 +9,11 @@ sections:
   - title: "イントロダクション"
     narrations:
       - text: "明日は晴れです"
-        reading: "アシタワハレデス"  # Particle は → ワ
+        reading: "アシタワハレデス"  # Particle は → ワ, no spaces
       - text: "道案内図を見てください"
-        reading: "ミチアンナイズオミテクダサイ"  # Compound word + particle を → オ
+        reading: "ミチアンナイズヲミテクダサイ"  # Particle を → ヲ
       - text: "97個あります"
-        reading: "キュウジュウナナコアリマス"  # Correct number reading
+        reading: "97コアリマス"  # Keep numbers as-is, no spaces
     slide_prompt: "A slide with text 'イントロダクション' in the center, modern design"
     source_image_url: null
 
@@ -22,12 +22,13 @@ sections:
       - text: "こんにちは！"
         reading: "コンニチワ！"  # Particle は → ワ in greeting
       - text: "東京へ行きます"
-        reading: "トウキョウエイキマス"  # Particle へ → エ
+        reading: "トウキョウエイキマス"  # Particle へ → エ, no spaces
     slide_prompt: null
     source_image_url: "https://example.com/image.jpg"
 
 # Note: The reading field ensures accurate audio synthesis
 # - Correct kanji pronunciation
-# - Proper particle pronunciation (は→ワ, へ→エ, を→オ)
-# - Accurate number readings
+# - Proper particle pronunciation (は→ワ, へ→エ, を→ヲ)
+# - Accurate number readings (keep Arabic numerals as-is)
+# - Minimal spacing for natural speech flow
 # LLM handles this automatically, manual editing is rarely needed

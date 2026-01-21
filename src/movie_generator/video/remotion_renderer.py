@@ -203,8 +203,11 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
             temp_package_json.write_text('{"dependencies": {"@remotion/cli": "^4.0.0"}}')
 
             # Install remotion CLI in temp directory
+            # NOTE: --ignore-workspace is required because the project may have
+            # pnpm-workspace.yaml, and pnpm would otherwise refuse to install
+            # dependencies outside the workspace-defined packages
             subprocess.run(
-                ["pnpm", "install", "--no-frozen-lockfile"],
+                ["pnpm", "install", "--no-frozen-lockfile", "--ignore-workspace"],
                 cwd=temp_download_dir,
                 check=True,
                 capture_output=True,
@@ -212,8 +215,11 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
             )
 
             # Download browser
+            # Use direct path to remotion binary instead of npx
+            # npx does not work reliably in pnpm environments
+            remotion_bin = temp_download_dir / "node_modules" / ".bin" / "remotion"
             subprocess.run(
-                ["npx", "remotion", "browser", "ensure"],
+                [str(remotion_bin), "browser", "ensure"],
                 cwd=temp_download_dir,
                 check=True,
                 capture_output=True,
