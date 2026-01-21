@@ -326,9 +326,9 @@ const CharacterLayer: React.FC<{
   // Position calculation
   const getPosition = () => {
     const positions = {
-      left: { left: '-100px', bottom: '100px' },
-      right: { right: '-100px', bottom: '100px' },
-      center: { left: '50%', bottom: '100px', transform: 'translateX(-50%)' },
+      left: { left: '50px', bottom: '50px' },
+      right: { right: '50px', bottom: '50px' },
+      center: { left: '50%', bottom: '50px', transform: 'translateX(-50%)' },
     };
     return positions[characterPosition];
   };
@@ -616,8 +616,43 @@ export const calculateTotalFrames = (phrases: PhraseData[]): number => {
 def get_root_tsx() -> str:
     """Generate Root.tsx component template.
 
-    This component reads composition.json and creates the Remotion composition.
+    This component reads composition.json and creates Remotion composition.
     """
+    return """import React from 'react';
+import { Composition } from 'remotion';
+import { VideoGenerator, calculateTotalFrames } from './VideoGenerator';
+import compositionData from '../composition.json';
+
+// Inject global styles for font loading
+const styles = `
+  @font-face {
+    font-family: 'Noto Sans JP';
+    src: local('Noto Sans JP'), local('Noto Sans CJK JP');
+    font-display: swap;
+  }
+`;
+
+export const RemotionRoot: React.FC = () => {
+  const totalFrames = calculateTotalFrames(compositionData.phrases);
+
+  return (
+    <>
+      <style>{styles}</style>
+      <Composition
+        id="VideoGenerator"
+        component={VideoGenerator}
+        durationInFrames={totalFrames}
+        fps={compositionData.fps}
+        width={compositionData.width}
+        height={compositionData.height}
+        defaultProps={{
+          phrases: compositionData.phrases
+        }}
+      />
+    </>
+  );
+};
+"""
     return """import React from 'react';
 import { Composition } from 'remotion';
 import { VideoGenerator, calculateTotalFrames } from './VideoGenerator';
@@ -656,6 +691,10 @@ Config.setDelayRenderTimeoutInMilliseconds(120000); // 2 minutes timeout
 // Encoding settings for better compatibility and seeking
 Config.setCodec('h264');
 Config.setPixelFormat('yuv420p'); // Widely compatible pixel format
+Config.setCrf(23); // Quality setting: 23 is good balance (lower = higher quality, 18 = very high, 28 = medium)
+
+// Ensure fonts are available for rendering
+Config.setChromiumOpenGlRenderer('egl');
 """
 
 

@@ -52,6 +52,72 @@ class Config:
             self.mcp_config_path = Path(mcp_config_path_str)
 
 
+def create_default_movie_config() -> "MovieConfig":
+    """Create default movie-generator Config with bundled assets.
+
+    Returns:
+        Config object with default background, BGM, and persona settings.
+    """
+    from movie_generator.config import (
+        BackgroundConfig,
+        BgmConfig,
+        Config as MovieConfig,
+        PersonaConfig,
+        VideoConfig,
+        VoicevoxSynthesizerConfig,
+    )
+
+    # Default persona: Zundamon
+    # NOTE: Paths must be relative (will be resolved to public/ directory by renderer)
+    default_persona = PersonaConfig(
+        id="zundamon",
+        name="ずんだもん",
+        character="元気で明るい声のキャラクター",
+        synthesizer=VoicevoxSynthesizerConfig(
+            engine="voicevox",
+            speaker_id=3,
+            speed_scale=1.0,
+        ),
+        subtitle_color="#8FCF4F",  # Zundamon's green
+        character_image="characters/zundamon/base.png",
+        mouth_open_image="characters/zundamon/mouth_open.png",
+        eye_close_image="characters/zundamon/eye_close.png",
+        animation_style="sway",
+    )
+
+    # Default background: video background
+    # NOTE: Path must be absolute for BackgroundConfig validation
+    default_background = BackgroundConfig(
+        type="video",
+        path="/app/backgrounds/default-background.mp4",
+        fit="cover",
+    )
+
+    # Default BGM
+    # NOTE: Path must be absolute for BgmConfig validation
+    default_bgm = BgmConfig(
+        path="/app/bgm/default-bgm.noart.mp3",
+        volume=0.15,  # Low volume to not overpower narration
+        fade_in_seconds=2.0,
+        fade_out_seconds=2.0,
+        loop=True,
+    )
+
+    # Create video config with background and BGM
+    video_config = VideoConfig(
+        background=default_background,
+        bgm=default_bgm,
+    )
+
+    # Create full config
+    config = MovieConfig(
+        video=video_config,
+        personas=[default_persona],
+    )
+
+    return config
+
+
 class PocketBaseClient:
     """Client for interacting with PocketBase."""
 
@@ -408,6 +474,10 @@ class MovieGeneratorWrapper:
                 logger.debug(f"Video progress: {current}/{total} - {message}")
 
             try:
+                # Create default config with background, BGM, and persona settings
+                movie_config = create_default_movie_config()
+                logger.info("Using default movie config with background, BGM, and persona")
+
                 # Run in executor since it's synchronous and may take a while
                 await loop.run_in_executor(
                     None,
@@ -416,7 +486,7 @@ class MovieGeneratorWrapper:
                     output_path,
                     None,  # output_dir
                     None,  # config_path
-                    None,  # config
+                    movie_config,  # config with background, bgm, persona
                     None,  # scenes
                     False,  # show_progress
                     video_progress,

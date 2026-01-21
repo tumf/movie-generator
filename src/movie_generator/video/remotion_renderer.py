@@ -175,7 +175,13 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
     """
     # Global cache directory for Chrome Headless Shell
     # Place it at the project root level (parent of output directories)
-    project_root = Path.cwd()
+    # In Docker, use /app as project root; otherwise use cwd
+    import os
+
+    if os.getenv("DOCKER_ENV"):
+        project_root = Path("/app")
+    else:
+        project_root = Path.cwd()
     global_cache = project_root / ".cache" / "remotion" / "chrome-headless-shell"
 
     # Target path in this project's node_modules
@@ -567,9 +573,19 @@ def _copy_asset_to_public(asset_path: Path, remotion_root: Path, category: str) 
     """
     import shutil
 
-    # Resolve relative paths from current working directory
+    # Resolve relative paths from project root (/app/)
+    # This is necessary because in Docker environment, the working directory
+    # is the job directory (/app/data/jobs/{job_id}/), not the project root
     if not asset_path.is_absolute():
-        asset_path = Path.cwd() / asset_path
+        # Try project root first
+        project_root = Path("/app")
+        resolved_path = project_root / asset_path
+
+        # If not found in project root, try current working directory
+        if not resolved_path.exists():
+            resolved_path = Path.cwd() / asset_path
+
+        asset_path = resolved_path
 
     if not asset_path.exists():
         raise FileNotFoundError(f"Asset file not found: {asset_path}")
@@ -631,6 +647,20 @@ def render_video_with_remotion(
         FileNotFoundError: If Remotion is not installed.
         RuntimeError: If video rendering fails.
     """
+    # Create symlink to assets directory from job directory
+    # This is needed for Docker environment where working directory is job dir
+    # but assets are in project root (/app/assets)
+    job_dir = remotion_root.parent
+    assets_symlink = job_dir / "assets"
+    if not assets_symlink.exists():
+        import os
+
+        project_root = Path("/app")
+        assets_dir = project_root / "assets"
+        if assets_dir.exists():
+            os.symlink(assets_dir, assets_symlink)
+            console.print(f"[green]Created symlink: {assets_symlink} -> {assets_dir}[/green]")
+
     # Ensure pnpm dependencies are installed
     ensure_pnpm_dependencies(remotion_root)
 

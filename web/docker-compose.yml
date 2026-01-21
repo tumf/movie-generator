@@ -59,12 +59,15 @@ services:
         condition: service_healthy
     volumes:
       - output_data:/app/data/jobs
+      - ~/.local/share/voicevox:/opt/voicevox:ro  # Mount local VOICEVOX (opt)
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       # VOICEVOX environment variables are set in Dockerfile
       - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-2}
       - WORKER_POLL_INTERVAL=${WORKER_POLL_INTERVAL:-5}
+      # Required for proper asset path detection
+      - DOCKER_ENV=true
     networks:
       - movie-generator-network
 

@@ -250,3 +250,55 @@ web/
 ## ライセンス
 
 親プロジェクトと同じライセンスを適用。
+
+## Docker Build Instructions
+
+### Method 1: Mount Local VOICEVOX (Recommended - No Download)
+
+If you have VOICEVOX installed locally (at `~/.local/share/voicevox/`), mount it into the Docker container:
+
+```bash
+cd web
+docker compose build
+docker compose up -d
+```
+
+The compose file automatically mounts `~/.local/share/voicevox` to `/host/voicevox` in the container.
+
+### Method 2: Download Assets Manually
+
+If you don't have VOICEVOX locally, download assets to `assets/voicevox/`:
+
+```bash
+./download-voicevox.sh
+```
+
+This downloads VOICEVOX (dict, onnxruntime, models) to `assets/voicevox/`.
+
+Then build Docker images:
+```bash
+cd web
+docker compose build
+docker compose up -d
+```
+docker compose up -d
+```
+
+### Troubleshooting
+
+**ERROR: VOICEVOX assets not found**
+
+Dockerfile checks in order:
+1. `/app/assets/voicevox/` (pre-downloaded to project)
+2. `/host/voicevox/` (mounted from host at `~/.local/share/voicevox/`)
+
+If both are missing, you need to:
+1. Run `./download-voicevox.sh` (downloads to `assets/voicevox/`), OR
+2. Ensure `~/.local/share/voicevox/` exists (for mounting)
+
+**GitHub API rate limit**
+
+The `download-voicevox.sh` script uses `gh` CLI to avoid rate limits. If you still hit limits:
+1. Authenticate with `gh auth login`
+2. Wait 1 hour for rate limit reset
+3. Run the script again

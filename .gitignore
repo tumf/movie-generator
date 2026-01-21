@@ -98,3 +98,6 @@ mcp-config.jsonc
 # openspec
 openspec/changes/
 .envrc
+
+# VOICEVOX assets (downloaded separately)
+assets/voicevox/

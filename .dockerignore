@@ -1,0 +1,71 @@
+# Docker ignore file for movie-generator
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+ENV/
+
+# Node.js - CRITICAL: Exclude all node_modules to prevent conflicts
+node_modules/
+**/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Output directories (should be mounted as volumes)
+output/
+projects/
+
+# Test artifacts
+.coverage
+htmlcov/
+.tox/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Local environment
+.env
+.env.local
+*.log
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Large files that should not be in Docker context
+*.mp4
+*.mp3
+*.wav
+*.webm
+
+# OpenSpec (development only)
+openspec/
+openspec-archive/
