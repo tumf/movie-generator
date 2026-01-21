@@ -5,23 +5,34 @@
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-8">
     <h2 class="text-2xl font-bold text-gray-800 mb-4">動画生成状況</h2>
-    
+
     <div class="mb-6">
         <p class="text-sm text-gray-600 mb-2">ジョブID: <code class="bg-gray-100 px-2 py-1 rounded">{{ job.id }}</code></p>
         <p class="text-sm text-gray-600">URL: <a href="{{ job.url }}" target="_blank" class="text-blue-600 hover:underline break-all">{{ job.url }}</a></p>
     </div>
 
-    <div 
+    <div
         id="job-status"
-        {% if job.status in ['pending', 'processing'] %}
         hx-get="/jobs/{{ job.id }}/status-html"
         hx-trigger="every 2s"
         hx-swap="innerHTML"
-        {% endif %}
     >
         {% include "partials/job_status.html" %}
     </div>
 </div>
+
+<script>
+// Stop polling when job is completed
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    const jobStatus = document.getElementById('job-status');
+    if (jobStatus && jobStatus.querySelector('.bg-green-100')) {
+        // Job completed - remove HTMX polling
+        jobStatus.removeAttribute('hx-get');
+        jobStatus.removeAttribute('hx-trigger');
+        jobStatus.removeAttribute('hx-swap');
+    }
+});
+</script>
 
 <div class="mt-6 text-center">
     <a href="/" class="text-blue-600 hover:underline">← トップページに戻る</a>
