@@ -11,7 +11,7 @@ from typing import Any
 
 from rich.console import Console
 
-from ..constants import SubtitleConstants
+from ..constants import SubtitleConstants, VideoConstants
 from ..exceptions import RenderingError
 from ..script.phrases import Phrase
 from .renderer import CompositionPhrase
@@ -283,6 +283,7 @@ def update_composition_json(
     background: dict[str, Any] | None = None,
     bgm: dict[str, Any] | None = None,
     section_backgrounds: dict[int, dict[str, Any]] | None = None,
+    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
 ) -> None:
     """Update composition.json with current phrase data.
 
@@ -297,6 +298,7 @@ def update_composition_json(
         background: Optional global background configuration (type, path, fit).
         bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
         section_backgrounds: Optional map of section_index to background override.
+        resolution: Video resolution as (width, height) tuple.
     """
     # Build slide map for efficient lookup
     slide_map = _build_slide_map(slide_paths) if slide_paths else {}
@@ -349,8 +351,8 @@ def update_composition_json(
     composition_data = {
         "title": project_name,
         "fps": 30,
-        "width": 1920,
-        "height": 1080,
+        "width": resolution[0],
+        "height": resolution[1],
         "phrases": [p.model_dump(exclude_none=True, by_alias=True) for p in composition_phrases],
     }
 
@@ -626,6 +628,8 @@ def render_video_with_remotion(
     background: dict[str, Any] | None = None,
     bgm: dict[str, Any] | None = None,
     section_backgrounds: dict[int, dict[str, Any]] | None = None,
+    crf: int = VideoConstants.DEFAULT_CRF,
+    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
 
@@ -642,6 +646,8 @@ def render_video_with_remotion(
         background: Optional global background configuration (type, path, fit).
         bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
         section_backgrounds: Optional map of section_index to background override.
+        crf: Constant Rate Factor for video encoding (0-51, default 28).
+        resolution: Video resolution as (width, height) tuple.
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
@@ -679,6 +685,7 @@ def render_video_with_remotion(
         background,
         bgm,
         section_backgrounds,
+        resolution,
     )
 
     # Ensure output directory exists
@@ -714,6 +721,8 @@ def render_video_with_remotion(
                 "4",  # Reduced from 8 to prevent memory issues and timeouts
                 "--timeout",
                 "300000",  # 5 minutes timeout for delayRender calls (default is 30s)
+                "--crf",
+                str(crf),
             ],
             cwd=remotion_root,
             check=True,

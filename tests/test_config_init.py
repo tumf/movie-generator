@@ -157,8 +157,9 @@ class TestConfigGeneration:
         # Verify some default values
         assert config.project.name == "My YouTube Channel"
         assert config.project.output_dir == "./output"
-        assert config.style.resolution == (1920, 1080)
+        assert config.style.resolution == (1280, 720)
         assert config.style.fps == 30
+        assert config.style.crf == 28
         assert config.audio.speaker_id == 3
         assert config.narration.character == "ずんだもん"
 

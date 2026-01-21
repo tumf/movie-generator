@@ -3,6 +3,7 @@
 Generates video scripts from source content using LLM providers.
 """
 
+import random
 from typing import Any
 
 import httpx
@@ -736,6 +737,47 @@ SCRIPT_GENERATION_PROMPTS_DIALOGUE = {
 }
 
 
+def select_personas_from_pool(
+    personas: list[dict[str, Any]],
+    pool_config: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Select personas from pool based on configuration.
+
+    Args:
+        personas: List of persona dictionaries with 'id', 'name', 'character' keys.
+        pool_config: PersonaPoolConfig dictionary with 'enabled', 'count', 'seed' keys.
+                     If None or disabled, returns all personas unchanged.
+
+    Returns:
+        Selected personas (all personas if pool disabled, random subset if enabled).
+
+    Raises:
+        ValueError: If count > len(personas) when pool is enabled.
+    """
+    # If no pool config or disabled, return all personas
+    if not pool_config or not pool_config.get("enabled", False):
+        return personas
+
+    count = pool_config.get("count", 2)
+    seed = pool_config.get("seed")
+
+    # Validate count
+    if count > len(personas):
+        raise ValueError(
+            f"Cannot select {count} personas from pool of {len(personas)}. "
+            f"Available personas: {', '.join(p['id'] for p in personas)}"
+        )
+
+    # Set seed for reproducibility if provided
+    if seed is not None:
+        random.seed(seed)
+
+    # Random selection without replacement
+    selected = random.sample(personas, k=count)
+
+    return selected
+
+
 async def generate_script(
     content: str,
     title: str | None = None,
@@ -748,6 +790,7 @@ async def generate_script(
     base_url: str = "https://openrouter.ai/api/v1",
     images: list[dict[str, str]] | None = None,
     personas: list[dict[str, str]] | None = None,
+    pool_config: dict[str, Any] | None = None,
 ) -> VideoScript:
     """Generate video script from content using LLM.
 
@@ -764,6 +807,8 @@ async def generate_script(
         images: List of image metadata dicts with 'src', 'alt', 'title' keys.
         personas: List of persona dicts with 'id', 'name', 'character' keys.
                   If provided, multi-speaker dialogue mode is used.
+        pool_config: PersonaPoolConfig dict for random persona selection.
+                     If enabled, randomly selects subset of personas.
 
     Returns:
         Generated video script.
@@ -772,6 +817,16 @@ async def generate_script(
         httpx.HTTPError: If API request fails.
         ValueError: If response parsing fails.
     """
+    # Apply persona pool selection if configured
+    if personas and pool_config:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        original_count = len(personas)
+        personas = select_personas_from_pool(personas, pool_config)
+        selected_ids = [p["id"] for p in personas]
+        ids_str = ", ".join(selected_ids)
+        logger.info(f"Persona pool: selected {len(personas)}/{original_count} personas: {ids_str}")
     # Format images section for prompt
     images_section = ""
     if images:

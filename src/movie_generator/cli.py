@@ -182,6 +182,16 @@ def cli() -> None:
     default=False,
     help="Show real-time rendering progress (default: hide)",
 )
+@click.option(
+    "--persona-pool-count",
+    type=int,
+    help="Override persona pool count (number of personas to randomly select)",
+)
+@click.option(
+    "--persona-pool-seed",
+    type=int,
+    help="Random seed for reproducible persona selection (testing only)",
+)
 def generate(
     url_or_script: str | None,
     config: Path | None,
@@ -190,6 +200,8 @@ def generate(
     scenes: str | None,
     mcp_config: Path | None,
     show_progress: bool,
+    persona_pool_count: int | None,
+    persona_pool_seed: int | None,
 ) -> None:
     """Generate video from URL or existing script.yaml.
 
@@ -201,6 +213,8 @@ def generate(
         scenes: Scene range to render (e.g., "1-3" or "2").
         mcp_config: Path to MCP configuration file for enhanced web scraping.
         show_progress: Show real-time rendering progress.
+        persona_pool_count: Override persona pool count from config.
+        persona_pool_seed: Random seed for reproducible persona selection.
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -367,6 +381,16 @@ def generate(
                     p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
                 ]
 
+            # Prepare persona pool config
+            pool_config = None
+            if cfg.persona_pool:
+                pool_config = cfg.persona_pool.model_dump()
+                # Apply CLI overrides if provided
+                if persona_pool_count is not None:
+                    pool_config["count"] = persona_pool_count
+                if persona_pool_seed is not None:
+                    pool_config["seed"] = persona_pool_seed
+
             script = asyncio.run(
                 generate_script(
                     content=parsed.markdown,
@@ -378,6 +402,7 @@ def generate(
                     model=cfg.content.llm.model,
                     images=images_metadata,
                     personas=personas_for_script,
+                    pool_config=pool_config,
                 )
             )
             progress.update(task, completed=True)
@@ -774,6 +799,8 @@ def generate(
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+            crf=cfg.style.crf,
+            resolution=cfg.style.resolution,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")
@@ -810,6 +837,16 @@ def script() -> None:
 @click.option("--character", help="Character personality for narration")
 @click.option("--style", help="Narration style")
 @click.option("--model", help="LLM model to use for script generation")
+@click.option(
+    "--persona-pool-count",
+    type=int,
+    help="Override persona pool count (number of personas to randomly select)",
+)
+@click.option(
+    "--persona-pool-seed",
+    type=int,
+    help="Random seed for reproducible persona selection (testing only)",
+)
 @common_options
 def create(
     url: str,
@@ -820,6 +857,8 @@ def create(
     character: str | None,
     style: str | None,
     model: str | None,
+    persona_pool_count: int | None,
+    persona_pool_seed: int | None,
     force: bool,
     quiet: bool,
     verbose: bool,
@@ -932,6 +971,16 @@ def create(
                 p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
             ]
 
+        # Prepare persona pool config
+        pool_config = None
+        if cfg.persona_pool:
+            pool_config = cfg.persona_pool.model_dump()
+            # Apply CLI overrides if provided
+            if persona_pool_count is not None:
+                pool_config["count"] = persona_pool_count
+            if persona_pool_seed is not None:
+                pool_config["seed"] = persona_pool_seed
+
         script = asyncio.run(
             generate_script(
                 content=parsed.markdown,
@@ -943,6 +992,7 @@ def create(
                 model=cfg.content.llm.model,
                 images=images_metadata,
                 personas=personas_for_script,
+                pool_config=pool_config,
             )
         )
         progress.update(task, completed=True)
@@ -1908,6 +1958,8 @@ def render_video_cmd(
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+            crf=cfg.style.crf,
+            resolution=cfg.style.resolution,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")

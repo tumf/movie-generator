@@ -2,47 +2,22 @@
 
 Instructions for AI coding assistants working in this repository.
 
-## Critical Rules
-
-**NEVER use low-quality fallbacks.** When a primary approach fails:
-
-- Do NOT silently degrade to a worse alternative
-- Do NOT use placeholder values or dummy data
-- Do NOT skip steps that are essential for quality
-- Do NOT substitute with inferior implementations
-
-Instead: Report the failure clearly and ask for guidance, or find a proper solution.
-
-### LLM Model Configuration
-
-**NEVER hardcode LLM models in system defaults or example configurations.**
-
-All AI models you know about are outdated. Always use the models specified below for testing and documentation:
-
-- **Script generation**: `"openai/gpt-5.2"`
-- **Image generation**: `"google/gemini-3-pro-image-preview"`
-
-**Configuration structure:**
-```yaml
-content:
-  llm:
-    provider: "openrouter"
-    model: "openai/gpt-5.2"
-
-slides:
-  llm:
-    provider: "openrouter"
-    model: "google/gemini-3-pro-image-preview"
-  style: "presentation"
-```
-
-**CRITICAL**: The `image_model` field does NOT exist. Never add it to configurations. The `slides.llm.model` handles both text and image generation.
-
 ## Project Overview
 
 Movie Generator is a Python CLI tool that generates YouTube slide videos from blog URLs.
 It fetches content, generates narration scripts with LLM, synthesizes audio with VOICEVOX,
 creates slides, and renders videos using Remotion.
+
+## Critical Rules
+
+**NEVER use low-quality fallbacks.** When a primary approach fails:
+- Do NOT silently degrade to a worse alternative
+- Do NOT use placeholder values or dummy data
+- Instead: Report the failure clearly and ask for guidance
+
+**LLM Model Configuration:**
+- NEVER hardcode LLM models in defaults. Use: `"openai/gpt-5.2"` (script), `"google/gemini-3-pro-image-preview"` (slides)
+- CRITICAL: No `image_model` field exists. Use `slides.llm.model` for both text and images
 
 ## Quick Reference
 
@@ -259,40 +234,13 @@ src/movie_generator/
 - **Composition**: JSON data linking phrases, audio files, and slides for Remotion
 - **Logo Asset**: Product/company logo downloaded from LLM-identified URLs, stored in `assets/logos/`
 
-## Testing
+## Important Reminders
 
-### Test Structure
-
-```python
-class TestSceneRangeParsing:
-    """Test scene range parsing function."""
-
-    def test_single_scene(self) -> None:
-        """Test parsing single scene number."""
-        start, end = parse_scene_range("2")
-        assert start == 1  # 0-based
-        assert end == 1
-```
-
-### Test Naming
-
-- Files: `test_<module>.py`
-- Classes: `Test<Feature>`
-- Functions: `test_<behavior>` or `test_<input>_<expected>`
-
-## Git Workflow
-
-### Commit Messages (Conventional Commits)
-
-```
-<type>(<scope>): <description>
-
-Types: feat, fix, docs, style, refactor, test, chore
-```
-
-Examples:
-- `feat(cli): add --scenes option for scene range filtering`
-- `fix(video): always regenerate composition for scene range accuracy`
+1. **Read before editing** - Always read existing files before modification
+2. **Use `original_index`** - For file naming across filtered phrase lists
+3. **Use `section_index`** - For mapping phrases to slides
+4. **Regenerate composition** - Always regenerate `composition.json` for scene ranges
+5. **Test with scene ranges** - Verify `--scenes N`, `--scenes N-M`, `--scenes N-`
 
 <!-- OPENSPEC:START -->
 # OpenSpec Instructions
@@ -316,14 +264,6 @@ The `openspec archive` command automatically:
 - Validates the archive structure
 
 <!-- OPENSPEC:END -->
-
-## Important Reminders
-
-1. **Read before editing** - Always read existing files before modification
-2. **Use `original_index`** - For file naming across filtered phrase lists
-3. **Use `section_index`** - For mapping phrases to slides
-4. **Regenerate composition** - Always regenerate `composition.json` for scene ranges
-5. **Test with scene ranges** - Verify `--scenes N`, `--scenes N-M`, `--scenes N-`
 
 ## LLM Prompt Management
 

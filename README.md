@@ -7,6 +7,7 @@ Generate YouTube slide videos from blog URLs automatically.
 - **Content Extraction**: Fetch and parse blog content from URLs
 - **MCP Integration**: Enhanced web scraping via MCP servers (Firecrawl, etc.)
 - **AI Script Generation**: Generate video scripts using LLM (OpenRouter)
+- **Multi-Speaker Dialogue**: Random persona selection from pool for varied conversations
 - **Logo Asset Management**: Automatically download product/company logos from official sources
 - **Voice Synthesis**: Text-to-speech using VOICEVOX with pronunciation dictionary
 - **Character Animation**: Static character display with configurable positioning (Phase 1)
@@ -161,6 +162,26 @@ uv run movie-generator slides generate script.yaml --scenes 5
 # Render video from scene 2 onwards
 uv run movie-generator video render script.yaml --scenes 2-
 ```
+
+#### Random Persona Selection
+
+For multi-speaker dialogue, randomly select personas from a pool:
+
+```bash
+# Use config default (typically 2 from pool of 3)
+uv run movie-generator generate https://example.com -c config/multi-speaker.yaml
+
+# Override persona pool count (select 3 from pool)
+uv run movie-generator generate https://example.com --persona-pool-count 3
+
+# Set seed for reproducible selection (testing)
+uv run movie-generator generate https://example.com --persona-pool-seed 42
+
+# Combine both options
+uv run movie-generator script create https://example.com --persona-pool-count 2 --persona-pool-seed 42
+```
+
+See `docs/CONFIGURATION.md` for persona pool configuration details.
 
 ### MCP Integration (Optional)
 

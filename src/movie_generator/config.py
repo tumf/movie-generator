@@ -72,8 +72,15 @@ class PersonaConfig(BaseModel):
 class StyleConfig(BaseModel):
     """Visual style configuration."""
 
-    resolution: tuple[int, int] = Field(default=(1920, 1080))
+    resolution: tuple[int, int] = Field(default=(1280, 720))
     fps: int = Field(default=30, ge=1)
+    crf: int = Field(
+        default=28,
+        ge=0,
+        le=51,
+        description="Constant Rate Factor for video encoding. Lower = better quality, larger file. "
+        "Typical range: 18 (near lossless) to 28 (good compression).",
+    )
     font_family: str = Field(default="Noto Sans JP")
     primary_color: str = Field(default="#FFFFFF")
     background_color: str = Field(default="#1a1a2e")
@@ -274,6 +281,24 @@ class PronunciationConfig(BaseModel):
     custom: dict[str, PronunciationWord | str] = Field(default_factory=dict)
 
 
+class PersonaPoolConfig(BaseModel):
+    """Persona pool configuration for random selection."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable random persona selection from pool",
+    )
+    count: int = Field(
+        default=2,
+        ge=1,
+        description="Number of personas to randomly select from pool",
+    )
+    seed: int | None = Field(
+        default=None,
+        description="Random seed for reproducible selection (testing only)",
+    )
+
+
 class ProjectConfig(BaseModel):
     """Project-level configuration."""
 
@@ -294,6 +319,10 @@ class Config(BaseSettings):
     pronunciation: PronunciationConfig = Field(default_factory=PronunciationConfig)
     personas: list[PersonaConfig] = Field(
         default_factory=list, description="Persona configurations for multi-speaker dialogue"
+    )
+    persona_pool: PersonaPoolConfig | None = Field(
+        default=None,
+        description="Persona pool configuration for random selection (optional)",
     )
 
     @field_validator("personas")
@@ -382,8 +411,9 @@ def generate_default_config_yaml() -> str:
         "",
         "# Video style settings",
         "style:",
-        "  resolution: [1920, 1080]  # Video resolution (width, height)",
+        "  resolution: [1280, 720]  # Video resolution (width, height)",
         "  fps: 30  # Frames per second",
+        "  crf: 28  # Video quality (0-51, lower = better quality, larger file)",
         '  font_family: "Noto Sans JP"  # Font for text overlays',
         '  primary_color: "#FFFFFF"  # Primary text color (hex)',
         '  background_color: "#1a1a2e"  # Background color (hex)',

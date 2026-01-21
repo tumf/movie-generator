@@ -5,8 +5,9 @@ class VideoConstants:
     """Video rendering constants."""
 
     DEFAULT_FPS = 30
-    DEFAULT_WIDTH = 1920
-    DEFAULT_HEIGHT = 1080
+    DEFAULT_WIDTH = 1280
+    DEFAULT_HEIGHT = 720
+    DEFAULT_CRF = 28  # Higher = smaller file, lower quality (18-28 typical range)
 
 
 class SubtitleConstants:

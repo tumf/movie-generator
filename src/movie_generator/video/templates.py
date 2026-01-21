@@ -357,10 +357,12 @@ const CharacterLayer: React.FC<{
   };
 
   // Phase 2: Lip sync and blinking
-  // Lip sync: Toggle mouth open/closed every 0.1 seconds during speech
-  const lipSyncFrameInterval = Math.floor(fps * 0.1); // 0.1 second intervals
-  const isMouthOpen = isSpeaking && lipSyncFrameInterval > 0 &&
-    Math.floor(frame / lipSyncFrameInterval) % 2 === 0;
+  // Lip sync: Rapid mouth movement during speech for natural animation
+  // Use 2-frame intervals (0.067s at 30fps) for visible but smooth mouth movement
+  const lipSyncFrameInterval = Math.max(1, Math.floor(fps * 0.067)); // 2 frames at 30fps
+  const lipSyncCycle = Math.floor(frame / lipSyncFrameInterval) % 4; // 4-state cycle
+  // Mouth open for 3 out of 4 states (75%) during speech for more visible animation
+  const isMouthOpen = isSpeaking && (lipSyncCycle !== 1);
 
   // Blinking: Blink every 2-4 seconds for 0.2 seconds
   const blinkInterval = fps * 3; // 3 seconds between blinks

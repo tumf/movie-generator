@@ -15,7 +15,8 @@ def test_default_config() -> None:
     """Test loading default configuration."""
     config = Config()
     assert config.project.name == "My YouTube Channel"
-    assert config.style.resolution == (1920, 1080)
+    assert config.style.resolution == (1280, 720)
+    assert config.style.crf == 28
     assert config.audio.speaker_id == 3
     assert config.content.languages == ["ja"]
 

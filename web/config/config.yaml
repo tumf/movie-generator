@@ -8,19 +8,63 @@ project:
 style:
   resolution: [1920, 1080]
   fps: 30
-  animation_frames: 15
-  timing: "linear"
+  font_family: "Noto Sans JP"
+  primary_color: "#FFFFFF"
+  background_color: "#1a1a2e"
+
+audio:
+  engine: "voicevox"
+  speaker_id: 3
+  speed_scale: 1.0
 
 narration:
-  character: "friendly"
+  character: ""
   style: "casual"
-  speed: 1.0
 
-voicevox:
-  speaker_id: 3  # Default speaker (Zundamon Normal)
-  speed_scale: 1.0
-  pitch_scale: 0.0
-  intonation_scale: 1.0
+# Persona pool for random multi-speaker dialogue
+# 3 personas defined, 2 randomly selected per video generation
+personas:
+  - id: "zundamon"
+    name: "ずんだもん"
+    character: "元気で明るい東北の妖精"
+    synthesizer:
+      engine: "voicevox"
+      speaker_id: 3
+      speed_scale: 1.0
+    subtitle_color: "#8FCF4F"
+    character_image: "assets/characters/zundamon/base.png"
+    mouth_open_image: "assets/characters/zundamon/mouth_open.png"
+    eye_close_image: "assets/characters/zundamon/eye_close.png"
+    animation_style: "sway"
+  - id: "metan"
+    name: "四国めたん"
+    character: "優しくて落ち着いた四国の妖精"
+    synthesizer:
+      engine: "voicevox"
+      speaker_id: 2
+      speed_scale: 1.0
+    subtitle_color: "#FF69B4"
+    character_image: "assets/characters/shikoku-metan/base.png"
+    mouth_open_image: "assets/characters/shikoku-metan/mouth_open.png"
+    eye_close_image: "assets/characters/shikoku-metan/eye_close.png"
+    animation_style: "sway"
+  - id: "tsumugi"
+    name: "春日部つむぎ"
+    character: "明るく元気な春日部出身の女の子"
+    synthesizer:
+      engine: "voicevox"
+      speaker_id: 8
+      speed_scale: 1.0
+    subtitle_color: "#FFA07A"
+    character_image: "assets/characters/kasukabe-tsumugi/base.png"
+    mouth_open_image: "assets/characters/kasukabe-tsumugi/mouth_open.png"
+    eye_close_image: "assets/characters/kasukabe-tsumugi/eye_close.png"
+    animation_style: "bounce"
+
+persona_pool:
+  enabled: true
+  count: 2
+  seed: null  # null for random selection
 
 content:
   llm:
@@ -32,3 +76,15 @@ slides:
     provider: "openrouter"
     model: "google/gemini-3-pro-image-preview"
   style: "presentation"
+
+video:
+  renderer: "remotion"
+  template: "default"
+  output_format: "mp4"
+  transition:
+    type: "fade"
+    duration_frames: 15
+    timing: "linear"
+
+pronunciation:
+  custom: {}

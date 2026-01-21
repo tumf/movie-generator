@@ -290,6 +290,7 @@ def render_video_for_script(
     # In Docker, source_root is /app where assets/characters is located
     # In local dev, source_root is Path.cwd() which defaults to project root
     import os
+
     if os.getenv("DOCKER_ENV"):
         # Docker container: assets are at /app/assets/characters
         source_root = Path("/app")
@@ -336,6 +337,8 @@ def render_video_for_script(
         background=background_config,
         bgm=bgm_config,
         section_backgrounds=section_backgrounds,
+        crf=cfg.style.crf,
+        resolution=cfg.style.resolution,
     )
 
     if progress_callback:

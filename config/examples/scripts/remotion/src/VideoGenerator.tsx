@@ -276,8 +276,8 @@ const CharacterLayer: React.FC<{
   // Position calculation
   const getPosition = () => {
     const positions = {
-      left: { left: '-100px', bottom: '100px' },
-      right: { right: '-100px', bottom: '100px' },
+      left: { left: '-300px', bottom: '100px' },
+      right: { right: '-300px', bottom: '100px' },
       center: { left: '50%', bottom: '100px', transform: 'translateX(-50%)' },
     };
     return positions[characterPosition];
@@ -307,11 +307,12 @@ const CharacterLayer: React.FC<{
   };
 
   // Phase 2: Lip sync and blinking
-  // Lip sync: Rapid mouth movement during speech
-  // Toggle mouth state every few frames (0.033 seconds) for smoother animation
-  const lipSyncFrameInterval = Math.max(1, Math.floor(fps * 0.033)); // 1 frame at 30fps (0.033s)
-  const lipSyncState = Math.floor(frame / lipSyncFrameInterval) % 3; // 3-state cycle: open, closed, open
-  const isMouthOpen = isSpeaking && (lipSyncState === 0 || lipSyncState === 2);
+  // Lip sync: Rapid mouth movement during speech for natural animation
+  // Use 2-frame intervals (0.067s at 30fps) for visible but smooth mouth movement
+  const lipSyncFrameInterval = Math.max(1, Math.floor(fps * 0.067)); // 2 frames at 30fps
+  const lipSyncCycle = Math.floor(frame / lipSyncFrameInterval) % 4; // 4-state cycle
+  // Mouth open for 3 out of 4 states (75%) during speech for more visible animation
+  const isMouthOpen = isSpeaking && (lipSyncCycle !== 1);
 
   // Blinking: Blink every 2-4 seconds for 0.2 seconds
   const blinkInterval = fps * 3; // 3 seconds between blinks
