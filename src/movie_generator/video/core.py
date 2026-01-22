@@ -12,6 +12,7 @@ from typing import Any
 import yaml
 
 from ..config import Config, load_config
+from ..constants import ProjectPaths
 from ..project import Project
 from ..script.generator import Narration, ScriptSection, VideoScript
 from ..script.phrases import Phrase, calculate_phrase_timings
@@ -287,13 +288,13 @@ def render_video_for_script(
     project.characters_dir = output_dir / "assets" / "characters"
 
     # Copy character assets
-    # In Docker, source_root is /app where assets/characters is located
+    # In Docker, source_root is PROJECT_ROOT env var (default: /app) where assets/characters is located
     # In local dev, source_root is Path.cwd() which defaults to project root
     import os
 
     if os.getenv("DOCKER_ENV"):
-        # Docker container: assets are at /app/assets/characters
-        source_root = Path("/app")
+        # Docker container: assets are at {project_root}/assets/characters
+        source_root = ProjectPaths.get_docker_project_root()
     else:
         # Local development: assets are at project root
         source_root = Path.cwd()

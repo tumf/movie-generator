@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from ..constants import ProjectPaths
 from ..exceptions import AudioGenerationError, ConfigurationError
 from ..script.phrases import Phrase
 from ..utils.filesystem import is_valid_file
@@ -387,7 +388,9 @@ class VoicevoxSynthesizer:
         metadata_list: list[AudioMetadata] = []
 
         for phrase in phrases:
-            output_path = output_dir / f"phrase_{phrase.original_index:04d}.wav"
+            output_path = output_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+                index=phrase.original_index
+            )
 
             # Skip if audio file already exists and is not empty
             if is_valid_file(output_path):

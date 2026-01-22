@@ -11,7 +11,7 @@ from typing import Any
 
 from rich.console import Console
 
-from ..constants import SubtitleConstants, VideoConstants
+from ..constants import ProjectPaths, SubtitleConstants, VideoConstants
 from ..exceptions import RenderingError
 from ..script.phrases import Phrase
 from .renderer import CompositionPhrase
@@ -97,8 +97,10 @@ def _build_slide_map(slide_paths: list[Path]) -> dict[int, str]:
     slide_map: dict[int, str] = {}
     for slide_path in slide_paths:
         filename = slide_path.name
-        # Extract section index from filename (e.g., "slide_0003.png" -> 3)
-        if filename.startswith("slide_") and filename.endswith(".png"):
+        # Extract section index from filename using format from ProjectPaths
+        prefix = ProjectPaths.SLIDE_FILENAME_FORMAT.split("{")[0]  # "slide_"
+        suffix = ".png"
+        if filename.startswith(prefix) and filename.endswith(suffix):
             try:
                 section_index = int(filename[6:10])
                 # Determine if it's in a language subdirectory
@@ -175,11 +177,11 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
     """
     # Global cache directory for Chrome Headless Shell
     # Place it at the project root level (parent of output directories)
-    # In Docker, use /app as project root; otherwise use cwd
+    # In Docker, use PROJECT_ROOT env var or default /app; otherwise use cwd
     import os
 
     if os.getenv("DOCKER_ENV"):
-        project_root = Path("/app")
+        project_root = ProjectPaths.get_docker_project_root()
     else:
         project_root = Path.cwd()
     global_cache = project_root / ".cache" / "remotion" / "chrome-headless-shell"
@@ -590,14 +592,14 @@ def _copy_asset_to_public(asset_path: Path, remotion_root: Path, category: str) 
     """
     import shutil
 
-    # Resolve relative paths from project root (/app/)
+    # Resolve relative paths from project root (default: /app/)
     # This is necessary because in Docker environment, the working directory
-    # is the job directory (/app/data/jobs/{job_id}/), not the project root
+    # is the job directory (e.g., /app/data/jobs/{job_id}/), not the project root
     if not asset_path.is_absolute():
-        project_root = Path("/app")
+        project_root = ProjectPaths.get_docker_project_root()
         resolved_path = None
 
-        # Try /app/assets/{path} first (Docker mount: assets/ -> /app/assets/)
+        # Try {project_root}/assets/{path} first (Docker mount: assets/ -> /app/assets/)
         assets_path = project_root / "assets" / asset_path
         if assets_path.exists():
             resolved_path = assets_path
@@ -680,13 +682,13 @@ def render_video_with_remotion(
     """
     # Create symlink to assets directory from job directory
     # This is needed for Docker environment where working directory is job dir
-    # but assets are in project root (/app/assets)
+    # but assets are in project root ({project_root}/assets)
     job_dir = remotion_root.parent
     assets_symlink = job_dir / "assets"
     if not assets_symlink.exists():
         import os
 
-        project_root = Path("/app")
+        project_root = ProjectPaths.get_docker_project_root()
         assets_dir = project_root / "assets"
         if assets_dir.exists():
             os.symlink(assets_dir, assets_symlink)
