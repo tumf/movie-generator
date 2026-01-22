@@ -22,6 +22,7 @@ async def generate_slides_for_script(
     max_concurrent: int = 2,
     scenes: tuple[int | None, int | None] | None = None,
     progress_callback: Callable[[int, int, str], None] | None = None,
+    resolution: tuple[int, int] | None = None,
 ) -> list[Path]:
     """Generate slide images from script.yaml.
 
@@ -170,6 +171,7 @@ async def generate_slides_for_script(
         max_concurrent=max_concurrent,
         section_indices=slide_indices,
         language=language,
+        resolution=resolution or (1280, 720),
     )
 
     # Count successful slides

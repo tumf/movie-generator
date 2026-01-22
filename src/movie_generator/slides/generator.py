@@ -19,8 +19,8 @@ async def download_and_process_image(
     *,
     url: str,
     output_path: Path,
-    target_width: int = 1920,
-    target_height: int = 1080,
+    target_width: int = 1280,
+    target_height: int = 720,
     min_width: int = 800,
     min_height: int = 600,
 ) -> Path:
@@ -88,6 +88,7 @@ async def _download_or_generate_slide(
     output_path: Path,
     api_key: str,
     model: str,
+    resolution: tuple[int, int] = (1280, 720),
 ) -> Path:
     """Try to download source image, fallback to AI generation on failure.
 
@@ -102,12 +103,22 @@ async def _download_or_generate_slide(
         Path to generated/downloaded slide.
     """
     try:
-        return await download_and_process_image(url=source_url, output_path=output_path)
+        return await download_and_process_image(
+            url=source_url,
+            output_path=output_path,
+            target_width=resolution[0],
+            target_height=resolution[1],
+        )
     except (httpx.HTTPError, ValueError, Exception) as e:
         print(f"⚠ Failed to download image from {source_url}: {e}")
         print("  ⟳ Falling back to AI generation...")
         return await generate_slide(
-            prompt=prompt, output_path=output_path, api_key=api_key, model=model
+            prompt=prompt,
+            output_path=output_path,
+            api_key=api_key,
+            model=model,
+            width=resolution[0],
+            height=resolution[1],
         )
 
 
@@ -120,8 +131,8 @@ async def generate_slide(
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
     model: str = "google/gemini-3-pro-image-preview",
     base_url: str = "https://openrouter.ai/api/v1",
-    width: int = 1920,
-    height: int = 1080,
+    width: int = 1280,
+    height: int = 720,
     max_retries: int = 3,
     retry_delay: float = 2.0,
 ) -> Path:
@@ -263,6 +274,7 @@ async def generate_slides_for_sections(
     model: str = "google/gemini-3-pro-image-preview",
     max_concurrent: int = 3,
     section_indices: list[int] | None = None,
+    resolution: tuple[int, int] = (1280, 720),
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.
 
@@ -323,12 +335,18 @@ async def generate_slides_for_sections(
                             output_path=output_path,
                             api_key=api_key,
                             model=model,
+                            resolution=resolution,
                         )
                     )
                 else:
                     # No fallback, just download
                     tasks_to_run.append(
-                        download_and_process_image(url=source_image_url, output_path=output_path)
+                        download_and_process_image(
+                            url=source_image_url,
+                            output_path=output_path,
+                            target_width=resolution[0],
+                            target_height=resolution[1],
+                        )
                     )
             elif prompt:
                 print(f"→ Slide {i:02d}/{len(sections) - 1} queued (generate): {title[:40]}...")
@@ -338,6 +356,8 @@ async def generate_slides_for_sections(
                         output_path=output_path,
                         api_key=api_key,
                         model=model,
+                        width=resolution[0],
+                        height=resolution[1],
                     )
                 )
             else:

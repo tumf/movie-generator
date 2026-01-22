@@ -56,7 +56,7 @@ def create_composition(
     slide_paths: list[Path],
     audio_paths: list[Path],
     fps: int = 30,
-    resolution: tuple[int, int] = (1920, 1080),
+    resolution: tuple[int, int] = (1280, 720),
     transition: dict[str, Any] | None = None,
 ) -> CompositionData:
     """Create composition data for Remotion.
@@ -163,8 +163,8 @@ def render_video(
     audio_files = composition.get("audio_files", [])
     slides = composition.get("slides", [])
     fps = composition.get("fps", 30)
-    width = composition.get("width", 1920)
-    height = composition.get("height", 1080)
+    width = composition.get("width", 1280)
+    height = composition.get("height", 720)
 
     if not audio_files:
         print("Warning: No audio files found, creating placeholder video")

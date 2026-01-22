@@ -513,11 +513,15 @@ class MovieGeneratorWrapper:
                     logger.debug(f"Slides progress: {current}/{total}")
 
                 try:
+                    # Load config to get resolution
+                    movie_config = create_default_movie_config(self.config.config_path)
+
                     await generate_slides_for_script(
                         script_path=script_path,
                         output_dir=job_dir,
                         api_key=api_key,
                         progress_callback=slides_progress,
+                        resolution=movie_config.style.resolution,
                     )
                 except Exception as e:
                     logger.error(f"Slide generation failed: {e}", exc_info=True)

@@ -6,7 +6,7 @@ project:
   output_dir: "./output"
 
 style:
-  resolution: [1920, 1080]
+  resolution: [1280, 720]
   fps: 30
   font_family: "Noto Sans JP"
   primary_color: "#FFFFFF"
