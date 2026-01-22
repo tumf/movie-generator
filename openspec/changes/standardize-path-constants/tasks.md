@@ -8,4 +8,4 @@
 - [x] 2.1 `uv run pytest -k "slide" -v` が成功することを確認する
 
 ## Acceptance #1 Failure Follow-up
-- [ ] Commit all modified files: openspec/changes/standardize-path-constants/tasks.md, src/movie_generator/audio/voicevox.py, src/movie_generator/constants.py, src/movie_generator/slides/generator.py, src/movie_generator/video/core.py, src/movie_generator/video/remotion_renderer.py, web/worker/main.py
+- [x] Commit all modified files: openspec/changes/standardize-path-constants/tasks.md, src/movie_generator/audio/voicevox.py, src/movie_generator/constants.py, src/movie_generator/slides/generator.py, src/movie_generator/video/core.py, src/movie_generator/video/remotion_renderer.py, web/worker/main.py
