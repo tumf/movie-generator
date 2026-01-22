@@ -594,13 +594,21 @@ def _copy_asset_to_public(asset_path: Path, remotion_root: Path, category: str) 
     # This is necessary because in Docker environment, the working directory
     # is the job directory (/app/data/jobs/{job_id}/), not the project root
     if not asset_path.is_absolute():
-        # Try project root first
         project_root = Path("/app")
-        resolved_path = project_root / asset_path
+        resolved_path = None
 
-        # If not found in project root, try current working directory
-        if not resolved_path.exists():
-            resolved_path = Path.cwd() / asset_path
+        # Try /app/assets/{path} first (Docker mount: assets/ -> /app/assets/)
+        assets_path = project_root / "assets" / asset_path
+        if assets_path.exists():
+            resolved_path = assets_path
+        else:
+            # Try project root directly
+            root_path = project_root / asset_path
+            if root_path.exists():
+                resolved_path = root_path
+            else:
+                # Fallback to current working directory
+                resolved_path = Path.cwd() / asset_path
 
         asset_path = resolved_path
 
