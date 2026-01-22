@@ -631,7 +631,8 @@ class Worker:
         # Keep current progress when resuming, start at 0 for new jobs
         update_data = {
             "status": "processing",
-            "started_at": job.get("started_at") or datetime.now(UTC).isoformat() + "Z",
+            "started_at": job.get("started_at")
+            or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             "progress_message": "再開中..." if is_resumed else "開始中...",
         }
         # Only set progress to 0 for new jobs
@@ -666,7 +667,7 @@ class Worker:
                     "progress": 100,
                     "video_path": str(video_path),
                     "video_size": video_size,
-                    "completed_at": datetime.now(UTC).isoformat() + "Z",
+                    "completed_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                 },
             )
 
@@ -681,7 +682,7 @@ class Worker:
                 {
                     "status": "failed",
                     "error_message": str(e),
-                    "completed_at": datetime.now(UTC).isoformat() + "Z",
+                    "completed_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                 },
             )
 
@@ -753,7 +754,7 @@ class Worker:
                         {
                             "status": "failed",
                             "error_message": "Job was interrupted by worker restart",
-                            "completed_at": datetime.now(UTC).isoformat() + "Z",
+                            "completed_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
                         },
                     )
 

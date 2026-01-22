@@ -66,6 +66,9 @@ temp/
 *.wav
 *.webm
 
+# Assets (mounted at runtime)
+assets/
+
 # OpenSpec (development only)
 openspec/
 openspec-archive/

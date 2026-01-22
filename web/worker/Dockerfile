@@ -81,26 +81,15 @@ RUN npm init -y \
     && npm install remotion@4.0.234 @remotion/cli@4.0.234 \
     && echo "Remotion dependencies installed"
 
-# Copy movie-generator source code and assets from parent directory
+# Copy movie-generator source code (assets are mounted at runtime)
 COPY . /app/
-RUN echo "Copied source code and assets"
+RUN echo "Copied source code"
 
-# Verify and copy all assets
-RUN echo "Setting up assets..." \
-    && ls -la /app/assets/ \
-    && cp -r /app/assets/backgrounds /app/backgrounds || echo "No backgrounds" \
-    && cp -r /app/assets/bgm /app/bgm || echo "No BGM" \
-    && cp -r /app/assets/characters /app/characters || echo "No characters" \
-    && echo "Assets setup complete"
+# Create directories for mounted assets
+RUN mkdir -p /app/assets /app/backgrounds /app/bgm /app/characters
 
-# Copy VOICEVOX assets if available (directory must exist and have files)
-RUN mkdir -p /opt/voicevox \
-    && if [ -d "/app/assets/voicevox" ] && [ "$(ls -A /app/assets/voicevox 2>/dev/null)" ]; then \
-        echo "Copying VOICEVOX from project assets"; \
-        cp -r /app/assets/voicevox/* /opt/voicevox/; \
-    else \
-        echo "VOICEVOX assets not found in project - will use mounted volume"; \
-    fi
+# VOICEVOX assets will be mounted at runtime
+RUN mkdir -p /opt/voicevox
 
 # Create cache directory and link Chrome from global cache
 RUN mkdir -p /app/.cache/remotion \
