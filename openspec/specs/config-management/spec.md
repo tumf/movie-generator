@@ -725,3 +725,19 @@ The system SHALL support specific file formats for background and BGM.
 - **GIVEN** the BGM path has one of `.mp3`, `.wav`, `.m4a` extensions
 - **WHEN** the configuration is loaded
 - **THEN** the file format is accepted as valid
+
+### Requirement: Unified Slide Generation Retry Configuration
+
+The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants (SHALL).
+
+#### Scenario: Refer to Retry Constants
+
+- **WHEN** performing retry processing in slide generation
+- **THEN** reference constants from `RetryConfig`
+
+### Requirement: スライド生成リトライ設定の統一
+システムは、スライド生成のリトライ回数・遅延・バックオフ係数を共通定数から取得しなければならない（SHALL）。
+
+#### Scenario: リトライ定数の参照
+- **WHEN** スライド生成でリトライ処理を行う
+- **THEN** `RetryConfig` の定数を参照する
