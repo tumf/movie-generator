@@ -128,9 +128,7 @@ async def generate_slide(
     prompt: str,
     output_path: Path,
     api_key: str,
-    # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
-    # Do NOT use gemini-2.5-flash-image-preview or any other model.
-    model: str = "google/gemini-3-pro-image-preview",
+    model: str,
     base_url: str = "https://openrouter.ai/api/v1",
     width: int = 1280,
     height: int = 720,
@@ -269,10 +267,8 @@ async def generate_slides_for_sections(
     sections: Sequence[tuple[str, str] | tuple[str, str, str | None]],
     output_dir: Path,
     api_key: str,
+    model: str,
     language: str = "ja",
-    # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
-    # Do NOT use gemini-2.5-flash-image-preview or any other model.
-    model: str = "google/gemini-3-pro-image-preview",
     max_concurrent: int = 3,
     section_indices: list[int] | None = None,
     resolution: tuple[int, int] = (1280, 720),

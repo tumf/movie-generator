@@ -129,8 +129,8 @@ class VoicevoxSynthesizer:
     async def prepare_phrases_with_llm(
         self,
         phrases: list[Phrase],
+        model: str,
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
     ) -> dict[str, str]:
         """Prepare dictionary entries using morphological analysis and LLM.
 
@@ -155,7 +155,7 @@ class VoicevoxSynthesizer:
         # Collect all texts
         texts = [p.text for p in phrases if p.text and p.text.strip()]
 
-        return await self._prepare_texts_with_llm_internal(texts, api_key, model)
+        return await self._prepare_texts_with_llm_internal(texts, model, api_key)
 
     def prepare_texts(self, texts: list[str]) -> int:
         """Prepare dictionary entries from texts using morphological analysis.
@@ -193,8 +193,8 @@ class VoicevoxSynthesizer:
     async def prepare_texts_with_llm(
         self,
         texts: list[str],
+        model: str,
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
     ) -> dict[str, str]:
         """Prepare dictionary entries using morphological analysis and LLM.
 
@@ -213,13 +213,13 @@ class VoicevoxSynthesizer:
         if generator is None:
             return {}
 
-        return await self._prepare_texts_with_llm_internal(texts, api_key, model)
+        return await self._prepare_texts_with_llm_internal(texts, model, api_key)
 
     async def _prepare_texts_with_llm_internal(
         self,
         texts: list[str],
+        model: str,
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
     ) -> dict[str, str]:
         """Internal implementation for LLM-based pronunciation preparation.
 
@@ -256,8 +256,8 @@ class VoicevoxSynthesizer:
             llm_readings = await generate_readings_with_llm(
                 words=words_needing_pronunciation,
                 context=context,
-                api_key=api_key,
                 model=model,
+                api_key=api_key,
             )
 
             if not llm_readings:
