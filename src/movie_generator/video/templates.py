@@ -560,17 +560,23 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
       </TransitionSeries>
 
       {/* Character layers - persistent display for each persona */}
-      {personas.map((persona: any) => (
-        <CharacterLayer
-          key={`character-${persona.id}`}
-          characterImage={persona.character_image}
-          characterPosition={persona.character_position || 'left'}
-          mouthOpenImage={persona.mouth_open_image}
-          eyeCloseImage={persona.eye_close_image}
-          animationStyle={persona.animation_style || 'sway'}
-          isSpeaking={isPersonaSpeaking(persona.id)}
-        />
-      ))}
+      {personas.map((persona: any, index: number) => {
+        // Fallback position assignment if not configured
+        const positions = ['left', 'right', 'center'];
+        const fallbackPosition = positions[Math.min(index, positions.length - 1)];
+        
+        return (
+          <CharacterLayer
+            key={`character-${persona.id}`}
+            characterImage={persona.character_image}
+            characterPosition={persona.character_position || fallbackPosition}
+            mouthOpenImage={persona.mouth_open_image}
+            eyeCloseImage={persona.eye_close_image}
+            animationStyle={persona.animation_style || 'sway'}
+            isSpeaking={isPersonaSpeaking(persona.id)}
+          />
+        );
+      })}
 
       {/* Audio and subtitle layer - changes with each phrase */}
       {scenes.map((scene) => (

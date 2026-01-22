@@ -387,15 +387,24 @@ def update_composition_json(
         # Convert asset paths in personas to be relative to public/
         # Auto-assign character_position only if not configured
         converted_personas = []
-        for persona in personas:
+        for i, persona in enumerate(personas):
             persona_copy = persona.copy()
+
+            # CRITICAL: Always ensure character_position is set
             # Use config's character_position if set, otherwise use auto-assigned position
             if (
                 "character_position" not in persona_copy
                 or persona_copy["character_position"] is None
             ):
-                if persona["id"] in persona_position_map:
-                    persona_copy["character_position"] = persona_position_map[persona["id"]]
+                # Auto-assign position based on persona order
+                persona_id = persona["id"]
+                if persona_id in persona_position_map:
+                    persona_copy["character_position"] = persona_position_map[persona_id]
+                else:
+                    # Fallback: assign based on index
+                    positions = ["left", "right", "center"]
+                    persona_copy["character_position"] = positions[min(i, len(positions) - 1)]
+
             if "character_image" in persona_copy and persona_copy["character_image"] is not None:
                 persona_copy["character_image"] = _convert_to_public_path(
                     persona_copy["character_image"]
