@@ -81,11 +81,11 @@ def create_default_movie_config(config_path: Path | None = None) -> "MovieConfig
         # NOTE: Paths must be absolute for validation
         config.video.background = BackgroundConfig(
             type="video",
-            path="/app/backgrounds/default-background.mp4",
+            path="/app/assets/backgrounds/default-background.mp4",
             fit="cover",
         )
         config.video.bgm = BgmConfig(
-            path="/app/bgm/default-bgm.noart.mp3",
+            path="/app/assets/bgm/default-bgm.noart.mp3",
             volume=0.15,  # Low volume to not overpower narration
             fade_in_seconds=2.0,
             fade_out_seconds=2.0,
@@ -125,14 +125,14 @@ def create_default_movie_config(config_path: Path | None = None) -> "MovieConfig
     # NOTE: Path must be absolute for BackgroundConfig validation
     default_background = BackgroundConfig(
         type="video",
-        path="/app/backgrounds/default-background.mp4",
+        path="/app/assets/backgrounds/default-background.mp4",
         fit="cover",
     )
 
     # Default BGM
     # NOTE: Path must be absolute for BgmConfig validation
     default_bgm = BgmConfig(
-        path="/app/bgm/default-bgm.noart.mp3",
+        path="/app/assets/bgm/default-bgm.noart.mp3",
         volume=0.15,  # Low volume to not overpower narration
         fade_in_seconds=2.0,
         fade_out_seconds=2.0,
