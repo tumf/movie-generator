@@ -20,7 +20,9 @@ class TestPersonaConfigCharacterFields:
             synthesizer=VoicevoxSynthesizerConfig(speaker_id=3),
         )
         assert persona.character_image is None
-        assert persona.character_position == "left"
+        # character_position defaults to None for auto-assignment
+        # (first persona -> left, second -> right, third+ -> center)
+        assert persona.character_position is None
         assert persona.mouth_open_image is None
         assert persona.eye_close_image is None
         assert persona.animation_style == "sway"
@@ -279,3 +281,85 @@ class TestAnimationStylePhase3:
             animation_style="static",
         )
         assert persona.animation_style == "static"
+
+
+class TestPositionAutoAssignment:
+    """Tests for character position auto-assignment.
+
+    When character_position is not explicitly set in config, positions should be
+    auto-assigned based on persona order:
+    - 1st persona -> left
+    - 2nd persona -> right
+    - 3rd+ persona -> center
+
+    This prevents the bug where all personas defaulted to "left".
+    """
+
+    def test_position_defaults_to_none_for_auto_assignment(self) -> None:
+        """Test character_position defaults to None to enable auto-assignment."""
+        persona = PersonaConfig(
+            id="test",
+            name="Test",
+            synthesizer=VoicevoxSynthesizerConfig(speaker_id=3),
+        )
+        # Default must be None, NOT "left"
+        # This allows update_composition_json to auto-assign based on order
+        assert persona.character_position is None
+
+    def test_position_excluded_from_model_dump_when_none(self) -> None:
+        """Test character_position is excluded from model_dump when None."""
+        persona = PersonaConfig(
+            id="test",
+            name="Test",
+            synthesizer=VoicevoxSynthesizerConfig(speaker_id=3),
+        )
+        data = persona.model_dump(exclude_none=True)
+        # Should NOT have character_position key when it's None
+        assert "character_position" not in data
+
+    def test_multi_persona_auto_position_assignment(self) -> None:
+        """Test that multiple personas get different auto-assigned positions."""
+        import json
+        import tempfile
+
+        from movie_generator.video.remotion_renderer import update_composition_json
+
+        # Create personas WITHOUT explicit position (simulating real config)
+        personas = [
+            {"id": "persona1", "name": "First"},
+            {"id": "persona2", "name": "Second"},
+            {"id": "persona3", "name": "Third"},
+        ]
+
+        # Create phrases using different personas
+        phrases = [
+            Phrase(text="A", reading="A", duration=1.0, start_time=0.0),
+            Phrase(text="B", reading="B", duration=1.0, start_time=1.0),
+            Phrase(text="C", reading="C", duration=1.0, start_time=2.0),
+        ]
+        phrases[0].persona_id = "persona1"
+        phrases[1].persona_id = "persona2"
+        phrases[2].persona_id = "persona3"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            remotion_root = Path(tmpdir)
+            (remotion_root / "public").mkdir()
+
+            update_composition_json(
+                remotion_root=remotion_root,
+                phrases=phrases,
+                audio_paths=[Path(f"audio/phrase_{i:04d}.wav") for i in range(3)],
+                slide_paths=None,
+                project_name="test",
+                personas=personas,
+            )
+
+            with open(remotion_root / "composition.json") as f:
+                data = json.load(f)
+
+            # Verify each persona gets a DIFFERENT position
+            positions = [p.get("character_position") for p in data["personas"]]
+            assert positions == ["left", "right", "center"], (
+                f"Expected ['left', 'right', 'center'], got {positions}. "
+                "Position auto-assignment is broken!"
+            )

@@ -39,8 +39,8 @@ class PersonaConfig(BaseModel):
         default=None,
         description="Path to character base image (mouth closed, eyes open)",
     )
-    character_position: Literal["left", "right", "center"] = Field(
-        default="left",
+    character_position: Literal["left", "right", "center"] | None = Field(
+        default=None,
         description=(
             "Character display position on screen. "
             "If not set, auto-assigned based on persona order: "
