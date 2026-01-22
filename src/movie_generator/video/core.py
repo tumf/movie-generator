@@ -305,8 +305,13 @@ def render_video_for_script(
         progress_callback(40, 100, "Rendering video with Remotion...")
 
     # Prepare personas for rendering
+    # CRITICAL: Only include personas that are actually used in the script
     personas_for_render = None
     if cfg.personas:
+        # Collect unique persona_ids used in the script
+        used_persona_ids = {phrase.persona_id for phrase in all_phrases if phrase.persona_id}
+
+        # Filter personas to only those used in the script
         personas_for_render = [
             p.model_dump(
                 include={
@@ -322,6 +327,7 @@ def render_video_for_script(
                 exclude_none=True,
             )
             for p in cfg.personas
+            if p.id in used_persona_ids
         ]
 
     # Render video
