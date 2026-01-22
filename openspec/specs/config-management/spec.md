@@ -725,3 +725,11 @@ The system SHALL support specific file formats for background and BGM.
 - **GIVEN** the BGM path has one of `.mp3`, `.wav`, `.m4a` extensions
 - **WHEN** the configuration is loaded
 - **THEN** the file format is accepted as valid
+
+### Requirement: LLMベースURLの設定
+システムは、LLM呼び出しのベースURLを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: ベースURLの指定
+- **GIVEN** `content.llm.base_url` と `slides.llm.base_url` が設定されている
+- **WHEN** LLM呼び出しが実行される
+- **THEN** 指定されたベースURLが使用される
