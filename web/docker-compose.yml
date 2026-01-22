@@ -62,6 +62,9 @@ services:
     volumes:
       - ./data/jobs:/app/data/jobs
       - ../assets:/app/assets:ro  # Mount assets directory
+      - ../assets/backgrounds:/app/backgrounds:ro
+      - ../assets/bgm:/app/bgm:ro
+      - ../assets/characters:/app/characters:ro
       - ~/.local/share/voicevox:/opt/voicevox:ro  # Mount local VOICEVOX
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
