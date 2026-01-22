@@ -48,11 +48,13 @@ content:
   llm:
     provider: "openrouter"
     model: "gemini-3-pro"
+    base_url: "https://openrouter.ai/api/v1"
 
 slides:
   llm:
     provider: "openrouter"
     model: "google/gemini-3-pro-image-preview" # Image generation model
+    base_url: "https://openrouter.ai/api/v1"
   style: "presentation" # presentation, illustration, minimal
 
 video:
