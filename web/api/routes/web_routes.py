@@ -68,8 +68,13 @@ def calculate_elapsed_time(job: dict[str, Any]) -> str | None:
         else:
             return None
     elif job.get("status") == "failed":
+        # Use completed_at (set when job failed) to stop the timer
         started = parse_datetime(job.get("started_at"))
-        if started:
+        completed = parse_datetime(job.get("completed_at"))
+        if started and completed:
+            delta = completed - started
+        elif started:
+            # Fallback if completed_at not set
             delta = now - started
         else:
             return None
