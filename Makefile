@@ -2,8 +2,8 @@
 
 # Version management
 bump-patch:
-	uv run hatch version patch
-	git add pyproject.toml
+	uvx hatch version patch
+	git add src/movie_generator/__init__.py
 	git commit -m "chore: bump version"
 
 # Hook for conflux on_merged

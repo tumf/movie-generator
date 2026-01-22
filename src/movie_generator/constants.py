@@ -59,3 +59,26 @@ class TimingConstants:
 
     DEFAULT_TRANSITION_DURATION_FRAMES = 15  # 0.5s at 30fps
     DEFAULT_SLIDE_MIN_DURATION = 2.0  # seconds
+
+
+class TimeoutConstants:
+    """Timeout values for various operations (in seconds).
+
+    These constants consolidate timeout settings across the codebase
+    to enable consistent adjustments for different environments
+    (production, testing, etc.).
+    """
+
+    # HTTP/Network operations
+    HTTP_DEFAULT = 30.0  # Default HTTP request timeout
+    HTTP_EXTENDED = 180.0  # Extended timeout for large content (e.g., long articles)
+    HTTP_IMAGE_GENERATION = 120.0  # Image generation requests
+
+    # MCP protocol operations
+    MCP_DEFAULT = 30.0  # Default MCP request timeout
+
+    # Asset downloads
+    ASSET_DOWNLOAD = 30.0  # Logo/asset download timeout
+
+    # Video rendering
+    VIDEO_RENDER_DOWNLOAD = 300.0  # Remotion bundle download (5 minutes)

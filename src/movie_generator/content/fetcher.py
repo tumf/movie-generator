@@ -3,11 +3,12 @@
 Fetches HTML/Markdown content from web URLs.
 """
 
-
 import httpx
 
+from ..constants import TimeoutConstants
 
-async def fetch_url(url: str, timeout: float = 30.0) -> str:
+
+async def fetch_url(url: str, timeout: float = TimeoutConstants.HTTP_DEFAULT) -> str:
     """Fetch content from a URL.
 
     Args:
@@ -26,7 +27,7 @@ async def fetch_url(url: str, timeout: float = 30.0) -> str:
         return response.text
 
 
-def fetch_url_sync(url: str, timeout: float = 30.0) -> str:
+def fetch_url_sync(url: str, timeout: float = TimeoutConstants.HTTP_DEFAULT) -> str:
     """Fetch content from a URL (synchronous version).
 
     Args:

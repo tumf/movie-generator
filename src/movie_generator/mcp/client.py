@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from ..constants import TimeoutConstants
 from ..exceptions import ConfigurationError, MCPError
 from .config import MCPConfig, MCPServerConfig
 
@@ -132,7 +133,9 @@ class MCPClient:
         self._request_id += 1
         return self._request_id
 
-    async def _send_request(self, request: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
+    async def _send_request(
+        self, request: dict[str, Any], timeout: float = TimeoutConstants.MCP_DEFAULT
+    ) -> dict[str, Any]:
         """Send a JSON-RPC request and get response.
 
         Args:
@@ -205,7 +208,10 @@ class MCPClient:
             continue
 
     async def call_tool(
-        self, tool_name: str, arguments: dict[str, Any], timeout: float = 30.0
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        timeout: float = TimeoutConstants.MCP_DEFAULT,
     ) -> dict[str, Any]:
         """Call a tool on the MCP server.
 

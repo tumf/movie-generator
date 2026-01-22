@@ -9,6 +9,8 @@ from typing import Any
 import httpx
 from pydantic import BaseModel
 
+from ..constants import TimeoutConstants
+
 
 class Narration(BaseModel):
     """A single narration line, optionally with persona information."""
@@ -908,7 +910,7 @@ async def generate_script(
         "max_tokens": 16000,  # Ensure sufficient output for complete scripts
     }
 
-    async with httpx.AsyncClient(timeout=180.0) as client:  # Extended for long articles
+    async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_EXTENDED) as client:
         url = f"{base_url}/chat/completions"
         response = await client.post(url, headers=headers, json=payload)
         if response.status_code != 200:
