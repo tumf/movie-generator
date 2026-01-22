@@ -43,9 +43,8 @@ class PersonaConfig(BaseModel):
         default="left",
         description=(
             "Character display position on screen. "
-            "NOTE: This field is auto-assigned based on persona order during rendering. "
-            "First persona -> left, second -> right, third+ -> center. "
-            "Manual values in config are ignored."
+            "If not set, auto-assigned based on persona order: "
+            "first persona -> left, second -> right, third+ -> center."
         ),
     )
     mouth_open_image: str | None = Field(

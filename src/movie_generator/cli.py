@@ -4,6 +4,7 @@ Command-line interface for generating YouTube videos from blog URLs.
 """
 
 import asyncio
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ import yaml
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from .audio.core import validate_persona_ids
 from .audio.voicevox import create_synthesizer_from_config
 from .config import (
     Config,
@@ -30,6 +32,7 @@ from .utils.filesystem import is_valid_file  # type: ignore[import]
 from .video.remotion_renderer import render_video_with_remotion
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -192,6 +195,12 @@ def cli() -> None:
     type=int,
     help="Random seed for reproducible persona selection (testing only)",
 )
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Enable strict persona validation (fail if persona_id mismatch)",
+)
 def generate(
     url_or_script: str | None,
     config: Path | None,
@@ -202,6 +211,7 @@ def generate(
     show_progress: bool,
     persona_pool_count: int | None,
     persona_pool_seed: int | None,
+    strict: bool,
 ) -> None:
     """Generate video from URL or existing script.yaml.
 
@@ -215,6 +225,7 @@ def generate(
         show_progress: Show real-time rendering progress.
         persona_pool_count: Override persona pool count from config.
         persona_pool_seed: Random seed for reproducible persona selection.
+        strict: Enable strict persona validation (fail if persona_id mismatch).
     """
     # Load configuration
     cfg = load_config(config) if config else Config()
@@ -523,10 +534,16 @@ def generate(
                     onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
                 )
 
+            # Debug: Log available synthesizers
+            logger.debug(f"Available synthesizers: {list(synthesizers.keys())}")
+
+            # Validate persona_ids before synthesis (strict mode for strict persona enforcement)
+            validate_persona_ids(all_phrases, synthesizers, strict=strict)
+
             # Synthesize audio per persona
             audio_dir = output_dir / "audio"
             audio_paths = []
-            metadata_list = []
+            metadata_list: list[Any] = []
             existing_audio_count = 0
 
             for phrase in all_phrases:
@@ -556,9 +573,18 @@ def generate(
                 # Get appropriate synthesizer
                 if persona_id and persona_id in synthesizers:
                     persona_synthesizer = synthesizers[persona_id]
+                    logger.debug(f"Using synthesizer for persona_id: {persona_id}")
                 else:
-                    # Fallback to first persona if no persona_id specified
-                    persona_synthesizer = next(iter(synthesizers.values()))
+                    fallback_id = next(iter(synthesizers.keys()))
+                    persona_synthesizer = synthesizers[fallback_id]
+                    if persona_id:
+                        logger.warning(
+                            f"persona_id '{persona_id}' not found in synthesizers. "
+                            f"Falling back to '{fallback_id}'. "
+                            f"Available: {list(synthesizers.keys())}"
+                        )
+                    else:
+                        logger.debug(f"No persona_id specified, using fallback: {fallback_id}")
 
                 # Synthesize single phrase
                 phrase_paths, phrase_metadata = persona_synthesizer.synthesize_phrases(
@@ -766,7 +792,6 @@ def generate(
         # Render video with Remotion
         task = progress.add_task("Rendering video with Remotion...", total=None)
         # Prepare personas for Remotion if defined
-        # Note: character_position is auto-assigned in remotion_renderer, not from config
         personas_for_render = None
         if cfg.personas:
             personas_for_render = [
@@ -776,7 +801,7 @@ def generate(
                         "name",
                         "subtitle_color",
                         "character_image",
-                        # character_position is excluded - it's auto-assigned by order
+                        "character_position",
                         "mouth_open_image",
                         "eye_close_image",
                         "animation_style",
@@ -800,6 +825,7 @@ def generate(
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
             crf=cfg.style.crf,
+            fps=cfg.style.fps,
             resolution=cfg.style.resolution,
         )
         progress.update(task, completed=True)
@@ -1100,6 +1126,12 @@ def audio() -> None:
     type=str,
     help="Scene range to generate audio for (e.g., '1-3')",
 )
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Enable strict persona validation (fail if persona_id mismatch)",
+)
 @click.option("--speaker-id", type=int, help="VOICEVOX speaker ID (override config)")
 @click.option(
     "--allow-placeholder",
@@ -1113,6 +1145,7 @@ def generate_audio_cmd(
     scenes: str | None,
     speaker_id: int | None,
     allow_placeholder: bool,
+    strict: bool,
     force: bool,
     quiet: bool,
     verbose: bool,
@@ -1123,9 +1156,13 @@ def generate_audio_cmd(
     Reads the script, splits narrations into phrases, and synthesizes
     audio using VOICEVOX. Saves audio files to audio/ directory.
 
+    --strict flag: Enable strict persona validation (fail if persona_id mismatch).
+                   If unknown persona_id is found, raises ValueError.
+
     Example:
         movie-generator audio generate script.yaml
         movie-generator audio generate script.yaml --scenes 1-3
+        movie-generator audio generate script.yaml --strict
     """
     # Validate mutually exclusive options
     if quiet and verbose:
@@ -1295,6 +1332,12 @@ def generate_audio_cmd(
                     onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
                 )
 
+            # Debug: Log available synthesizers
+            logger.debug(f"Available synthesizers: {list(synthesizers.keys())}")
+
+            # Validate persona_ids before synthesis (strict mode for strict persona enforcement)
+            validate_persona_ids(all_phrases, synthesizers, strict=strict)
+
             # Synthesize audio per persona
             audio_paths = []
             existing_audio_count = 0
@@ -1323,8 +1366,18 @@ def generate_audio_cmd(
                 # Get appropriate synthesizer
                 if persona_id and persona_id in synthesizers:
                     persona_synthesizer = synthesizers[persona_id]
+                    logger.debug(f"Using synthesizer for persona_id: {persona_id}")
                 else:
-                    persona_synthesizer = next(iter(synthesizers.values()))
+                    fallback_id = next(iter(synthesizers.keys()))
+                    persona_synthesizer = synthesizers[fallback_id]
+                    if persona_id:
+                        logger.warning(
+                            f"persona_id '{persona_id}' not found in synthesizers. "
+                            f"Falling back to '{fallback_id}'. "
+                            f"Available: {list(synthesizers.keys())}"
+                        )
+                    else:
+                        logger.debug(f"No persona_id specified, using fallback: {fallback_id}")
 
                 # Synthesize single phrase
                 phrase_paths, phrase_metadata = persona_synthesizer.synthesize_phrases(
@@ -1936,6 +1989,7 @@ def render_video_cmd(
                         "name",
                         "subtitle_color",
                         "character_image",
+                        "character_position",
                         "mouth_open_image",
                         "eye_close_image",
                         "animation_style",
@@ -1959,6 +2013,7 @@ def render_video_cmd(
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
             crf=cfg.style.crf,
+            fps=cfg.style.fps,
             resolution=cfg.style.resolution,
         )
         progress.update(task, completed=True)

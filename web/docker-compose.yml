@@ -4,7 +4,7 @@ services:
     container_name: movie-generator-pocketbase
     restart: unless-stopped
     volumes:
-      - pb_data:/pb_data
+      - ./pocketbase/pb_data:/pb_data
       - ./pocketbase/pb_migrations:/pb_migrations
     ports:
       - "8090:8090"
@@ -29,7 +29,7 @@ services:
       pocketbase:
         condition: service_healthy
     volumes:
-      - output_data:/app/data/jobs
+      - ./data/jobs:/app/data/jobs
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
@@ -58,7 +58,7 @@ services:
       pocketbase:
         condition: service_healthy
     volumes:
-      - output_data:/app/data/jobs
+      - ./data/jobs:/app/data/jobs
       - ~/.local/share/voicevox:/opt/voicevox:ro  # Mount local VOICEVOX (opt)
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
@@ -72,12 +72,6 @@ services:
       - CONFIG_PATH=/app/web/config/config.yaml
     networks:
       - movie-generator-network
-
-volumes:
-  pb_data:
-    driver: local
-  output_data:
-    driver: local
 
 networks:
   movie-generator-network:

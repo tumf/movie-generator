@@ -314,6 +314,7 @@ def render_video_for_script(
                     "name",
                     "subtitle_color",
                     "character_image",
+                    "character_position",
                     "mouth_open_image",
                     "eye_close_image",
                     "animation_style",
@@ -338,6 +339,7 @@ def render_video_for_script(
         bgm=bgm_config,
         section_backgrounds=section_backgrounds,
         crf=cfg.style.crf,
+        fps=cfg.style.fps,
         resolution=cfg.style.resolution,
     )
 

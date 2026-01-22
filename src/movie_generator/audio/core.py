@@ -4,6 +4,7 @@ Provides library functions for audio synthesis that can be called
 directly by worker processes or other Python code, without CLI overhead.
 """
 
+import logging
 import os
 import wave
 from collections.abc import Callable
@@ -16,6 +17,50 @@ from ..config import Config, load_config
 from ..script.generator import Narration, ScriptSection, VideoScript
 from ..script.phrases import Phrase, calculate_phrase_timings
 from .voicevox import VoicevoxSynthesizer, create_synthesizer_from_config
+
+logger = logging.getLogger(__name__)
+
+
+def validate_persona_ids(
+    phrases: list[Phrase],
+    synthesizers: dict[str, Any],
+    *,
+    strict: bool = False,
+) -> list[str]:
+    """Validate that all persona_ids in phrases exist in synthesizers.
+
+    Args:
+        phrases: List of phrases to validate.
+        synthesizers: Dictionary of available synthesizers keyed by persona_id.
+        strict: If True, raises ValueError when unknown persona_ids are found.
+                If False, only logs warnings.
+
+    Returns:
+        List of unknown persona_ids found in phrases.
+
+    Raises:
+        ValueError: If strict mode is enabled and unknown persona_ids exist.
+    """
+    unknown_ids = []
+    seen_unknowns = set()
+
+    for phrase in phrases:
+        persona_id = phrase.persona_id
+        if persona_id and persona_id not in synthesizers:
+            if persona_id not in seen_unknowns:
+                unknown_ids.append(persona_id)
+                seen_unknowns.add(persona_id)
+                logger.warning(
+                    f"Unknown persona_id '{persona_id}' in phrase: {phrase.text[:50]}..."
+                )
+
+    if unknown_ids and strict:
+        raise ValueError(
+            f"Unknown persona_id(s) found: {', '.join(unknown_ids)}. "
+            f"Available personas: {', '.join(synthesizers.keys())}"
+        )
+
+    return unknown_ids
 
 
 def generate_audio_for_script(
@@ -197,6 +242,12 @@ def generate_audio_for_script(
                 onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
             )
 
+        # Debug: Log available synthesizers
+        logger.debug(f"Available synthesizers: {list(synthesizers.keys())}")
+
+        # Validate persona_ids before synthesis
+        validate_persona_ids(all_phrases, synthesizers)
+
         # Synthesize audio per persona
         audio_paths = []
         generated_count = 0
@@ -231,8 +282,18 @@ def generate_audio_for_script(
             # Get appropriate synthesizer
             if persona_id and persona_id in synthesizers:
                 persona_synthesizer = synthesizers[persona_id]
+                logger.debug(f"Using synthesizer for persona_id: {persona_id}")
             else:
-                persona_synthesizer = next(iter(synthesizers.values()))
+                fallback_id = next(iter(synthesizers.keys()))
+                persona_synthesizer = synthesizers[fallback_id]
+                if persona_id:
+                    logger.warning(
+                        f"persona_id '{persona_id}' not found in synthesizers. "
+                        f"Falling back to '{fallback_id}'. "
+                        f"Available: {list(synthesizers.keys())}"
+                    )
+                else:
+                    logger.debug(f"No persona_id specified, using fallback: {fallback_id}")
 
             # Synthesize single phrase
             phrase_paths, phrase_metadata = persona_synthesizer.synthesize_phrases(

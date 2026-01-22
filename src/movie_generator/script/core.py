@@ -121,6 +121,15 @@ async def generate_script_from_url(
             p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
         ]
 
+    # Prepare persona pool config for random selection
+    pool_config = None
+    if cfg.persona_pool:
+        pool_config = cfg.persona_pool.model_dump()
+        logger.info(
+            f"Persona pool enabled: will select {cfg.persona_pool.count} "
+            f"from {len(cfg.personas)} personas"
+        )
+
     # Generate script
     try:
         script = await generate_script(
@@ -133,6 +142,7 @@ async def generate_script_from_url(
             model=cfg.content.llm.model,
             images=images_metadata,
             personas=personas_for_script,
+            pool_config=pool_config,
         )
     except Exception as e:
         raise RuntimeError(f"Failed to generate script: {e}") from e
@@ -323,6 +333,15 @@ Please use the available tools to accomplish this task.
                 p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
             ]
 
+        # Prepare persona pool config for random selection
+        pool_config = None
+        if cfg.persona_pool:
+            pool_config = cfg.persona_pool.model_dump()
+            logger.info(
+                f"Persona pool enabled: will select {cfg.persona_pool.count} "
+                f"from {len(cfg.personas)} personas"
+            )
+
         # Generate script
         try:
             script = await generate_script(
@@ -335,6 +354,7 @@ Please use the available tools to accomplish this task.
                 model=cfg.content.llm.model,
                 images=None,  # Agent doesn't extract images metadata yet
                 personas=personas_for_script,
+                pool_config=pool_config,
             )
         except Exception as e:
             raise RuntimeError(f"Failed to generate script: {e}") from e

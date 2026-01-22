@@ -424,24 +424,29 @@ class Project:
         bgm_dir.mkdir(parents=True, exist_ok=True)
         _create_symlink_safe(bgm_dir, public_dir / "bgm")
 
-        # Load project config to get transition settings
+        # Load project config to get transition settings and resolution
         try:
             project_config = self.load_config()
             transition_config = project_config.video.transition.model_dump()
+            resolution = project_config.style.resolution
+            fps = project_config.style.fps
         except Exception:
             # Fallback to defaults if config loading fails
             from .config import TransitionConfig
+            from .constants import VideoConstants
 
             transition_config = TransitionConfig(
                 type="fade", duration_frames=15, timing="linear"
             ).model_dump()
+            resolution = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
+            fps = VideoConstants.DEFAULT_FPS
 
         # Create placeholder composition.json
         composition_data = {
             "title": self.name,
-            "fps": 30,
-            "width": 1920,
-            "height": 1080,
+            "fps": fps,
+            "width": resolution[0],
+            "height": resolution[1],
             "phrases": [],
             "transition": transition_config,
         }
@@ -465,24 +470,29 @@ class Project:
                 "Remotion project not initialized. Run setup_remotion_project() first."
             )
 
-        # Load project config to get transition settings
+        # Load project config to get transition settings and resolution
         try:
             project_config = self.load_config()
             transition_config = project_config.video.transition.model_dump()
+            resolution = project_config.style.resolution
+            fps = project_config.style.fps
         except Exception:
             # Fallback to defaults if config loading fails
             from .config import TransitionConfig
+            from .constants import VideoConstants
 
             transition_config = TransitionConfig(
                 type="fade", duration_frames=15, timing="linear"
             ).model_dump()
+            resolution = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
+            fps = VideoConstants.DEFAULT_FPS
 
         # Build composition data
         composition_data = {
             "title": self.name,
-            "fps": 30,
-            "width": 1920,
-            "height": 1080,
+            "fps": fps,
+            "width": resolution[0],
+            "height": resolution[1],
             "phrases": [
                 {
                     "text": phrase.get("text", ""),

@@ -79,7 +79,7 @@ export interface VideoGeneratorProps {
 // Transitions create visual overlap between slides, but audio plays continuously.
 // The total video duration accounts for transition overlaps in calculateTotalFrames().
 const getScenesWithTiming = (phrases: PhraseData[]) => {
-  const fps = 30;
+  const fps = (compositionData as any).fps || 30;
 
   return phrases.map((phrase, index) => {
     // Use start_time if provided (e.g., with speaker pauses), otherwise calculate
@@ -149,11 +149,12 @@ const getSlideGroups = (
 
     // Last scene
     if (index === scenes.length - 1) {
-      // For the last group, extend duration by 1 second (30 frames at 30fps)
+      // For the last group, extend duration by 1 second
       // to keep the final slide visible after audio ends
       const firstScene = currentScenes[0];
       const lastScene = currentScenes[currentScenes.length - 1];
-      const endingPauseFrames = 30; // 1.0 second at 30fps
+      const fps = (compositionData as any).fps || 30;
+      const endingPauseFrames = fps; // 1.0 second
       const duration = lastScene.endFrame - firstScene.startFrame + endingPauseFrames;
       groups.push({
         slideFile: currentSlide,
@@ -603,13 +604,13 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
 // Calculate total frames for the composition
 // The total duration includes audio plus ending pause to keep final slide visible.
 export const calculateTotalFrames = (phrases: PhraseData[]): number => {
-  const fps = 30;
+  const fps = (compositionData as any).fps || 30;
   const scenes = getScenesWithTiming(phrases);
 
-  // Return audio duration plus 1 second ending pause (30 frames)
+  // Return audio duration plus 1 second ending pause
   // This keeps the final slide visible after audio ends.
   if (scenes.length === 0) return 0;
-  const endingPauseFrames = 30; // 1.0 second at 30fps
+  const endingPauseFrames = fps; // 1.0 second
   return scenes[scenes.length - 1].endFrame + endingPauseFrames;
 };
 """.replace("{default_subtitle_color}", SubtitleConstants.DEFAULT_COLOR)

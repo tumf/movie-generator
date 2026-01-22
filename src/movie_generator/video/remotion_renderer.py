@@ -283,6 +283,7 @@ def update_composition_json(
     background: dict[str, Any] | None = None,
     bgm: dict[str, Any] | None = None,
     section_backgrounds: dict[int, dict[str, Any]] | None = None,
+    fps: int = VideoConstants.DEFAULT_FPS,
     resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
 ) -> None:
     """Update composition.json with current phrase data.
@@ -298,6 +299,7 @@ def update_composition_json(
         background: Optional global background configuration (type, path, fit).
         bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
         section_backgrounds: Optional map of section_index to background override.
+        fps: Frames per second.
         resolution: Video resolution as (width, height) tuple.
     """
     # Build slide map for efficient lookup
@@ -350,7 +352,7 @@ def update_composition_json(
 
     composition_data = {
         "title": project_name,
-        "fps": 30,
+        "fps": fps,
         "width": resolution[0],
         "height": resolution[1],
         "phrases": [p.model_dump(exclude_none=True, by_alias=True) for p in composition_phrases],
@@ -383,15 +385,17 @@ def update_composition_json(
     # Add personas config if provided (for persistent character display)
     if personas:
         # Convert asset paths in personas to be relative to public/
-        # Add auto-assigned character_position from persona_position_map
+        # Auto-assign character_position only if not configured
         converted_personas = []
         for persona in personas:
             persona_copy = persona.copy()
-            # Remove config's character_position (if any) and use auto-assigned one
-            persona_copy.pop("character_position", None)
-            # Add auto-assigned position from persona_position_map
-            if persona["id"] in persona_position_map:
-                persona_copy["character_position"] = persona_position_map[persona["id"]]
+            # Use config's character_position if set, otherwise use auto-assigned position
+            if (
+                "character_position" not in persona_copy
+                or persona_copy["character_position"] is None
+            ):
+                if persona["id"] in persona_position_map:
+                    persona_copy["character_position"] = persona_position_map[persona["id"]]
             if "character_image" in persona_copy and persona_copy["character_image"] is not None:
                 persona_copy["character_image"] = _convert_to_public_path(
                     persona_copy["character_image"]
@@ -451,8 +455,10 @@ def _get_persona_fields(
         # Convert to path relative to public/ (e.g., "characters/zundamon/base.png")
         character_fields["characterImage"] = _convert_to_public_path(character_image)
 
-    # Use auto-assigned position based on persona order
-    if phrase.persona_id in persona_position_map:
+    # Use config's character_position if set, otherwise use auto-assigned position
+    if config_position := persona.get("character_position"):
+        character_fields["characterPosition"] = config_position
+    elif phrase.persona_id in persona_position_map:
         character_fields["characterPosition"] = persona_position_map[phrase.persona_id]
 
     if mouth_open_image := persona.get("mouth_open_image"):
@@ -629,6 +635,7 @@ def render_video_with_remotion(
     bgm: dict[str, Any] | None = None,
     section_backgrounds: dict[int, dict[str, Any]] | None = None,
     crf: int = VideoConstants.DEFAULT_CRF,
+    fps: int = VideoConstants.DEFAULT_FPS,
     resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
@@ -647,6 +654,7 @@ def render_video_with_remotion(
         bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
         section_backgrounds: Optional map of section_index to background override.
         crf: Constant Rate Factor for video encoding (0-51, default 28).
+        fps: Frames per second.
         resolution: Video resolution as (width, height) tuple.
 
     Raises:
@@ -685,6 +693,7 @@ def render_video_with_remotion(
         background,
         bgm,
         section_backgrounds,
+        fps,
         resolution,
     )
 
@@ -697,7 +706,7 @@ def render_video_with_remotion(
         total_duration = phrases[-1].start_time + phrases[-1].duration + 1.0  # +1s ending pause
     else:
         total_duration = 0.0
-    total_frames = int(total_duration * 30)  # 30 fps
+    total_frames = int(total_duration * fps)
 
     # Render video using Remotion CLI
     try:

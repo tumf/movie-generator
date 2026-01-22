@@ -454,6 +454,11 @@ class MovieGeneratorWrapper:
                     latest_progress["message"] = f"音声を生成中 ({current}/{total})"
                     logger.debug(f"Audio progress: {current}/{total}")
 
+                # Load config for multi-speaker support
+                # CRITICAL: Without config, all voices default to Zundamon (speaker_id=3)
+                audio_config = create_default_movie_config(self.config.config_path)
+                logger.info(f"Audio config loaded with {len(audio_config.personas)} personas")
+
                 # Run audio generation in thread pool to avoid blocking
                 loop = asyncio.get_running_loop()
                 await loop.run_in_executor(
@@ -461,8 +466,8 @@ class MovieGeneratorWrapper:
                     generate_audio_for_script,
                     script_path,
                     job_dir,
-                    None,  # config_path
-                    None,  # config
+                    None,  # config_path (use config object instead)
+                    audio_config,  # config with personas for multi-speaker support
                     None,  # scenes
                     audio_progress,
                 )
