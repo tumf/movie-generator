@@ -4,6 +4,6 @@
   // Lifecycle hooks
   "hooks": {
     // Rebuild indexes after merge completion
-    "on_merged": "cargo bump patch -g && tldr warm . --lang rust && tldr semantic index . --lang rust && leann build openspec-spec --docs ./src"
+    "on_merged": "make on-merged"
   }
 }
