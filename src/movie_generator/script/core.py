@@ -140,6 +140,7 @@ async def generate_script_from_url(
             style=cfg.narration.style,
             api_key=api_key,
             model=cfg.content.llm.model,
+            base_url=cfg.content.llm.base_url,
             images=images_metadata,
             personas=personas_for_script,
             pool_config=pool_config,
@@ -311,6 +312,7 @@ Please use the available tools to accomplish this task.
             mcp_client=mcp_client,
             openrouter_api_key=openrouter_api_key,
             model=cfg.content.llm.model,
+            base_url=cfg.content.llm.base_url,
         ) as agent:
             try:
                 markdown_content = await agent.run(task_prompt)
@@ -352,6 +354,7 @@ Please use the available tools to accomplish this task.
                 style=cfg.narration.style,
                 api_key=api_key,
                 model=cfg.content.llm.model,
+                base_url=cfg.content.llm.base_url,
                 images=None,  # Agent doesn't extract images metadata yet
                 personas=personas_for_script,
                 pool_config=pool_config,

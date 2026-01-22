@@ -699,6 +699,7 @@ def generate(
                         output_dir=slide_dir,
                         api_key=api_key,
                         model=cfg.slides.llm.model,
+                        base_url=cfg.slides.llm.base_url,
                         max_concurrent=2,  # Conservative to avoid rate limits
                         section_indices=slide_indices,
                     )
@@ -1636,6 +1637,7 @@ def generate_slides_cmd(
                     output_dir=slide_dir,
                     api_key=api_key,
                     model=cfg.slides.llm.model,
+                    base_url=cfg.slides.llm.base_url,
                     max_concurrent=max_concurrent,
                     section_indices=slide_indices,
                 )

@@ -726,18 +726,56 @@ The system SHALL support specific file formats for background and BGM.
 - **WHEN** the configuration is loaded
 - **THEN** the file format is accepted as valid
 
+### Requirement: LLM Base URL Configuration
+
+The system SHALL allow specifying the base URL for LLM API calls in the configuration file.
+
+#### Scenario: Specify Base URL
+
+- **GIVEN** `content.llm.base_url` and `slides.llm.base_url` are configured
+- **WHEN** LLM API calls are made
+- **THEN** the specified base URL is used
+
+#### Scenario: Default Base URL
+
+- **GIVEN** `content.llm.base_url` or `slides.llm.base_url` is not specified
+- **WHEN** LLM API calls are made
+- **THEN** the default OpenRouter API URL (`https://openrouter.ai/api/v1`) is used
+
+#### Scenario: Configure for OpenRouter
+
+- **GIVEN** the configuration includes:
+  ```yaml
+  content:
+    llm:
+      base_url: "https://openrouter.ai/api/v1"
+  slides:
+    llm:
+      base_url: "https://openrouter.ai/api/v1"
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** `content.llm.base_url` is `"https://openrouter.ai/api/v1"`
+- **AND** `slides.llm.base_url` is `"https://openrouter.ai/api/v1"`
+
+#### Scenario: Configure for Local LLM Server
+
+- **GIVEN** the configuration includes:
+  ```yaml
+  content:
+    llm:
+      base_url: "http://localhost:8080/v1"
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** script generation uses the local server endpoint
+
 ### Requirement: Unified Slide Generation Retry Configuration
 
-The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants (SHALL).
+The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants.
 
 #### Scenario: Refer to Retry Constants
 
 - **WHEN** performing retry processing in slide generation
 - **THEN** reference constants from `RetryConfig`
-
-### Requirement: スライド生成リトライ設定の統一
-システムは、スライド生成のリトライ回数・遅延・バックオフ係数を共通定数から取得しなければならない（SHALL）。
-
-#### Scenario: リトライ定数の参照
-- **WHEN** スライド生成でリトライ処理を行う
-- **THEN** `RetryConfig` の定数を参照する
+- **AND** use `RetryConfig.MAX_RETRIES` for maximum retry attempts
+- **AND** use `RetryConfig.BASE_DELAY_SECONDS` for initial delay
+- **AND** use `RetryConfig.BACKOFF_FACTOR` for exponential backoff
