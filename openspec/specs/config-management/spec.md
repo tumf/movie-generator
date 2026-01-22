@@ -741,3 +741,18 @@ The system SHALL retrieve slide generation retry count, delay, and backoff facto
 #### Scenario: リトライ定数の参照
 - **WHEN** スライド生成でリトライ処理を行う
 - **THEN** `RetryConfig` の定数を参照する
+
+### Requirement: 生成パス規約の定数化
+システムは、生成アセットのファイル名フォーマットを共通定数として定義しなければならない（SHALL）。
+
+#### Scenario: 生成ファイル名フォーマットの参照
+- **WHEN** 生成アセットの保存パスを組み立てる
+- **THEN** 共通定数で定義されたフォーマットを使用する
+
+### Requirement: 最小解像度とプロジェクトルートの集中管理
+システムは、最小解像度の基準値とDocker環境のプロジェクトルートを共通の値として管理しなければならない（SHALL）。
+
+#### Scenario: 最小解像度とプロジェクトルートの適用
+- **GIVEN** `PROJECT_ROOT` 環境変数が設定されている
+- **WHEN** 画像の最小解像度チェックやプロジェクトルート解決を行う
+- **THEN** 定数と環境変数が適用される
