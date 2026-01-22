@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
+from ..constants import RetryConfig
 from ..utils.filesystem import is_valid_file, skip_if_exists
 
 
@@ -133,8 +134,8 @@ async def generate_slide(
     base_url: str = "https://openrouter.ai/api/v1",
     width: int = 1280,
     height: int = 720,
-    max_retries: int = 3,
-    retry_delay: float = 2.0,
+    max_retries: int = RetryConfig.MAX_RETRIES,
+    retry_delay: float = RetryConfig.INITIAL_DELAY,
 ) -> Path:
     """Generate a slide image from a prompt with retry logic.
 
@@ -251,7 +252,7 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
 
         # Retry with exponential backoff
         if attempt < max_retries - 1:
-            delay = retry_delay * (2**attempt)
+            delay = retry_delay * (RetryConfig.BACKOFF_FACTOR**attempt)
             print(f"  ⟳ Retrying in {delay:.1f}s...")
             await asyncio.sleep(delay)
 
