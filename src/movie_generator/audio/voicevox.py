@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from ..constants import ProjectPaths
 from ..exceptions import AudioGenerationError, ConfigurationError
 from ..script.phrases import Phrase
 from ..utils.filesystem import is_valid_file
@@ -44,6 +45,7 @@ class VoicevoxSynthesizer:
         speed_scale: float = 1.0,
         dictionary: PronunciationDictionary | None = None,
         enable_furigana: bool = True,
+        pronunciation_model: str = "openai/gpt-4o-mini",
     ) -> None:
         """Initialize synthesizer.
 
@@ -52,6 +54,7 @@ class VoicevoxSynthesizer:
             speed_scale: Speech speed scale.
             dictionary: Pronunciation dictionary.
             enable_furigana: Enable automatic furigana generation using morphological analysis.
+            pronunciation_model: LLM model for pronunciation generation.
 
         Raises:
             ImportError: If voicevox_core is not installed.
@@ -66,6 +69,7 @@ class VoicevoxSynthesizer:
         self.speed_scale = speed_scale
         self.dictionary = dictionary or PronunciationDictionary()
         self.enable_furigana = enable_furigana
+        self.pronunciation_model = pronunciation_model
 
         self._synthesizer: Any = None
         self._initialized = False
@@ -129,8 +133,8 @@ class VoicevoxSynthesizer:
     async def prepare_phrases_with_llm(
         self,
         phrases: list[Phrase],
+        model: str,
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
     ) -> dict[str, str]:
         """Prepare dictionary entries using morphological analysis and LLM.
 
@@ -143,7 +147,7 @@ class VoicevoxSynthesizer:
         Args:
             phrases: List of phrases to analyze.
             api_key: OpenRouter API key (uses env var if not provided).
-            model: LLM model to use for pronunciation generation.
+            model: LLM model to use for pronunciation generation (uses self.pronunciation_model if None).
 
         Returns:
             Dictionary of {word: reading} pairs that were added.
@@ -155,7 +159,7 @@ class VoicevoxSynthesizer:
         # Collect all texts
         texts = [p.text for p in phrases if p.text and p.text.strip()]
 
-        return await self._prepare_texts_with_llm_internal(texts, api_key, model)
+        return await self._prepare_texts_with_llm_internal(texts, model, api_key)
 
     def prepare_texts(self, texts: list[str]) -> int:
         """Prepare dictionary entries from texts using morphological analysis.
@@ -193,8 +197,8 @@ class VoicevoxSynthesizer:
     async def prepare_texts_with_llm(
         self,
         texts: list[str],
+        model: str,
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
         base_url: str = "https://openrouter.ai/api/v1",
     ) -> dict[str, str]:
         """Prepare dictionary entries using morphological analysis and LLM.
@@ -205,7 +209,8 @@ class VoicevoxSynthesizer:
         Args:
             texts: List of text strings to analyze.
             api_key: OpenRouter API key (uses env var if not provided).
-            model: LLM model to use for pronunciation generation.
+            model: LLM model to use for pronunciation generation (uses self.pronunciation_model if None).
+            base_url: LLM API base URL.
 
         Returns:
             Dictionary of {word: reading} pairs that were added.
@@ -214,13 +219,13 @@ class VoicevoxSynthesizer:
         if generator is None:
             return {}
 
-        return await self._prepare_texts_with_llm_internal(texts, api_key, model, base_url)
+        return await self._prepare_texts_with_llm_internal(texts, model, api_key, base_url)
 
     async def _prepare_texts_with_llm_internal(
         self,
         texts: list[str],
+        model: str,
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
         base_url: str = "https://openrouter.ai/api/v1",
     ) -> dict[str, str]:
         """Internal implementation for LLM-based pronunciation preparation.
@@ -258,8 +263,8 @@ class VoicevoxSynthesizer:
             llm_readings = await generate_readings_with_llm(
                 words=words_needing_pronunciation,
                 context=context,
-                api_key=api_key,
                 model=model,
+                api_key=api_key,
                 base_url=base_url,
             )
 
@@ -390,7 +395,9 @@ class VoicevoxSynthesizer:
         metadata_list: list[AudioMetadata] = []
 
         for phrase in phrases:
-            output_path = output_dir / f"phrase_{phrase.original_index:04d}.wav"
+            output_path = output_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+                index=phrase.original_index
+            )
 
             # Skip if audio file already exists and is not empty
             if is_valid_file(output_path):
@@ -436,9 +443,15 @@ def create_synthesizer_from_config(config: Any) -> VoicevoxSynthesizer:
     if hasattr(config, "audio") and hasattr(config.audio, "enable_furigana"):
         enable_furigana = config.audio.enable_furigana
 
+    # Get pronunciation_model from config, default to "openai/gpt-4o-mini"
+    pronunciation_model = "openai/gpt-4o-mini"
+    if hasattr(config, "audio") and hasattr(config.audio, "pronunciation_model"):
+        pronunciation_model = config.audio.pronunciation_model
+
     return VoicevoxSynthesizer(
         speaker_id=config.audio.speaker_id,
         speed_scale=config.audio.speed_scale,
         dictionary=dictionary,
         enable_furigana=enable_furigana,
+        pronunciation_model=pronunciation_model,
     )

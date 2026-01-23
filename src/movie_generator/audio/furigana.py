@@ -265,8 +265,8 @@ JSON形式で以下を出力してください：
 async def generate_readings_with_llm(
     words: dict[str, str],
     context: str,
+    model: str,
     api_key: str | None = None,
-    model: str = "openai/gpt-4o-mini",
     base_url: str = "https://openrouter.ai/api/v1",
 ) -> dict[str, str]:
     """Generate/verify katakana readings for words using LLM with context.

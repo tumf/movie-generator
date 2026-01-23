@@ -22,6 +22,7 @@ from .config import (
     validate_config,
     write_config_to_file,
 )
+from .constants import ProjectPaths
 from .content.fetcher import fetch_url_sync
 from .content.parser import parse_html
 from .project import Project
@@ -547,7 +548,9 @@ def generate(
             existing_audio_count = 0
 
             for phrase in all_phrases:
-                audio_file = audio_dir / f"phrase_{phrase.original_index:04d}.wav"
+                audio_file = audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+                    index=phrase.original_index
+                )
                 persona_id = getattr(phrase, "persona_id", None)
 
                 # Count existing audio files and read their duration
@@ -640,8 +643,17 @@ def generate(
             existing_audio_count = sum(
                 1
                 for phrase in all_phrases
-                if (audio_dir / f"phrase_{phrase.original_index:04d}.wav").exists()
-                and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
+                if (
+                    audio_dir
+                    / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
+                ).exists()
+                and (
+                    audio_dir
+                    / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
+                )
+                .stat()
+                .st_size
+                > 0
             )
             audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
             calculate_phrase_timings(
@@ -683,12 +695,18 @@ def generate(
                 1
                 for idx in slide_indices
                 if (
-                    (lang_slide_dir / f"slide_{idx:04d}.png").exists()
-                    and (lang_slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                    (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                    and (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                    .stat()
+                    .st_size
+                    > 0
                 )
                 or (
-                    (slide_dir / f"slide_{idx:04d}.png").exists()
-                    and (slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                    (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                    and (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                    .stat()
+                    .st_size
+                    > 0
                 )
             )
 
@@ -828,6 +846,8 @@ def generate(
             crf=cfg.style.crf,
             fps=cfg.style.fps,
             resolution=cfg.style.resolution,
+            render_concurrency=cfg.video.render_concurrency,
+            render_timeout_seconds=cfg.video.render_timeout_seconds,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")
@@ -1344,7 +1364,9 @@ def generate_audio_cmd(
             existing_audio_count = 0
 
             for phrase in all_phrases:
-                audio_file = audio_dir / f"phrase_{phrase.original_index:04d}.wav"
+                audio_file = audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+                    index=phrase.original_index
+                )
                 persona_id = getattr(phrase, "persona_id", None)
 
                 if audio_file.exists() and audio_file.stat().st_size > 0:
@@ -1431,8 +1453,17 @@ def generate_audio_cmd(
             existing_audio_count = sum(
                 1
                 for phrase in all_phrases
-                if (audio_dir / f"phrase_{phrase.original_index:04d}.wav").exists()
-                and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
+                if (
+                    audio_dir
+                    / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
+                ).exists()
+                and (
+                    audio_dir
+                    / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
+                )
+                .stat()
+                .st_size
+                > 0
             )
             audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
             calculate_phrase_timings(
@@ -1619,12 +1650,18 @@ def generate_slides_cmd(
             1
             for idx in slide_indices
             if (
-                (lang_slide_dir / f"slide_{idx:04d}.png").exists()
-                and (lang_slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
             or (
-                (slide_dir / f"slide_{idx:04d}.png").exists()
-                and (slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
         )
 
@@ -1871,7 +1908,9 @@ def render_video_cmd(
     # Load audio files and calculate timings
     audio_paths = []
     for phrase in all_phrases:
-        audio_file = audio_dir / f"phrase_{phrase.original_index:04d}.wav"
+        audio_file = audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+            index=phrase.original_index
+        )
         if not audio_file.exists():
             console.print(f"[red]Error: Audio file not found: {audio_file}[/red]")
             console.print("[yellow]Run 'movie-generator audio generate' first[/yellow]")
@@ -1907,8 +1946,10 @@ def render_video_cmd(
             continue
 
         # Try language-specific directory first, then fall back to root
-        lang_slide_file = slide_dir / language_id / f"slide_{section_idx:04d}.png"
-        root_slide_file = slide_dir / f"slide_{section_idx:04d}.png"
+        lang_slide_file = (
+            slide_dir / language_id / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=section_idx)
+        )
+        root_slide_file = slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=section_idx)
 
         if lang_slide_file.exists():
             slide_paths.append(lang_slide_file)
@@ -2015,6 +2056,8 @@ def render_video_cmd(
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
             crf=cfg.style.crf,
+            render_concurrency=cfg.video.render_concurrency,
+            render_timeout_seconds=cfg.video.render_timeout_seconds,
             fps=cfg.style.fps,
             resolution=cfg.style.resolution,
         )

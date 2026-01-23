@@ -61,6 +61,7 @@ class TestAgentLoop:
         agent = AgentLoop(
             mcp_client=mock_mcp_client,
             openrouter_api_key="test_key",
+            model="test_model",
         )
 
         with pytest.raises(MCPError, match="No MCP tools available"):
@@ -207,7 +208,9 @@ class TestAgentLoop:
     @pytest.mark.asyncio
     async def test_context_manager(self, mock_mcp_client: MagicMock) -> None:
         """Test AgentLoop as async context manager."""
-        async with AgentLoop(mcp_client=mock_mcp_client, openrouter_api_key="test_key") as agent:
+        async with AgentLoop(
+            mcp_client=mock_mcp_client, openrouter_api_key="test_key", model="test_model"
+        ) as agent:
             assert agent.http_client is not None
 
         # HTTP client should be closed after context exit

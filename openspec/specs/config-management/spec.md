@@ -726,6 +726,22 @@ The system SHALL support specific file formats for background and BGM.
 - **WHEN** the configuration is loaded
 - **THEN** the file format is accepted as valid
 
+### Requirement: 発音LLMモデルの設定
+システムは、発音（フリガナ）生成に使用するLLMモデルIDを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: 発音モデルの指定
+- **GIVEN** `audio.pronunciation_model: "openai/gpt-4o-mini"` が設定されている
+- **WHEN** 発音LLMが呼び出される
+- **THEN** 指定されたモデルIDが使用される
+
+### Requirement: レンダリング実行設定
+システムは、動画レンダリングの並列度とタイムアウトを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: レンダリング設定の反映
+- **GIVEN** `video.render_concurrency` と `video.render_timeout_seconds` が設定されている
+- **WHEN** Remotionレンダリングが実行される
+- **THEN** 指定された並列度とタイムアウトが適用される
+
 ### Requirement: LLM Base URL Configuration
 
 The system SHALL allow specifying the base URL for LLM API calls in the configuration file.
@@ -780,9 +796,70 @@ The system SHALL retrieve slide generation retry count, delay, and backoff facto
 - **AND** use `RetryConfig.BASE_DELAY_SECONDS` for initial delay
 - **AND** use `RetryConfig.BACKOFF_FACTOR` for exponential backoff
 
-### Requirement: タイムアウト定数の集約
-システムは、外部呼び出しやレンダリングのタイムアウト既定値を共通の定数として集約しなければならない（SHALL）。
+### Requirement: Explicit LLM Model Specification
 
-#### Scenario: タイムアウト参照の統一
-- **WHEN** 各モジュールがタイムアウト値を必要とする
-- **THEN** 共通のタイムアウト定数を参照する
+The system SHALL explicitly specify model IDs from configuration files when calling LLMs.
+
+#### Scenario: Enforce Model Specification
+
+- **GIVEN** `content.llm.model` and `slides.llm.model` are defined in configuration
+- **WHEN** LLM calls are executed
+- **THEN** configuration values are used without relying on function defaults
+
+### Requirement: Pronunciation LLM Model Configuration
+
+The system SHALL allow specification of LLM model ID for pronunciation (furigana) generation in configuration.
+
+#### Scenario: Specify Pronunciation Model
+
+- **GIVEN** `audio.pronunciation_model: "openai/gpt-4o-mini"` is configured
+- **WHEN** pronunciation LLM is called
+- **THEN** the specified model ID is used
+
+### Requirement: Rendering Execution Configuration
+
+The system SHALL allow specification of video rendering concurrency and timeout in configuration.
+
+#### Scenario: Apply Rendering Configuration
+
+- **GIVEN** `video.render_concurrency` and `video.render_timeout_seconds` are configured
+- **WHEN** Remotion rendering is executed
+- **THEN** specified concurrency and timeout are applied
+
+### Requirement: LLM Base URL Configuration
+
+The system SHALL allow specification of LLM base URL in configuration.
+
+#### Scenario: Specify Base URL
+
+- **GIVEN** `content.llm.base_url` and `slides.llm.base_url` are configured
+- **WHEN** LLM calls are executed
+- **THEN** specified base URLs are used
+
+### Requirement: Path Convention Standardization
+
+The system SHALL define filename formats for generated assets as common constants.
+
+#### Scenario: Refer to Generated File Name Format
+
+- **WHEN** assembling save paths for generated assets
+- **THEN** use formats defined in common constants
+
+### Requirement: Centralized Minimum Resolution and Project Root
+
+The system SHALL manage minimum resolution standards and Docker environment project root as common values.
+
+#### Scenario: Apply Minimum Resolution and Project Root
+
+- **GIVEN** `PROJECT_ROOT` environment variable is set
+- **WHEN** checking minimum image resolution or resolving project root
+- **THEN** constants and environment variables are applied
+
+### Requirement: Timeout Constants Consolidation
+
+The system SHALL consolidate default timeout values for external calls and rendering as common constants.
+
+#### Scenario: Unified Timeout Reference
+
+- **WHEN** modules require timeout values
+- **THEN** reference common timeout constants

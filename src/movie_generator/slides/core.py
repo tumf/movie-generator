@@ -9,15 +9,16 @@ from pathlib import Path
 
 import yaml
 
+from ..constants import ProjectPaths
 from ..script.generator import Narration, ScriptSection, VideoScript
 from .generator import generate_slides_for_sections
 
 
 async def generate_slides_for_script(
     script_path: Path,
+    model: str,
     output_dir: Path | None = None,
     api_key: str | None = None,
-    model: str = "google/gemini-3-pro-image-preview",
     base_url: str = "https://openrouter.ai/api/v1",
     language: str = "ja",
     max_concurrent: int = 2,
@@ -149,12 +150,18 @@ async def generate_slides_for_script(
             1
             for idx in slide_indices
             if (
-                (lang_slide_dir / f"slide_{idx:04d}.png").exists()
-                and (lang_slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
             or (
-                (slide_dir / f"slide_{idx:04d}.png").exists()
-                and (slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
         )
         if existing_count > 0:

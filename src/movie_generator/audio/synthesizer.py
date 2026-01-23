@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
+from ..constants import ProjectPaths
 from ..script.phrases import Phrase
 
 
@@ -68,7 +69,9 @@ class AudioSynthesizer(ABC):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         for phrase in phrases:
-            output_path = output_dir / f"phrase_{phrase.original_index:04d}.wav"
+            output_path = output_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+                index=phrase.original_index
+            )
             duration = self.synthesize_phrase(phrase, output_path)
             phrase.duration = duration
 

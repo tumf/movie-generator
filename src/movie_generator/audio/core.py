@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from ..config import Config, load_config
+from ..constants import ProjectPaths
 from ..script.generator import Narration, ScriptSection, VideoScript
 from ..script.phrases import Phrase, calculate_phrase_timings
 from .voicevox import VoicevoxSynthesizer, create_synthesizer_from_config
@@ -254,7 +255,9 @@ def generate_audio_for_script(
         existing_count = 0
 
         for idx, phrase in enumerate(all_phrases):
-            audio_file = audio_dir / f"phrase_{phrase.original_index:04d}.wav"
+            audio_file = audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+                index=phrase.original_index
+            )
             persona_id = getattr(phrase, "persona_id", None)
 
             # Check if audio file already exists
@@ -335,8 +338,15 @@ def generate_audio_for_script(
         existing_count = sum(
             1
             for phrase in all_phrases
-            if (audio_dir / f"phrase_{phrase.original_index:04d}.wav").exists()
-            and (audio_dir / f"phrase_{phrase.original_index:04d}.wav").stat().st_size > 0
+            if (
+                audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
+            ).exists()
+            and (
+                audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
+            )
+            .stat()
+            .st_size
+            > 0
         )
 
         if progress_callback:

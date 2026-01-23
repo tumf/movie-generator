@@ -1,14 +1,21 @@
 """Background worker for processing video generation jobs."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import yaml
+
+from movie_generator.constants import ProjectPaths
+
+if TYPE_CHECKING:
+    from movie_generator.config import Config as MovieConfig
 
 # Configure logging
 logging.basicConfig(
@@ -79,13 +86,14 @@ def create_default_movie_config(config_path: Path | None = None) -> "MovieConfig
 
         # Override background and BGM with bundled assets
         # NOTE: Paths must be absolute for validation
+        project_root = ProjectPaths.get_docker_project_root()
         config.video.background = BackgroundConfig(
             type="video",
-            path="/app/assets/backgrounds/default-background.mp4",
+            path=str(project_root / "assets/backgrounds/default-background.mp4"),
             fit="cover",
         )
         config.video.bgm = BgmConfig(
-            path="/app/assets/bgm/default-bgm.noart.mp3",
+            path=str(project_root / "assets/bgm/default-bgm.noart.mp3"),
             volume=0.15,  # Low volume to not overpower narration
             fade_in_seconds=2.0,
             fade_out_seconds=2.0,
@@ -123,16 +131,17 @@ def create_default_movie_config(config_path: Path | None = None) -> "MovieConfig
 
     # Default background: video background
     # NOTE: Path must be absolute for BackgroundConfig validation
+    project_root = ProjectPaths.get_docker_project_root()
     default_background = BackgroundConfig(
         type="video",
-        path="/app/assets/backgrounds/default-background.mp4",
+        path=str(project_root / "assets/backgrounds/default-background.mp4"),
         fit="cover",
     )
 
     # Default BGM
     # NOTE: Path must be absolute for BgmConfig validation
     default_bgm = BgmConfig(
-        path="/app/assets/bgm/default-bgm.noart.mp3",
+        path=str(project_root / "assets/bgm/default-bgm.noart.mp3"),
         volume=0.15,  # Low volume to not overpower narration
         fade_in_seconds=2.0,
         fade_out_seconds=2.0,
@@ -518,13 +527,14 @@ class MovieGeneratorWrapper:
                     logger.debug(f"Slides progress: {current}/{total}")
 
                 try:
-                    # Load config to get resolution
+                    # Load config to get resolution and model
                     movie_config = create_default_movie_config(self.config.config_path)
 
                     await generate_slides_for_script(
                         script_path=script_path,
                         output_dir=job_dir,
                         api_key=api_key,
+                        model=movie_config.slides.llm.model,
                         progress_callback=slides_progress,
                         resolution=movie_config.style.resolution,
                     )

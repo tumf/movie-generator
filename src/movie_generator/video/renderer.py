@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from ..constants import ProjectPaths
 from ..script.phrases import Phrase
 
 
@@ -92,7 +93,7 @@ def create_composition(
             text=p.text,
             duration=p.duration,
             start_time=p.start_time,
-            audioFile=f"audio/phrase_{p.original_index:04d}.wav",
+            audioFile=f"audio/{ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=p.original_index)}",
             slideFile=slide_map.get(p.section_index),
         )
         for p in phrases
