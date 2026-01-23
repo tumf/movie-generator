@@ -273,7 +273,7 @@ const SlideLayer: React.FC<{
           fontFamily: 'Arial, sans-serif',
         }}
       >
-        <div>Movie Generator</div>
+        <div>なんでも解説動画ジェネレーター</div>
       </AbsoluteFill>
     );
   }

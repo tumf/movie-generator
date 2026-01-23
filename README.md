@@ -1,6 +1,6 @@
-# Movie Generator
+# なんでも解説動画ジェネレーター
 
-Generate YouTube slide videos from blog URLs automatically.
+ずんだもん達が動画で優しく解説
 
 ## Features
 

@@ -1,7 +1,7 @@
 [project]
 name = "movie-generator"
 dynamic = ["version"]
-description = "Generate YouTube slide videos from blog URLs"
+description = "なんでも解説動画ジェネレーター - ずんだもん達が動画で優しく解説"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
