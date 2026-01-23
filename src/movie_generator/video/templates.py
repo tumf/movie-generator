@@ -328,8 +328,8 @@ const CharacterLayer: React.FC<{
   // Negative values push characters further outside to avoid slide overlap
   const getPosition = () => {
     const positions = {
-      left: { left: '-200px', bottom: '20px' },
-      right: { right: '-200px', bottom: '20px' },
+      left: { left: '-50px', bottom: '20px' },
+      right: { right: '-50px', bottom: '20px' },
       center: { left: '50%', bottom: '20px', transform: 'translateX(-50%)' },
     };
     return positions[characterPosition];
