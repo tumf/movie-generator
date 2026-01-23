@@ -773,6 +773,10 @@ def select_personas_from_pool(
     # Set seed for reproducibility if provided
     if seed is not None:
         random.seed(seed)
+    else:
+        # Ensure true randomness by reseeding with system time
+        # This prevents the global random state from being reused
+        random.seed()
 
     # Random selection without replacement
     selected = random.sample(personas, k=count)
