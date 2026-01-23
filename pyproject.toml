@@ -1,6 +1,6 @@
 [project]
 name = "movie-generator"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Generate YouTube slide videos from blog URLs"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -28,6 +28,7 @@ dev = [
     "ruff>=0.9.0",
     "mypy>=1.14.0",
     "pre-commit>=4.0.0",
+    "hatch>=1.14.0",
 ]
 
 [project.scripts]
@@ -39,7 +40,7 @@ build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
@@ -49,6 +50,9 @@ python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+
+[tool.hatch.version]
+path = "src/movie_generator/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

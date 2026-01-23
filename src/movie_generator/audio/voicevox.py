@@ -202,6 +202,7 @@ class VoicevoxSynthesizer:
         texts: list[str],
         api_key: str | None = None,
         model: str | None = None,
+        base_url: str = "https://openrouter.ai/api/v1",
     ) -> dict[str, str]:
         """Prepare dictionary entries using morphological analysis and LLM.
 
@@ -212,6 +213,7 @@ class VoicevoxSynthesizer:
             texts: List of text strings to analyze.
             api_key: OpenRouter API key (uses env var if not provided).
             model: LLM model to use for pronunciation generation (uses self.pronunciation_model if None).
+            base_url: LLM API base URL.
 
         Returns:
             Dictionary of {word: reading} pairs that were added.
@@ -224,13 +226,14 @@ class VoicevoxSynthesizer:
         if model is None:
             model = self.pronunciation_model
 
-        return await self._prepare_texts_with_llm_internal(texts, api_key, model)
+        return await self._prepare_texts_with_llm_internal(texts, api_key, model, base_url)
 
     async def _prepare_texts_with_llm_internal(
         self,
         texts: list[str],
         api_key: str | None = None,
         model: str = "openai/gpt-4o-mini",
+        base_url: str = "https://openrouter.ai/api/v1",
     ) -> dict[str, str]:
         """Internal implementation for LLM-based pronunciation preparation.
 
@@ -269,6 +272,7 @@ class VoicevoxSynthesizer:
                 context=context,
                 api_key=api_key,
                 model=model,
+                base_url=base_url,
             )
 
             if not llm_readings:

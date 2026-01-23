@@ -133,6 +133,10 @@ class LLMConfig(BaseModel):
 
     provider: str = Field(default="openrouter")
     model: str = Field(default="openai/gpt-5.2")
+    base_url: str = Field(
+        default="https://openrouter.ai/api/v1",
+        description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
+    )
 
 
 class ContentConfig(BaseModel):
@@ -151,6 +155,10 @@ class SlidesLLMConfig(BaseModel):
     # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
     model: str = Field(default="google/gemini-3-pro-image-preview")
+    base_url: str = Field(
+        default="https://openrouter.ai/api/v1",
+        description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
+    )
 
 
 class SlidesConfig(BaseModel):
@@ -476,6 +484,7 @@ def generate_default_config_yaml() -> str:
         "  llm:",
         '    provider: "openrouter"  # LLM provider for script generation',
         '    model: "openai/gpt-5.2"  # Model to use for content generation',
+        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
         '  languages: ["ja"]  # Languages for content generation (e.g., ["ja", "en"])',
         "",
         "# Slide generation settings",
@@ -483,6 +492,7 @@ def generate_default_config_yaml() -> str:
         "  llm:",
         '    provider: "openrouter"  # LLM provider for slide generation',
         '    model: "google/gemini-3-pro-image-preview"  # Model for slide images',
+        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
         '  style: "presentation"  # Slide style: presentation, illustration, minimal',
         "",
         "# Video rendering settings",

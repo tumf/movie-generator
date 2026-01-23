@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
+from ..constants import RetryConfig
 from ..utils.filesystem import is_valid_file, skip_if_exists
 
 
@@ -88,6 +89,7 @@ async def _download_or_generate_slide(
     output_path: Path,
     api_key: str,
     model: str,
+    base_url: str = "https://openrouter.ai/api/v1",
     resolution: tuple[int, int] = (1280, 720),
 ) -> Path:
     """Try to download source image, fallback to AI generation on failure.
@@ -117,6 +119,7 @@ async def _download_or_generate_slide(
             output_path=output_path,
             api_key=api_key,
             model=model,
+            base_url=base_url,
             width=resolution[0],
             height=resolution[1],
         )
@@ -133,8 +136,8 @@ async def generate_slide(
     base_url: str = "https://openrouter.ai/api/v1",
     width: int = 1280,
     height: int = 720,
-    max_retries: int = 3,
-    retry_delay: float = 2.0,
+    max_retries: int = RetryConfig.MAX_RETRIES,
+    retry_delay: float = RetryConfig.INITIAL_DELAY,
 ) -> Path:
     """Generate a slide image from a prompt with retry logic.
 
@@ -251,7 +254,7 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
 
         # Retry with exponential backoff
         if attempt < max_retries - 1:
-            delay = retry_delay * (2**attempt)
+            delay = retry_delay * (RetryConfig.BACKOFF_FACTOR**attempt)
             print(f"  ⟳ Retrying in {delay:.1f}s...")
             await asyncio.sleep(delay)
 
@@ -272,6 +275,7 @@ async def generate_slides_for_sections(
     # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
     model: str = "google/gemini-3-pro-image-preview",
+    base_url: str = "https://openrouter.ai/api/v1",
     max_concurrent: int = 3,
     section_indices: list[int] | None = None,
     resolution: tuple[int, int] = (1280, 720),
@@ -335,6 +339,7 @@ async def generate_slides_for_sections(
                             output_path=output_path,
                             api_key=api_key,
                             model=model,
+                            base_url=base_url,
                             resolution=resolution,
                         )
                     )
@@ -356,6 +361,7 @@ async def generate_slides_for_sections(
                         output_path=output_path,
                         api_key=api_key,
                         model=model,
+                        base_url=base_url,
                         width=resolution[0],
                         height=resolution[1],
                     )
