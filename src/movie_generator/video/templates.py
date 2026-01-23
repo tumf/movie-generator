@@ -328,8 +328,8 @@ const CharacterLayer: React.FC<{
   // Negative values push characters further outside to avoid slide overlap
   const getPosition = () => {
     const positions = {
-      left: { left: '-100px', bottom: '20px' },
-      right: { right: '-100px', bottom: '20px' },
+      left: { left: '-200px', bottom: '20px' },
+      right: { right: '-200px', bottom: '20px' },
       center: { left: '50%', bottom: '20px', transform: 'translateX(-50%)' },
     };
     return positions[characterPosition];
@@ -398,8 +398,8 @@ const CharacterLayer: React.FC<{
       style={{
         position: 'absolute',
         ...position,
-        width: '600px',
-        height: '600px',
+        width: '300px',
+        height: '300px',
         zIndex: 10,
         transform: transforms || undefined,
       }}
@@ -565,7 +565,7 @@ export const VideoGenerator: React.FC<VideoGeneratorProps> = ({ phrases }) => {
         // Fallback position assignment if not configured
         const positions = ['left', 'right', 'center'];
         const fallbackPosition = positions[Math.min(index, positions.length - 1)];
-        
+
         return (
           <CharacterLayer
             key={`character-${persona.id}`}
