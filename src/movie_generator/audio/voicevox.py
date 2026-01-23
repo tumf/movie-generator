@@ -44,6 +44,7 @@ class VoicevoxSynthesizer:
         speed_scale: float = 1.0,
         dictionary: PronunciationDictionary | None = None,
         enable_furigana: bool = True,
+        pronunciation_model: str = "openai/gpt-4o-mini",
     ) -> None:
         """Initialize synthesizer.
 
@@ -52,6 +53,7 @@ class VoicevoxSynthesizer:
             speed_scale: Speech speed scale.
             dictionary: Pronunciation dictionary.
             enable_furigana: Enable automatic furigana generation using morphological analysis.
+            pronunciation_model: LLM model for pronunciation generation.
 
         Raises:
             ImportError: If voicevox_core is not installed.
@@ -66,6 +68,7 @@ class VoicevoxSynthesizer:
         self.speed_scale = speed_scale
         self.dictionary = dictionary or PronunciationDictionary()
         self.enable_furigana = enable_furigana
+        self.pronunciation_model = pronunciation_model
 
         self._synthesizer: Any = None
         self._initialized = False
@@ -130,7 +133,7 @@ class VoicevoxSynthesizer:
         self,
         phrases: list[Phrase],
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
+        model: str | None = None,
     ) -> dict[str, str]:
         """Prepare dictionary entries using morphological analysis and LLM.
 
@@ -143,7 +146,7 @@ class VoicevoxSynthesizer:
         Args:
             phrases: List of phrases to analyze.
             api_key: OpenRouter API key (uses env var if not provided).
-            model: LLM model to use for pronunciation generation.
+            model: LLM model to use for pronunciation generation (uses self.pronunciation_model if None).
 
         Returns:
             Dictionary of {word: reading} pairs that were added.
@@ -154,6 +157,10 @@ class VoicevoxSynthesizer:
 
         # Collect all texts
         texts = [p.text for p in phrases if p.text and p.text.strip()]
+
+        # Use configured pronunciation model if model is not specified
+        if model is None:
+            model = self.pronunciation_model
 
         return await self._prepare_texts_with_llm_internal(texts, api_key, model)
 
@@ -194,7 +201,7 @@ class VoicevoxSynthesizer:
         self,
         texts: list[str],
         api_key: str | None = None,
-        model: str = "openai/gpt-4o-mini",
+        model: str | None = None,
         base_url: str = "https://openrouter.ai/api/v1",
     ) -> dict[str, str]:
         """Prepare dictionary entries using morphological analysis and LLM.
@@ -205,7 +212,8 @@ class VoicevoxSynthesizer:
         Args:
             texts: List of text strings to analyze.
             api_key: OpenRouter API key (uses env var if not provided).
-            model: LLM model to use for pronunciation generation.
+            model: LLM model to use for pronunciation generation (uses self.pronunciation_model if None).
+            base_url: LLM API base URL.
 
         Returns:
             Dictionary of {word: reading} pairs that were added.
@@ -213,6 +221,10 @@ class VoicevoxSynthesizer:
         generator = self._get_furigana_generator()
         if generator is None:
             return {}
+
+        # Use configured pronunciation model if model is not specified
+        if model is None:
+            model = self.pronunciation_model
 
         return await self._prepare_texts_with_llm_internal(texts, api_key, model, base_url)
 
@@ -436,9 +448,15 @@ def create_synthesizer_from_config(config: Any) -> VoicevoxSynthesizer:
     if hasattr(config, "audio") and hasattr(config.audio, "enable_furigana"):
         enable_furigana = config.audio.enable_furigana
 
+    # Get pronunciation_model from config, default to "openai/gpt-4o-mini"
+    pronunciation_model = "openai/gpt-4o-mini"
+    if hasattr(config, "audio") and hasattr(config.audio, "pronunciation_model"):
+        pronunciation_model = config.audio.pronunciation_model
+
     return VoicevoxSynthesizer(
         speaker_id=config.audio.speaker_id,
         speed_scale=config.audio.speed_scale,
         dictionary=dictionary,
         enable_furigana=enable_furigana,
+        pronunciation_model=pronunciation_model,
     )

@@ -828,6 +828,8 @@ def generate(
             crf=cfg.style.crf,
             fps=cfg.style.fps,
             resolution=cfg.style.resolution,
+            render_concurrency=cfg.video.render_concurrency,
+            render_timeout_seconds=cfg.video.render_timeout_seconds,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")
@@ -2015,6 +2017,8 @@ def render_video_cmd(
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
             crf=cfg.style.crf,
+            render_concurrency=cfg.video.render_concurrency,
+            render_timeout_seconds=cfg.video.render_timeout_seconds,
             fps=cfg.style.fps,
             resolution=cfg.style.resolution,
         )

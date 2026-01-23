@@ -654,6 +654,8 @@ def render_video_with_remotion(
     crf: int = VideoConstants.DEFAULT_CRF,
     fps: int = VideoConstants.DEFAULT_FPS,
     resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
+    render_concurrency: int = 4,
+    render_timeout_seconds: int = 300,
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
 
@@ -673,6 +675,8 @@ def render_video_with_remotion(
         crf: Constant Rate Factor for video encoding (0-51, default 28).
         fps: Frames per second.
         resolution: Video resolution as (width, height) tuple.
+        render_concurrency: Number of concurrent frames to render (default 4).
+        render_timeout_seconds: Timeout for Remotion delayRender calls in seconds (default 300).
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
@@ -744,9 +748,9 @@ def render_video_with_remotion(
                 str(output_path.absolute()),
                 "--overwrite",
                 "--concurrency",
-                "4",  # Reduced from 8 to prevent memory issues and timeouts
+                str(render_concurrency),
                 "--timeout",
-                "300000",  # 5 minutes timeout for delayRender calls (default is 30s)
+                str(render_timeout_seconds * 1000),  # Convert seconds to milliseconds
                 "--crf",
                 str(crf),
             ],
