@@ -37,10 +37,22 @@ async def create_job(job_data: JobCreate, request: Request) -> JobResponse:
         Created job information
 
     Raises:
-        HTTPException: If queue is full or rate limit exceeded
+        HTTPException: If queue is full, rate limit exceeded, or content quality check fails
     """
+    from firecrawl_client import check_content_quality, FirecrawlError
+
     pb_client: PocketBaseClient = request.app.state.pb_client
     client_ip = get_client_ip(request)
+
+    # Check content quality with Firecrawl
+    try:
+        await check_content_quality(str(job_data.url))
+    except FirecrawlError as e:
+        logger.warning(f"Content quality check failed for {job_data.url}: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"コンテンツの品質チェックに失敗しました: {str(e)}",
+        )
 
     # Check rate limit
     jobs_today = await pb_client.count_jobs_by_ip_today(client_ip)

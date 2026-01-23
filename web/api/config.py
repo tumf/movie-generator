@@ -23,5 +23,9 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # Firecrawl settings
+    firecrawl_api_key: str = ""
+    firecrawl_summary_min_length: int = 200
+
 
 settings = Settings()
