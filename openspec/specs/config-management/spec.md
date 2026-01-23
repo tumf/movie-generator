@@ -749,3 +749,49 @@ The system SHALL retrieve slide generation retry count, delay, and backoff facto
 - **GIVEN** 設定ファイルに `content.llm.model` と `slides.llm.model` が定義されている
 - **WHEN** LLM呼び出しが実行される
 - **THEN** 関数デフォルトに依存せず、設定値が渡される
+
+### Requirement: 発音LLMモデルの設定
+システムは、発音（フリガナ）生成に使用するLLMモデルIDを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: 発音モデルの指定
+- **GIVEN** `audio.pronunciation_model: "openai/gpt-4o-mini"` が設定されている
+- **WHEN** 発音LLMが呼び出される
+- **THEN** 指定されたモデルIDが使用される
+
+### Requirement: レンダリング実行設定
+システムは、動画レンダリングの並列度とタイムアウトを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: レンダリング設定の反映
+- **GIVEN** `video.render_concurrency` と `video.render_timeout_seconds` が設定されている
+- **WHEN** Remotionレンダリングが実行される
+- **THEN** 指定された並列度とタイムアウトが適用される
+
+### Requirement: LLMベースURLの設定
+システムは、LLM呼び出しのベースURLを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: ベースURLの指定
+- **GIVEN** `content.llm.base_url` と `slides.llm.base_url` が設定されている
+- **WHEN** LLM呼び出しが実行される
+- **THEN** 指定されたベースURLが使用される
+
+### Requirement: 生成パス規約の定数化
+システムは、生成アセットのファイル名フォーマットを共通定数として定義しなければならない（SHALL）。
+
+#### Scenario: 生成ファイル名フォーマットの参照
+- **WHEN** 生成アセットの保存パスを組み立てる
+- **THEN** 共通定数で定義されたフォーマットを使用する
+
+### Requirement: 最小解像度とプロジェクトルートの集中管理
+システムは、最小解像度の基準値とDocker環境のプロジェクトルートを共通の値として管理しなければならない（SHALL）。
+
+#### Scenario: 最小解像度とプロジェクトルートの適用
+- **GIVEN** `PROJECT_ROOT` 環境変数が設定されている
+- **WHEN** 画像の最小解像度チェックやプロジェクトルート解決を行う
+- **THEN** 定数と環境変数が適用される
+
+### Requirement: タイムアウト定数の集約
+システムは、外部呼び出しやレンダリングのタイムアウト既定値を共通の定数として集約しなければならない（SHALL）。
+
+#### Scenario: タイムアウト参照の統一
+- **WHEN** 各モジュールがタイムアウト値を必要とする
+- **THEN** 共通のタイムアウト定数を参照する
