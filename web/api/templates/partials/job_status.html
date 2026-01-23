@@ -56,7 +56,7 @@
         <span class="text-sm font-medium text-gray-700">{{ job.progress }}%</span>
     </div>
     <div class="w-full bg-gray-200 rounded-full h-4">
-        <div 
+        <div
             class="progress-bar bg-blue-600 h-4 rounded-full transition-all duration-300"
             style="width: {{ job.progress }}%"
         ></div>
@@ -109,7 +109,7 @@
 
     <a
         href="/api/jobs/{{ job.id }}/download"
-        download
+        download="movie_{{ job.id }}.mp4"
         class="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg text-center transition duration-200"
     >
         📥 動画をダウンロード
