@@ -192,7 +192,9 @@ def render_video_for_script(
     # Load audio files and calculate timings
     audio_paths = []
     for phrase in all_phrases:
-        audio_file = audio_dir / f"phrase_{phrase.original_index:04d}.wav"
+        audio_file = audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
+            index=phrase.original_index
+        )
         if not audio_file.exists():
             raise FileNotFoundError(
                 f"Audio file not found: {audio_file}\n"
@@ -229,8 +231,10 @@ def render_video_for_script(
             continue
 
         # Try language-specific directory first, then fall back to root
-        lang_slide_file = slide_dir / language_id / f"slide_{section_idx:04d}.png"
-        root_slide_file = slide_dir / f"slide_{section_idx:04d}.png"
+        lang_slide_file = (
+            slide_dir / language_id / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=section_idx)
+        )
+        root_slide_file = slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=section_idx)
 
         if lang_slide_file.exists():
             slide_paths.append(lang_slide_file)

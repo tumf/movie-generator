@@ -9,6 +9,7 @@ from pathlib import Path
 
 import yaml
 
+from ..constants import ProjectPaths
 from ..script.generator import Narration, ScriptSection, VideoScript
 from .generator import generate_slides_for_sections
 
@@ -148,12 +149,18 @@ async def generate_slides_for_script(
             1
             for idx in slide_indices
             if (
-                (lang_slide_dir / f"slide_{idx:04d}.png").exists()
-                and (lang_slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
             or (
-                (slide_dir / f"slide_{idx:04d}.png").exists()
-                and (slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
         )
         if existing_count > 0:

@@ -338,7 +338,7 @@ def update_composition_json(
                 text=phrase.get_subtitle_text(),
                 duration=phrase.duration,
                 start_time=phrase.start_time,
-                audioFile=f"audio/phrase_{phrase.original_index:04d}.wav",
+                audioFile=f"audio/{ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)}",
                 slideFile=slide_map.get(phrase.section_index),
                 persona_id=persona_fields.get("personaId"),
                 persona_name=persona_fields.get("personaName"),

@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-from ..constants import RetryConfig, VideoConstants
+from ..constants import ProjectPaths, RetryConfig, VideoConstants
 from ..utils.filesystem import is_valid_file, skip_if_exists
 
 
@@ -316,7 +316,7 @@ async def generate_slides_for_sections(
         else:
             title, prompt, source_image_url = section_data
 
-        output_path = lang_output_dir / f"slide_{file_index:04d}.png"
+        output_path = lang_output_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=file_index)
         slide_paths.append(output_path)
 
         # Check if already exists
