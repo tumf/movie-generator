@@ -779,3 +779,10 @@ The system SHALL retrieve slide generation retry count, delay, and backoff facto
 - **AND** use `RetryConfig.MAX_RETRIES` for maximum retry attempts
 - **AND** use `RetryConfig.BASE_DELAY_SECONDS` for initial delay
 - **AND** use `RetryConfig.BACKOFF_FACTOR` for exponential backoff
+
+### Requirement: タイムアウト定数の集約
+システムは、外部呼び出しやレンダリングのタイムアウト既定値を共通の定数として集約しなければならない（SHALL）。
+
+#### Scenario: タイムアウト参照の統一
+- **WHEN** 各モジュールがタイムアウト値を必要とする
+- **THEN** 共通のタイムアウト定数を参照する
