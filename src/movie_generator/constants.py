@@ -1,5 +1,8 @@
 """Project-wide constants and configuration values."""
 
+import os
+from pathlib import Path
+
 
 class VideoConstants:
     """Video rendering constants."""
@@ -8,6 +11,8 @@ class VideoConstants:
     DEFAULT_WIDTH = 1280
     DEFAULT_HEIGHT = 720
     DEFAULT_CRF = 28  # Higher = smaller file, lower quality (18-28 typical range)
+    MIN_WIDTH = 800  # Minimum acceptable width for images
+    MIN_HEIGHT = 600  # Minimum acceptable height for images
 
 
 class SubtitleConstants:
@@ -36,7 +41,7 @@ class FileExtensions:
 
 
 class ProjectPaths:
-    """Standard project directory names."""
+    """Standard project directory names and file naming formats."""
 
     AUDIO = "audio"
     SLIDES = "slides"
@@ -44,6 +49,20 @@ class ProjectPaths:
     OUTPUT = "output"
     ASSETS = "assets"
     LOGOS = "logos"
+
+    # File naming formats
+    PHRASE_FILENAME_FORMAT = "phrase_{index:04d}.wav"
+    SLIDE_FILENAME_FORMAT = "slide_{index:04d}.png"
+
+    # Docker environment project root (overridable with PROJECT_ROOT env var)
+    @staticmethod
+    def get_docker_project_root() -> Path:
+        """Get Docker project root from environment variable or default.
+
+        Returns:
+            Path to project root (/app by default, or from PROJECT_ROOT env var).
+        """
+        return Path(os.getenv("PROJECT_ROOT", "/app"))
 
 
 class RetryConfig:

@@ -795,3 +795,22 @@ The system SHALL retrieve slide generation retry count, delay, and backoff facto
 - **AND** use `RetryConfig.MAX_RETRIES` for maximum retry attempts
 - **AND** use `RetryConfig.BASE_DELAY_SECONDS` for initial delay
 - **AND** use `RetryConfig.BACKOFF_FACTOR` for exponential backoff
+
+### Requirement: Path Convention Standardization
+
+The system SHALL define filename formats for generated assets as common constants.
+
+#### Scenario: Refer to Generated File Name Format
+
+- **WHEN** assembling save paths for generated assets
+- **THEN** use formats defined in common constants
+
+### Requirement: Centralized Minimum Resolution and Project Root
+
+The system SHALL manage minimum resolution standards and Docker environment project root as common values.
+
+#### Scenario: Apply Minimum Resolution and Project Root
+
+- **GIVEN** `PROJECT_ROOT` environment variable is set
+- **WHEN** checking minimum image resolution or resolving project root
+- **THEN** constants and environment variables are applied
