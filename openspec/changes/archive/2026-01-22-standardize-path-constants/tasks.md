@@ -21,4 +21,4 @@
 - [x] src/movie_generator/video/remotion_renderer.py line 341: Replace hardcoded filename format `f"audio/phrase_{phrase.original_index:04d}.wav"` with `ProjectPaths.PHRASE_FILENAME_FORMAT`
 
 ## Acceptance #3 Failure Follow-up
-- [ ] Commit all modified files: openspec/changes/archive/2026-01-22-standardize-path-constants/tasks.md, src/movie_generator/audio/core.py, src/movie_generator/audio/synthesizer.py, src/movie_generator/cli.py, src/movie_generator/slides/core.py, src/movie_generator/slides/generator.py, src/movie_generator/video/core.py, src/movie_generator/video/remotion_renderer.py, src/movie_generator/video/renderer.py
+- [x] Commit all modified files: openspec/changes/archive/2026-01-22-standardize-path-constants/tasks.md, src/movie_generator/audio/core.py, src/movie_generator/audio/synthesizer.py, src/movie_generator/cli.py, src/movie_generator/slides/core.py, src/movie_generator/slides/generator.py, src/movie_generator/video/core.py, src/movie_generator/video/remotion_renderer.py, src/movie_generator/video/renderer.py
