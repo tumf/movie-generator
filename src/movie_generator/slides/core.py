@@ -187,6 +187,13 @@ async def generate_slides_for_script(
     successful_count = sum(1 for p in slide_paths if p.exists() and p.stat().st_size > 0)
     failed_count = len(slide_paths) - successful_count
 
+    # If all slides failed, raise an error
+    if successful_count == 0 and total_slides > 0:
+        raise RuntimeError(
+            f"All {total_slides} slides failed to generate. "
+            "Check API key, credits, and model availability."
+        )
+
     if progress_callback:
         if failed_count > 0:
             progress_callback(
