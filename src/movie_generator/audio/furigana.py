@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from pydantic import BaseModel
 
+from ..constants import TimeoutConstants
 from ..utils.text import clean_katakana_reading
 
 if TYPE_CHECKING:
@@ -310,7 +311,7 @@ async def generate_readings_with_llm(
         "response_format": {"type": "json_object"},
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_DEFAULT) as client:
         url = f"{base_url}/chat/completions"
         response = await client.post(url, headers=headers, json=payload)
         if response.status_code != 200:

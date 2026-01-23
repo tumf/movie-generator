@@ -6,6 +6,7 @@ from pathlib import Path
 
 import httpx
 
+from ..constants import TimeoutConstants
 from ..utils.filesystem import skip_if_exists  # type: ignore[import]
 
 
@@ -60,7 +61,7 @@ async def download_logo(
     last_error = None
     for attempt in range(max_retries):
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=TimeoutConstants.ASSET_DOWNLOAD) as client:
                 response = await client.get(url, follow_redirects=True)
                 response.raise_for_status()
 

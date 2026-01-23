@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-from ..constants import ProjectPaths, RetryConfig, VideoConstants
+from ..constants import ProjectPaths, RetryConfig, TimeoutConstants, VideoConstants
 from ..utils.filesystem import is_valid_file, skip_if_exists
 
 
@@ -49,7 +49,9 @@ async def download_and_process_image(
         return output_path
 
     # Download image
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+    async with httpx.AsyncClient(
+        timeout=TimeoutConstants.HTTP_DEFAULT, follow_redirects=True
+    ) as client:
         response = await client.get(url)
         response.raise_for_status()
         image_data = response.content
@@ -171,7 +173,7 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
     last_error = None
     for attempt in range(max_retries):
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_IMAGE_GENERATION) as client:
                 response = await client.post(
                     f"{base_url}/chat/completions",
                     headers={

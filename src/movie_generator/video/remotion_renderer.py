@@ -11,7 +11,7 @@ from typing import Any
 
 from rich.console import Console
 
-from ..constants import ProjectPaths, SubtitleConstants, VideoConstants
+from ..constants import ProjectPaths, SubtitleConstants, TimeoutConstants, VideoConstants
 from ..exceptions import RenderingError
 from ..script.phrases import Phrase
 from .renderer import CompositionPhrase
@@ -232,7 +232,7 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
                 check=True,
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minutes timeout for download
+                timeout=TimeoutConstants.VIDEO_RENDER_DOWNLOAD,
             )
 
             # Move downloaded browser to global cache
