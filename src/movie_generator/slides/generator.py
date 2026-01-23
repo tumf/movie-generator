@@ -245,6 +245,11 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
                 # response may not have text attribute or may fail to access
                 pass
             print(f"⚠ HTTP error on attempt {attempt + 1}/{max_retries}: {e}{error_detail}")
+
+            # Don't retry on payment errors (402) - no point in retrying
+            if e.response.status_code == 402:
+                print("✗ Payment required error - check OpenRouter credits and retry")
+                break
         except httpx.HTTPError as e:
             last_error = e
             print(f"⚠ HTTP error on attempt {attempt + 1}/{max_retries}: {e}")
