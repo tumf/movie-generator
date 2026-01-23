@@ -9,6 +9,7 @@ from pathlib import Path
 
 import yaml
 
+from ..constants import ProjectPaths
 from ..script.generator import Narration, ScriptSection, VideoScript
 from .generator import generate_slides_for_sections
 
@@ -18,6 +19,7 @@ async def generate_slides_for_script(
     model: str,
     output_dir: Path | None = None,
     api_key: str | None = None,
+    base_url: str = "https://openrouter.ai/api/v1",
     language: str = "ja",
     max_concurrent: int = 2,
     scenes: tuple[int | None, int | None] | None = None,
@@ -148,12 +150,18 @@ async def generate_slides_for_script(
             1
             for idx in slide_indices
             if (
-                (lang_slide_dir / f"slide_{idx:04d}.png").exists()
-                and (lang_slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
             or (
-                (slide_dir / f"slide_{idx:04d}.png").exists()
-                and (slide_dir / f"slide_{idx:04d}.png").stat().st_size > 0
+                (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
+                and (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
+                .stat()
+                .st_size
+                > 0
             )
         )
         if existing_count > 0:
@@ -168,6 +176,7 @@ async def generate_slides_for_script(
         output_dir=slide_dir,
         api_key=api_key,
         model=model,
+        base_url=base_url,
         max_concurrent=max_concurrent,
         section_indices=slide_indices,
         language=language,

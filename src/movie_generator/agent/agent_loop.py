@@ -30,6 +30,7 @@ class AgentLoop:
         mcp_client: MCPClient,
         openrouter_api_key: str,
         model: str,
+        base_url: str = "https://openrouter.ai/api/v1",
         max_iterations: int = 10,
     ):
         """Initialize agent loop.
@@ -38,11 +39,13 @@ class AgentLoop:
             mcp_client: Connected MCP client with available tools.
             openrouter_api_key: OpenRouter API key for LLM access.
             model: OpenRouter model identifier (default: gpt-4-turbo-preview).
+            base_url: API base URL (default: https://openrouter.ai/api/v1).
             max_iterations: Maximum number of tool call iterations (default: 10).
         """
         self.mcp_client = mcp_client
         self.openrouter_api_key = openrouter_api_key
         self.model = model
+        self.base_url = base_url
         self.max_iterations = max_iterations
         self.http_client = httpx.AsyncClient()
 
@@ -146,7 +149,7 @@ class AgentLoop:
         Raises:
             MCPError: If LLM call fails.
         """
-        url = "https://openrouter.ai/api/v1/chat/completions"
+        url = f"{self.base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.openrouter_api_key}",
             "Content-Type": "application/json",

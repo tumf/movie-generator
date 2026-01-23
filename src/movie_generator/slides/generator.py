@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-from ..constants import RetryConfig
+from ..constants import ProjectPaths, RetryConfig, VideoConstants
 from ..utils.filesystem import is_valid_file, skip_if_exists
 
 
@@ -20,10 +20,10 @@ async def download_and_process_image(
     *,
     url: str,
     output_path: Path,
-    target_width: int = 1280,
-    target_height: int = 720,
-    min_width: int = 800,
-    min_height: int = 600,
+    target_width: int = VideoConstants.DEFAULT_WIDTH,
+    target_height: int = VideoConstants.DEFAULT_HEIGHT,
+    min_width: int = VideoConstants.MIN_WIDTH,
+    min_height: int = VideoConstants.MIN_HEIGHT,
 ) -> Path:
     """Download and process an image from URL.
 
@@ -89,7 +89,8 @@ async def _download_or_generate_slide(
     output_path: Path,
     api_key: str,
     model: str,
-    resolution: tuple[int, int] = (1280, 720),
+    base_url: str = "https://openrouter.ai/api/v1",
+    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
 ) -> Path:
     """Try to download source image, fallback to AI generation on failure.
 
@@ -118,6 +119,7 @@ async def _download_or_generate_slide(
             output_path=output_path,
             api_key=api_key,
             model=model,
+            base_url=base_url,
             width=resolution[0],
             height=resolution[1],
         )
@@ -130,8 +132,8 @@ async def generate_slide(
     api_key: str,
     model: str,
     base_url: str = "https://openrouter.ai/api/v1",
-    width: int = 1280,
-    height: int = 720,
+    width: int = VideoConstants.DEFAULT_WIDTH,
+    height: int = VideoConstants.DEFAULT_HEIGHT,
     max_retries: int = RetryConfig.MAX_RETRIES,
     retry_delay: float = RetryConfig.INITIAL_DELAY,
 ) -> Path:
@@ -269,9 +271,10 @@ async def generate_slides_for_sections(
     api_key: str,
     model: str,
     language: str = "ja",
+    base_url: str = "https://openrouter.ai/api/v1",
     max_concurrent: int = 3,
     section_indices: list[int] | None = None,
-    resolution: tuple[int, int] = (1280, 720),
+    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
 ) -> list[Path]:
     """Generate slides for multiple script sections with concurrent processing.
 
@@ -312,7 +315,7 @@ async def generate_slides_for_sections(
         else:
             title, prompt, source_image_url = section_data
 
-        output_path = lang_output_dir / f"slide_{file_index:04d}.png"
+        output_path = lang_output_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=file_index)
         slide_paths.append(output_path)
 
         # Check if already exists
@@ -332,6 +335,7 @@ async def generate_slides_for_sections(
                             output_path=output_path,
                             api_key=api_key,
                             model=model,
+                            base_url=base_url,
                             resolution=resolution,
                         )
                     )
@@ -353,6 +357,7 @@ async def generate_slides_for_sections(
                         output_path=output_path,
                         api_key=api_key,
                         model=model,
+                        base_url=base_url,
                         width=resolution[0],
                         height=resolution[1],
                     )

@@ -95,6 +95,10 @@ class AudioConfig(BaseModel):
         default=True,
         description="Enable automatic furigana generation using morphological analysis",
     )
+    pronunciation_model: str = Field(
+        default="openai/gpt-4o-mini",
+        description="LLM model for pronunciation (furigana) generation",
+    )
 
 
 class NarrationConfig(BaseModel):
@@ -129,6 +133,10 @@ class LLMConfig(BaseModel):
 
     provider: str = Field(default="openrouter")
     model: str = Field(default="openai/gpt-5.2")
+    base_url: str = Field(
+        default="https://openrouter.ai/api/v1",
+        description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
+    )
 
 
 class ContentConfig(BaseModel):
@@ -147,6 +155,10 @@ class SlidesLLMConfig(BaseModel):
     # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
     model: str = Field(default="google/gemini-3-pro-image-preview")
+    base_url: str = Field(
+        default="https://openrouter.ai/api/v1",
+        description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
+    )
 
 
 class SlidesConfig(BaseModel):
@@ -263,6 +275,16 @@ class VideoConfig(BaseModel):
         default=None, description="Optional background image/video for entire video"
     )
     bgm: BgmConfig | None = Field(default=None, description="Optional background music")
+    render_concurrency: int = Field(
+        default=4,
+        ge=1,
+        description="Number of concurrent frames to render (higher = faster but more memory)",
+    )
+    render_timeout_seconds: int = Field(
+        default=300,
+        ge=1,
+        description="Timeout for Remotion delayRender calls in seconds",
+    )
 
 
 class PronunciationWord(BaseModel):
@@ -423,6 +445,7 @@ def generate_default_config_yaml() -> str:
         "  speaker_id: 3  # VOICEVOX speaker ID (3 = Zundamon)",
         "  speed_scale: 1.0  # Speech speed multiplier (1.0 = normal)",
         "  enable_furigana: true  # Auto-generate furigana using morphological analysis",
+        '  pronunciation_model: "openai/gpt-4o-mini"  # LLM model for pronunciation generation',
         "",
         "# Narration style settings",
         "narration:",
@@ -461,6 +484,7 @@ def generate_default_config_yaml() -> str:
         "  llm:",
         '    provider: "openrouter"  # LLM provider for script generation',
         '    model: "openai/gpt-5.2"  # Model to use for content generation',
+        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
         '  languages: ["ja"]  # Languages for content generation (e.g., ["ja", "en"])',
         "",
         "# Slide generation settings",
@@ -468,6 +492,7 @@ def generate_default_config_yaml() -> str:
         "  llm:",
         '    provider: "openrouter"  # LLM provider for slide generation',
         '    model: "google/gemini-3-pro-image-preview"  # Model for slide images',
+        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
         '  style: "presentation"  # Slide style: presentation, illustration, minimal',
         "",
         "# Video rendering settings",
@@ -475,6 +500,8 @@ def generate_default_config_yaml() -> str:
         '  renderer: "remotion"  # Video rendering engine',
         '  template: "default"  # Video template to use',
         '  output_format: "mp4"  # Output video format',
+        "  render_concurrency: 4  # Number of concurrent frames to render (higher = faster but more memory)",
+        "  render_timeout_seconds: 300  # Timeout for Remotion delayRender calls in seconds",
         "  transition:",
         '    type: "fade"  # Transition type: fade, slide, wipe, flip, clockWipe, none',
         "    duration_frames: 15  # Transition duration in frames (0.5s at 30fps)",

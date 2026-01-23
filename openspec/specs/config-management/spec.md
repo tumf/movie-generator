@@ -726,30 +726,6 @@ The system SHALL support specific file formats for background and BGM.
 - **WHEN** the configuration is loaded
 - **THEN** the file format is accepted as valid
 
-### Requirement: Unified Slide Generation Retry Configuration
-
-The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants (SHALL).
-
-#### Scenario: Refer to Retry Constants
-
-- **WHEN** performing retry processing in slide generation
-- **THEN** reference constants from `RetryConfig`
-
-### Requirement: スライド生成リトライ設定の統一
-システムは、スライド生成のリトライ回数・遅延・バックオフ係数を共通定数から取得しなければならない（SHALL）。
-
-#### Scenario: リトライ定数の参照
-- **WHEN** スライド生成でリトライ処理を行う
-- **THEN** `RetryConfig` の定数を参照する
-
-### Requirement: LLMモデルの明示指定
-システムは、LLM呼び出し時にモデルIDを設定ファイルから明示的に指定しなければならない（SHALL）。
-
-#### Scenario: モデル指定の強制
-- **GIVEN** 設定ファイルに `content.llm.model` と `slides.llm.model` が定義されている
-- **WHEN** LLM呼び出しが実行される
-- **THEN** 関数デフォルトに依存せず、設定値が渡される
-
 ### Requirement: 発音LLMモデルの設定
 システムは、発音（フリガナ）生成に使用するLLMモデルIDを設定ファイルで指定できなければならない（SHALL）。
 
@@ -766,32 +742,124 @@ The system SHALL retrieve slide generation retry count, delay, and backoff facto
 - **WHEN** Remotionレンダリングが実行される
 - **THEN** 指定された並列度とタイムアウトが適用される
 
-### Requirement: LLMベースURLの設定
-システムは、LLM呼び出しのベースURLを設定ファイルで指定できなければならない（SHALL）。
+### Requirement: LLM Base URL Configuration
 
-#### Scenario: ベースURLの指定
-- **GIVEN** `content.llm.base_url` と `slides.llm.base_url` が設定されている
-- **WHEN** LLM呼び出しが実行される
-- **THEN** 指定されたベースURLが使用される
+The system SHALL allow specifying the base URL for LLM API calls in the configuration file.
 
-### Requirement: 生成パス規約の定数化
-システムは、生成アセットのファイル名フォーマットを共通定数として定義しなければならない（SHALL）。
+#### Scenario: Specify Base URL
 
-#### Scenario: 生成ファイル名フォーマットの参照
-- **WHEN** 生成アセットの保存パスを組み立てる
-- **THEN** 共通定数で定義されたフォーマットを使用する
+- **GIVEN** `content.llm.base_url` and `slides.llm.base_url` are configured
+- **WHEN** LLM API calls are made
+- **THEN** the specified base URL is used
 
-### Requirement: 最小解像度とプロジェクトルートの集中管理
-システムは、最小解像度の基準値とDocker環境のプロジェクトルートを共通の値として管理しなければならない（SHALL）。
+#### Scenario: Default Base URL
 
-#### Scenario: 最小解像度とプロジェクトルートの適用
-- **GIVEN** `PROJECT_ROOT` 環境変数が設定されている
-- **WHEN** 画像の最小解像度チェックやプロジェクトルート解決を行う
-- **THEN** 定数と環境変数が適用される
+- **GIVEN** `content.llm.base_url` or `slides.llm.base_url` is not specified
+- **WHEN** LLM API calls are made
+- **THEN** the default OpenRouter API URL (`https://openrouter.ai/api/v1`) is used
 
-### Requirement: タイムアウト定数の集約
-システムは、外部呼び出しやレンダリングのタイムアウト既定値を共通の定数として集約しなければならない（SHALL）。
+#### Scenario: Configure for OpenRouter
 
-#### Scenario: タイムアウト参照の統一
-- **WHEN** 各モジュールがタイムアウト値を必要とする
-- **THEN** 共通のタイムアウト定数を参照する
+- **GIVEN** the configuration includes:
+  ```yaml
+  content:
+    llm:
+      base_url: "https://openrouter.ai/api/v1"
+  slides:
+    llm:
+      base_url: "https://openrouter.ai/api/v1"
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** `content.llm.base_url` is `"https://openrouter.ai/api/v1"`
+- **AND** `slides.llm.base_url` is `"https://openrouter.ai/api/v1"`
+
+#### Scenario: Configure for Local LLM Server
+
+- **GIVEN** the configuration includes:
+  ```yaml
+  content:
+    llm:
+      base_url: "http://localhost:8080/v1"
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** script generation uses the local server endpoint
+
+### Requirement: Unified Slide Generation Retry Configuration
+
+The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants.
+
+#### Scenario: Refer to Retry Constants
+
+- **WHEN** performing retry processing in slide generation
+- **THEN** reference constants from `RetryConfig`
+- **AND** use `RetryConfig.MAX_RETRIES` for maximum retry attempts
+- **AND** use `RetryConfig.BASE_DELAY_SECONDS` for initial delay
+- **AND** use `RetryConfig.BACKOFF_FACTOR` for exponential backoff
+
+### Requirement: Explicit LLM Model Specification
+
+The system SHALL explicitly specify model IDs from configuration files when calling LLMs.
+
+#### Scenario: Enforce Model Specification
+
+- **GIVEN** `content.llm.model` and `slides.llm.model` are defined in configuration
+- **WHEN** LLM calls are executed
+- **THEN** configuration values are used without relying on function defaults
+
+### Requirement: Pronunciation LLM Model Configuration
+
+The system SHALL allow specification of LLM model ID for pronunciation (furigana) generation in configuration.
+
+#### Scenario: Specify Pronunciation Model
+
+- **GIVEN** `audio.pronunciation_model: "openai/gpt-4o-mini"` is configured
+- **WHEN** pronunciation LLM is called
+- **THEN** the specified model ID is used
+
+### Requirement: Rendering Execution Configuration
+
+The system SHALL allow specification of video rendering concurrency and timeout in configuration.
+
+#### Scenario: Apply Rendering Configuration
+
+- **GIVEN** `video.render_concurrency` and `video.render_timeout_seconds` are configured
+- **WHEN** Remotion rendering is executed
+- **THEN** specified concurrency and timeout are applied
+
+### Requirement: LLM Base URL Configuration
+
+The system SHALL allow specification of LLM base URL in configuration.
+
+#### Scenario: Specify Base URL
+
+- **GIVEN** `content.llm.base_url` and `slides.llm.base_url` are configured
+- **WHEN** LLM calls are executed
+- **THEN** specified base URLs are used
+
+### Requirement: Path Convention Standardization
+
+The system SHALL define filename formats for generated assets as common constants.
+
+#### Scenario: Refer to Generated File Name Format
+
+- **WHEN** assembling save paths for generated assets
+- **THEN** use formats defined in common constants
+
+### Requirement: Centralized Minimum Resolution and Project Root
+
+The system SHALL manage minimum resolution standards and Docker environment project root as common values.
+
+#### Scenario: Apply Minimum Resolution and Project Root
+
+- **GIVEN** `PROJECT_ROOT` environment variable is set
+- **WHEN** checking minimum image resolution or resolving project root
+- **THEN** constants and environment variables are applied
+
+### Requirement: Timeout Constants Consolidation
+
+The system SHALL consolidate default timeout values for external calls and rendering as common constants.
+
+#### Scenario: Unified Timeout Reference
+
+- **WHEN** modules require timeout values
+- **THEN** reference common timeout constants
