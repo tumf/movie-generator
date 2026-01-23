@@ -16,9 +16,9 @@ from .generator import generate_slides_for_sections
 
 async def generate_slides_for_script(
     script_path: Path,
+    model: str,
     output_dir: Path | None = None,
     api_key: str | None = None,
-    model: str = "google/gemini-3-pro-image-preview",
     base_url: str = "https://openrouter.ai/api/v1",
     language: str = "ja",
     max_concurrent: int = 2,

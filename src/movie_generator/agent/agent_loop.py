@@ -29,7 +29,7 @@ class AgentLoop:
         self,
         mcp_client: MCPClient,
         openrouter_api_key: str,
-        model: str = "openai/gpt-4-turbo-preview",
+        model: str,
         base_url: str = "https://openrouter.ai/api/v1",
         max_iterations: int = 10,
     ):

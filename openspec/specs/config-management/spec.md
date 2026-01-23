@@ -796,6 +796,46 @@ The system SHALL retrieve slide generation retry count, delay, and backoff facto
 - **AND** use `RetryConfig.BASE_DELAY_SECONDS` for initial delay
 - **AND** use `RetryConfig.BACKOFF_FACTOR` for exponential backoff
 
+### Requirement: Explicit LLM Model Specification
+
+The system SHALL explicitly specify model IDs from configuration files when calling LLMs.
+
+#### Scenario: Enforce Model Specification
+
+- **GIVEN** `content.llm.model` and `slides.llm.model` are defined in configuration
+- **WHEN** LLM calls are executed
+- **THEN** configuration values are used without relying on function defaults
+
+### Requirement: Pronunciation LLM Model Configuration
+
+The system SHALL allow specification of LLM model ID for pronunciation (furigana) generation in configuration.
+
+#### Scenario: Specify Pronunciation Model
+
+- **GIVEN** `audio.pronunciation_model: "openai/gpt-4o-mini"` is configured
+- **WHEN** pronunciation LLM is called
+- **THEN** the specified model ID is used
+
+### Requirement: Rendering Execution Configuration
+
+The system SHALL allow specification of video rendering concurrency and timeout in configuration.
+
+#### Scenario: Apply Rendering Configuration
+
+- **GIVEN** `video.render_concurrency` and `video.render_timeout_seconds` are configured
+- **WHEN** Remotion rendering is executed
+- **THEN** specified concurrency and timeout are applied
+
+### Requirement: LLM Base URL Configuration
+
+The system SHALL allow specification of LLM base URL in configuration.
+
+#### Scenario: Specify Base URL
+
+- **GIVEN** `content.llm.base_url` and `slides.llm.base_url` are configured
+- **WHEN** LLM calls are executed
+- **THEN** specified base URLs are used
+
 ### Requirement: Path Convention Standardization
 
 The system SHALL define filename formats for generated assets as common constants.
@@ -814,3 +854,12 @@ The system SHALL manage minimum resolution standards and Docker environment proj
 - **GIVEN** `PROJECT_ROOT` environment variable is set
 - **WHEN** checking minimum image resolution or resolving project root
 - **THEN** constants and environment variables are applied
+
+### Requirement: Timeout Constants Consolidation
+
+The system SHALL consolidate default timeout values for external calls and rendering as common constants.
+
+#### Scenario: Unified Timeout Reference
+
+- **WHEN** modules require timeout values
+- **THEN** reference common timeout constants

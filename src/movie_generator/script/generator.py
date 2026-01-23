@@ -780,13 +780,13 @@ def select_personas_from_pool(
 
 async def generate_script(
     content: str,
+    model: str,
     title: str | None = None,
     description: str | None = None,
     character: str = "ずんだもん",
     style: str = "casual",
     language: str = "ja",
     api_key: str | None = None,
-    model: str = "openai/gpt-5.2",
     base_url: str = "https://openrouter.ai/api/v1",
     images: list[dict[str, str]] | None = None,
     personas: list[dict[str, str]] | None = None,
