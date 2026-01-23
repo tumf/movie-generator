@@ -11,14 +11,21 @@
   - テスト結果: LLM関連テスト 17件すべて合格 (test_script_generator.py, test_agent_loop.py)
   - 修正内容: test_agent_loop.py の2箇所でテストコードに `model` パラメータを追加
 
-## Acceptance #1 Failure Follow-up
-- [ ] Commit IMPLEMENTATION_SUMMARY.md (currently staged but uncommitted)
-- [ ] Commit openspec archive changes (design.md, proposal.md, specs/config-management/spec.md, tasks.md moved to archive)
-- [ ] Commit openspec/specs/config-management/spec.md changes (modified, partially staged)
-- [ ] Commit src/movie_generator/agent/agent_loop.py (modified, uncommitted)
-- [ ] Commit src/movie_generator/audio/furigana.py (modified, uncommitted)
-- [ ] Commit src/movie_generator/audio/voicevox.py (modified, uncommitted)
-- [ ] Commit src/movie_generator/script/generator.py (modified, uncommitted)
-- [ ] Commit src/movie_generator/slides/core.py (modified, uncommitted)
-- [ ] Commit src/movie_generator/slides/generator.py (modified, uncommitted)
-- [ ] Commit tests/test_agent_loop.py (modified, uncommitted)
+## 3. コミット
+- [x] 3.1 IMPLEMENTATION_SUMMARY.md をコミット
+- [x] 3.2 openspec アーカイブ変更をコミット (design.md, proposal.md, specs/config-management/spec.md, tasks.md)
+- [x] 3.3 openspec/specs/config-management/spec.md 変更をコミット
+- [x] 3.4 src/movie_generator/agent/agent_loop.py をコミット
+- [x] 3.5 src/movie_generator/audio/furigana.py をコミット
+- [x] 3.6 src/movie_generator/audio/voicevox.py をコミット
+- [x] 3.7 src/movie_generator/script/generator.py をコミット
+- [x] 3.8 src/movie_generator/slides/core.py をコミット
+- [x] 3.9 src/movie_generator/slides/generator.py をコミット
+- [x] 3.10 tests/test_agent_loop.py をコミット
+- [x] 3.11 web/worker/main.py をコミット
+
+## 完了確認
+- [x] すべての実装タスクが完了
+- [x] すべての検証が合格
+- [x] すべての変更がコミット済み
+- [x] Working tree is clean
