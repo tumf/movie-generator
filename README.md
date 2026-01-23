@@ -2,6 +2,8 @@
 
 ずんだもん達が動画で優しく解説
 
+![Web Interface](docs/images/web-interface.png)
+
 ## Features
 
 - **Content Extraction**: Fetch and parse blog content from URLs
