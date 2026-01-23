@@ -352,6 +352,8 @@ def render_video_for_script(
         crf=cfg.style.crf,
         fps=cfg.style.fps,
         resolution=cfg.style.resolution,
+        render_concurrency=cfg.video.render_concurrency,
+        render_timeout_seconds=cfg.video.render_timeout_seconds,
     )
 
     if progress_callback:

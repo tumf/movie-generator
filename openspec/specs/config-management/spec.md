@@ -726,33 +726,91 @@ The system SHALL support specific file formats for background and BGM.
 - **WHEN** the configuration is loaded
 - **THEN** the file format is accepted as valid
 
+### Requirement: 発音LLMモデルの設定
+システムは、発音（フリガナ）生成に使用するLLMモデルIDを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: 発音モデルの指定
+- **GIVEN** `audio.pronunciation_model: "openai/gpt-4o-mini"` が設定されている
+- **WHEN** 発音LLMが呼び出される
+- **THEN** 指定されたモデルIDが使用される
+
+### Requirement: レンダリング実行設定
+システムは、動画レンダリングの並列度とタイムアウトを設定ファイルで指定できなければならない（SHALL）。
+
+#### Scenario: レンダリング設定の反映
+- **GIVEN** `video.render_concurrency` と `video.render_timeout_seconds` が設定されている
+- **WHEN** Remotionレンダリングが実行される
+- **THEN** 指定された並列度とタイムアウトが適用される
+
+### Requirement: LLM Base URL Configuration
+
+The system SHALL allow specifying the base URL for LLM API calls in the configuration file.
+
+#### Scenario: Specify Base URL
+
+- **GIVEN** `content.llm.base_url` and `slides.llm.base_url` are configured
+- **WHEN** LLM API calls are made
+- **THEN** the specified base URL is used
+
+#### Scenario: Default Base URL
+
+- **GIVEN** `content.llm.base_url` or `slides.llm.base_url` is not specified
+- **WHEN** LLM API calls are made
+- **THEN** the default OpenRouter API URL (`https://openrouter.ai/api/v1`) is used
+
+#### Scenario: Configure for OpenRouter
+
+- **GIVEN** the configuration includes:
+  ```yaml
+  content:
+    llm:
+      base_url: "https://openrouter.ai/api/v1"
+  slides:
+    llm:
+      base_url: "https://openrouter.ai/api/v1"
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** `content.llm.base_url` is `"https://openrouter.ai/api/v1"`
+- **AND** `slides.llm.base_url` is `"https://openrouter.ai/api/v1"`
+
+#### Scenario: Configure for Local LLM Server
+
+- **GIVEN** the configuration includes:
+  ```yaml
+  content:
+    llm:
+      base_url: "http://localhost:8080/v1"
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** script generation uses the local server endpoint
+
 ### Requirement: Unified Slide Generation Retry Configuration
 
-The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants (SHALL).
+The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants.
 
 #### Scenario: Refer to Retry Constants
 
 - **WHEN** performing retry processing in slide generation
 - **THEN** reference constants from `RetryConfig`
+- **AND** use `RetryConfig.MAX_RETRIES` for maximum retry attempts
+- **AND** use `RetryConfig.BASE_DELAY_SECONDS` for initial delay
+- **AND** use `RetryConfig.BACKOFF_FACTOR` for exponential backoff
 
-### Requirement: スライド生成リトライ設定の統一
-システムは、スライド生成のリトライ回数・遅延・バックオフ係数を共通定数から取得しなければならない（SHALL）。
+### Requirement: Path Convention Standardization
 
-#### Scenario: リトライ定数の参照
-- **WHEN** スライド生成でリトライ処理を行う
-- **THEN** `RetryConfig` の定数を参照する
+The system SHALL define filename formats for generated assets as common constants.
 
-### Requirement: 生成パス規約の定数化
-システムは、生成アセットのファイル名フォーマットを共通定数として定義しなければならない（SHALL）。
+#### Scenario: Refer to Generated File Name Format
 
-#### Scenario: 生成ファイル名フォーマットの参照
-- **WHEN** 生成アセットの保存パスを組み立てる
-- **THEN** 共通定数で定義されたフォーマットを使用する
+- **WHEN** assembling save paths for generated assets
+- **THEN** use formats defined in common constants
 
-### Requirement: 最小解像度とプロジェクトルートの集中管理
-システムは、最小解像度の基準値とDocker環境のプロジェクトルートを共通の値として管理しなければならない（SHALL）。
+### Requirement: Centralized Minimum Resolution and Project Root
 
-#### Scenario: 最小解像度とプロジェクトルートの適用
-- **GIVEN** `PROJECT_ROOT` 環境変数が設定されている
-- **WHEN** 画像の最小解像度チェックやプロジェクトルート解決を行う
-- **THEN** 定数と環境変数が適用される
+The system SHALL manage minimum resolution standards and Docker environment project root as common values.
+
+#### Scenario: Apply Minimum Resolution and Project Root
+
+- **GIVEN** `PROJECT_ROOT` environment variable is set
+- **WHEN** checking minimum image resolution or resolving project root
+- **THEN** constants and environment variables are applied

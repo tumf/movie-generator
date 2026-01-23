@@ -15,6 +15,7 @@ audio:
   engine: "voicevox"
   speaker_id: 3 # Zundamon
   speed_scale: 1.0
+  pronunciation_model: "openai/gpt-4o-mini" # LLM model for pronunciation generation
   # VOICEVOX paths (can also be set via environment variables)
   # dict_dir: "~/.local/share/voicevox/dict/open_jtalk_dic_utf_8-1.11"
   # model_path: "~/.local/share/voicevox/models/vvms/0.vvm"
@@ -48,17 +49,21 @@ content:
   llm:
     provider: "openrouter"
     model: "gemini-3-pro"
+    base_url: "https://openrouter.ai/api/v1"
 
 slides:
   llm:
     provider: "openrouter"
     model: "google/gemini-3-pro-image-preview" # Image generation model
+    base_url: "https://openrouter.ai/api/v1"
   style: "presentation" # presentation, illustration, minimal
 
 video:
   renderer: "remotion"
   template: "default"
   output_format: "mp4"
+  render_concurrency: 4 # Number of concurrent frames to render (higher = faster but more memory)
+  render_timeout_seconds: 300 # Timeout for Remotion delayRender calls in seconds
   transition:
     type: "flip" # fade, slide, wipe, flip, clockWipe, none
     duration_frames: 15 # Transition duration in frames (0.5s at 30fps)
