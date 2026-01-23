@@ -4,6 +4,8 @@
 
 ![Web Interface](docs/images/web-interface.png)
 
+![Video Result](docs/images/video-result.png)
+
 ## Features
 
 - **Content Extraction**: Fetch and parse blog content from URLs
