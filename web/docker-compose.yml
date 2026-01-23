@@ -35,6 +35,7 @@ services:
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
       - MAX_QUEUE_SIZE=${MAX_QUEUE_SIZE:-10}
       - RATE_LIMIT_PER_DAY=${RATE_LIMIT_PER_DAY:-5}
       - MAX_VIDEO_DURATION_MINUTES=${MAX_VIDEO_DURATION_MINUTES:-5}
@@ -66,6 +67,7 @@ services:
     environment:
       - POCKETBASE_URL=http://pocketbase:8090
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
       # VOICEVOX environment variables are set in Dockerfile
       - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-2}
       - WORKER_POLL_INTERVAL=${WORKER_POLL_INTERVAL:-5}
