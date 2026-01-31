@@ -6,6 +6,29 @@
 
 ![Video Result](docs/images/video-result.png)
 
+## Quick Start with Docker (Web UI)
+
+For quick setup, use Docker Compose to launch the web interface:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-repo/movie-generator.git
+cd movie-generator
+
+# Set up environment variables
+cd web
+cp .env.example .env
+# Edit .env with your API keys and configuration
+# Required: OPENROUTER_API_KEY, DOMAIN, etc.
+
+# Start the web service with Docker
+docker compose -f ./web/docker-compose.yml up -d --build
+```
+
+Access the web interface at `http://localhost:8000` (or your configured port).
+
+For detailed configuration and deployment instructions, see the [Web Service](#web-service) section below.
+
 ## Features
 
 - **Content Extraction**: Fetch and parse blog content from URLs
@@ -45,30 +68,19 @@ VOICEVOX Core is not available via PyPI and must be installed manually. If not i
 
 ```
 ImportError: VOICEVOX Core is not installed and is required for audio synthesis.
-Please install voicevox_core or see docs/VOICEVOX_SETUP.md for instructions.
+Please install voicevox_core following the official guide at https://voicevox.github.io/voicevox_core/apis/
 To run without VOICEVOX (placeholder mode for testing), set allow_placeholder=True.
 ```
 
-#### Quick Setup (macOS)
+#### Installation
 
-```bash
-# Run the automated setup script
-bash scripts/install_voicevox_macos.sh
+Please refer to the official VOICEVOX Core documentation for installation instructions:
 
-# Set environment variables
-source ~/.local/share/voicevox/env.sh
-```
+**[VOICEVOX Core User Guide](https://voicevox.github.io/voicevox_core/apis/)**
 
-#### Manual Setup
-
-1. **Install VOICEVOX Core**: Download from [VOICEVOX releases](https://github.com/VOICEVOX/voicevox_core/releases)
-2. **Link to virtual environment**:
-   ```bash
-   # If installed via pyenv
-   ln -sf ~/.pyenv/versions/3.13.1/lib/python3.13/site-packages/voicevox_core .venv/lib/python3.13/site-packages/
-   ln -sf ~/.pyenv/versions/3.13.1/lib/python3.13/site-packages/voicevox_core-*.dist-info .venv/lib/python3.13/site-packages/
-   ```
-3. **Configure paths**: See `docs/VOICEVOX_SETUP.md` for detailed instructions
+- Download pre-built libraries from [VOICEVOX Releases](https://github.com/VOICEVOX/voicevox_core/releases)
+- Follow platform-specific setup instructions in the official guide
+- For Python API, install the wheel file (.whl) from releases
 
 #### Testing Without VOICEVOX
 

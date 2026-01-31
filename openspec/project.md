@@ -129,8 +129,9 @@ class PersonaConfig(BaseModel):
 ## External Dependencies
 
 - **VOICEVOX Core**: https://voicevox.hiroshiba.jp/
-  - Manual installation required (see `docs/VOICEVOX_SETUP.md`)
-  - Automated setup script: `scripts/install_voicevox_macos.sh`
+  - Manual installation required
+  - Official documentation: https://voicevox.github.io/voicevox_core/apis/
+  - Download from: https://github.com/VOICEVOX/voicevox_core/releases
 - **OpenRouter API**: https://openrouter.ai/
   - Used for script generation and slide image generation
 - **Remotion**: https://www.remotion.dev/
