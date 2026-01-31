@@ -2,6 +2,14 @@
 
 ずんだもん達が動画で優しく解説
 
+### デモ動画
+
+https://github.com/user-attachments/assets/demo-video.mp4
+
+> 実際の生成例：[デモ動画を見る](docs/videos/demo.mp4)
+
+### スクリーンショット
+
 ![Web Interface](docs/images/web-interface.png)
 
 ![Video Result](docs/images/video-result.png)

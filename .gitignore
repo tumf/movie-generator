@@ -45,6 +45,9 @@ output2/
 *.mp4
 *.mp3
 
+# Exception: demo videos for documentation
+!docs/videos/*.mp4
+
 # Ad-hoc test configuration files
 /2026-*.yaml
 /*-test*.yaml
