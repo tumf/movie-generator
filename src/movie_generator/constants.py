@@ -83,7 +83,8 @@ class RetryConfig:
     """Retry operation configuration."""
 
     MAX_RETRIES = 3
-    INITIAL_DELAY = 2.0  # seconds
+    BASE_DELAY_SECONDS = 2.0  # Initial delay for exponential backoff
+    INITIAL_DELAY = 2.0  # DEPRECATED: Use BASE_DELAY_SECONDS instead (kept for backward compat)
     BACKOFF_FACTOR = 2.0
 
 
