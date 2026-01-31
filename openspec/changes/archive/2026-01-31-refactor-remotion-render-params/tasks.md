@@ -7,3 +7,6 @@
 
 ## 3. Verification
 - [x] 3.1 全テストが通る（検証: `uv run pytest`）
+
+## Acceptance #1 Failure Follow-up
+- [x] Commit the uncommitted change in tests/test_video_e2e.py (added sys.path.insert import fix to match test_remotion_setup.py pattern)
