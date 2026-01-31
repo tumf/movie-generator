@@ -6,6 +6,7 @@ Generates presentation slides using image generation models.
 import asyncio
 import base64
 from collections.abc import Sequence
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
@@ -14,6 +15,29 @@ from PIL import Image
 
 from ..constants import ProjectPaths, RetryConfig, TimeoutConstants, VideoConstants
 from ..utils.filesystem import is_valid_file, skip_if_exists
+
+
+@dataclass(frozen=True)
+class SlideGenerationTask:
+    """A single slide generation task with all necessary metadata.
+
+    Attributes:
+        index: Sequential index in sections list (for display).
+        file_index: Original section index (for file naming).
+        title: Section title.
+        prompt: Image generation prompt.
+        source_image_url: Optional URL to download image from.
+        output_path: Path to save generated/downloaded slide.
+        task_type: Type of task ("download", "generate", "download_or_generate").
+    """
+
+    index: int
+    file_index: int
+    title: str
+    prompt: str | None
+    source_image_url: str | None
+    output_path: Path
+    task_type: str  # "download", "generate", "download_or_generate"
 
 
 async def download_and_process_image(
@@ -231,9 +255,9 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
                             print(f"  Content (list): {len(content)} items")
                             for idx, item in enumerate(content[:3]):
                                 if isinstance(item, dict):
-                                    print(
-                                        f"    [{idx}] type={item.get('type')}, keys={list(item.keys())}"
-                                    )
+                                    item_type = item.get("type")
+                                    item_keys = list(item.keys())
+                                    print(f"    [{idx}] type={item_type}, keys={item_keys}")
                 last_error = ValueError(error_msg)
 
         except httpx.HTTPStatusError as e:
@@ -271,6 +295,77 @@ Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
     return output_path
 
 
+def plan_slide_generation_tasks(
+    *,
+    sections: Sequence[tuple[str, str] | tuple[str, str, str | None]],
+    output_dir: Path,
+    language: str = "ja",
+    section_indices: list[int] | None = None,
+) -> tuple[list[SlideGenerationTask], list[Path]]:
+    """Plan slide generation tasks from sections.
+
+    Pure function that determines which slides need to be generated or downloaded,
+    and which can be skipped because they already exist.
+
+    Args:
+        sections: List of (title, prompt, source_image_url) tuples.
+        output_dir: Directory to save slide images.
+        language: Language code for organizing output (ja, en, etc.).
+        section_indices: Optional list of original section indices for file naming.
+
+    Returns:
+        Tuple of (tasks_to_execute, all_slide_paths):
+            - tasks_to_execute: List of tasks that need execution
+            - all_slide_paths: List of all slide paths in order
+    """
+    lang_output_dir = output_dir / language
+    tasks_to_execute: list[SlideGenerationTask] = []
+    all_slide_paths: list[Path] = []
+
+    for i, section_data in enumerate(sections):
+        # Use custom index if provided, otherwise use sequential index
+        file_index = section_indices[i] if section_indices else i
+
+        # Support both old format (title, prompt) and new format (title, prompt, source_image_url)
+        if len(section_data) == 2:
+            title, prompt = section_data
+            source_image_url = None
+        else:
+            title, prompt, source_image_url = section_data
+
+        output_path = lang_output_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=file_index)
+        all_slide_paths.append(output_path)
+
+        # Skip if already exists
+        if is_valid_file(output_path):
+            continue
+
+        # Determine task type based on available data
+        if source_image_url and prompt:
+            task_type = "download_or_generate"
+        elif source_image_url:
+            task_type = "download"
+        elif prompt:
+            task_type = "generate"
+        else:
+            # Neither source image nor prompt available - skip
+            continue
+
+        tasks_to_execute.append(
+            SlideGenerationTask(
+                index=i,
+                file_index=file_index,
+                title=title,
+                prompt=prompt,
+                source_image_url=source_image_url,
+                output_path=output_path,
+                task_type=task_type,
+            )
+        )
+
+    return tasks_to_execute, all_slide_paths
+
+
 async def generate_slides_for_sections(
     *,
     sections: Sequence[tuple[str, str] | tuple[str, str, str | None]],
@@ -304,119 +399,105 @@ async def generate_slides_for_sections(
     lang_output_dir = output_dir / language
     lang_output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Prepare all tasks
-    slide_paths = []
-    tasks_to_run = []
-    task_indices = []
+    # Phase 1: Plan tasks (pure function)
+    tasks_to_execute, all_slide_paths = plan_slide_generation_tasks(
+        sections=sections,
+        output_dir=output_dir,
+        language=language,
+        section_indices=section_indices,
+    )
 
+    # Phase 2: Display plan
     print(f"\n📊 Preparing to generate {len(sections)} slides for language '{language}'...")
 
-    for i, section_data in enumerate(sections):
-        # Use custom index if provided, otherwise use sequential index
-        file_index = section_indices[i] if section_indices else i
+    for i, path in enumerate(all_slide_paths):
+        if is_valid_file(path):
+            print(f"⊙ Slide {i:02d}/{len(sections) - 1} already exists: {path.name}")
 
-        # Support both old format (title, prompt) and new format (title, prompt, source_image_url)
-        if len(section_data) == 2:
-            title, prompt = section_data
-            source_image_url = None
-        else:
-            title, prompt, source_image_url = section_data
+    for task in tasks_to_execute:
+        action = "download" if task.task_type == "download" else "generate"
+        if task.task_type == "download_or_generate":
+            action = "download (with AI fallback)"
+        print(
+            f"→ Slide {task.index:02d}/{len(sections) - 1} queued ({action}): {task.title[:40]}..."
+        )
 
-        output_path = lang_output_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=file_index)
-        slide_paths.append(output_path)
-
-        # Check if already exists
-        if is_valid_file(output_path):
-            print(f"⊙ Slide {i:02d}/{len(sections) - 1} already exists: {output_path.name}")
-        else:
-            # Decide whether to download image or generate with AI
-            if source_image_url:
-                print(f"→ Slide {i:02d}/{len(sections) - 1} queued (download): {title[:40]}...")
-                # Create a task that tries download first, then falls back to generation if available
-                if prompt:
-                    # Fallback available
-                    tasks_to_run.append(
-                        _download_or_generate_slide(
-                            source_url=source_image_url,
-                            prompt=prompt,
-                            output_path=output_path,
-                            api_key=api_key,
-                            model=model,
-                            base_url=base_url,
-                            resolution=resolution,
-                        )
-                    )
-                else:
-                    # No fallback, just download
-                    tasks_to_run.append(
-                        download_and_process_image(
-                            url=source_image_url,
-                            output_path=output_path,
-                            target_width=resolution[0],
-                            target_height=resolution[1],
-                        )
-                    )
-            elif prompt:
-                print(f"→ Slide {i:02d}/{len(sections) - 1} queued (generate): {title[:40]}...")
-                tasks_to_run.append(
-                    generate_slide(
-                        prompt=prompt,
-                        output_path=output_path,
-                        api_key=api_key,
-                        model=model,
-                        base_url=base_url,
-                        width=resolution[0],
-                        height=resolution[1],
-                    )
-                )
-            else:
-                # Neither source image nor prompt available
-                print(
-                    f"⚠ Slide {i:02d}/{len(sections) - 1} has no image source or prompt, skipping"
-                )
-                continue
-
-            task_indices.append(i)
-
-    if not tasks_to_run:
+    if not tasks_to_execute:
         print("\n✓ All slides already exist, nothing to generate")
-        return slide_paths
+        return all_slide_paths
 
-    # Execute tasks with concurrency limit
+    # Phase 3: Execute tasks
     print(
-        f"\n🚀 Generating {len(tasks_to_run)} slides (max {max_concurrent} concurrent requests)...\n"
+        f"\n🚀 Generating {len(tasks_to_execute)} slides "
+        f"(max {max_concurrent} concurrent requests)...\n"
     )
+
+    async_tasks = []
+    for task in tasks_to_execute:
+        if task.task_type == "download_or_generate":
+            async_tasks.append(
+                _download_or_generate_slide(
+                    source_url=task.source_image_url,  # type: ignore
+                    prompt=task.prompt,  # type: ignore
+                    output_path=task.output_path,
+                    api_key=api_key,
+                    model=model,
+                    base_url=base_url,
+                    resolution=resolution,
+                )
+            )
+        elif task.task_type == "download":
+            async_tasks.append(
+                download_and_process_image(
+                    url=task.source_image_url,  # type: ignore
+                    output_path=task.output_path,
+                    target_width=resolution[0],
+                    target_height=resolution[1],
+                )
+            )
+        elif task.task_type == "generate":
+            async_tasks.append(
+                generate_slide(
+                    prompt=task.prompt,  # type: ignore
+                    output_path=task.output_path,
+                    api_key=api_key,
+                    model=model,
+                    base_url=base_url,
+                    width=resolution[0],
+                    height=resolution[1],
+                )
+            )
 
     # Process in batches to limit concurrency
     results = []
-    for batch_idx in range(0, len(tasks_to_run), max_concurrent):
-        batch = tasks_to_run[batch_idx : batch_idx + max_concurrent]
-        batch_task_indices = task_indices[batch_idx : batch_idx + max_concurrent]
+    for batch_idx in range(0, len(async_tasks), max_concurrent):
+        batch = async_tasks[batch_idx : batch_idx + max_concurrent]
+        batch_tasks = tasks_to_execute[batch_idx : batch_idx + max_concurrent]
 
-        print(
-            f"Processing batch {batch_idx // max_concurrent + 1}/{(len(tasks_to_run) + max_concurrent - 1) // max_concurrent}..."
-        )
+        batch_num = batch_idx // max_concurrent + 1
+        total_batches = (len(async_tasks) + max_concurrent - 1) // max_concurrent
+        print(f"Processing batch {batch_num}/{total_batches}...")
         batch_results = await asyncio.gather(*batch, return_exceptions=True)
 
         # Check for exceptions in batch
-        for idx, result in zip(batch_task_indices, batch_results):
+        for task, result in zip(batch_tasks, batch_results):
             if isinstance(result, Exception):
-                print(f"✗ Error generating slide {idx:04d}: {result}")
+                print(f"✗ Error generating slide {task.index:04d}: {result}")
 
         results.extend(batch_results)
 
         # Brief pause between batches to avoid rate limiting
-        if batch_idx + max_concurrent < len(tasks_to_run):
+        if batch_idx + max_concurrent < len(async_tasks):
             await asyncio.sleep(1.0)
 
     # Check results
-    successful = sum(1 for path in slide_paths if path.exists() and path.stat().st_size > 0)
-    failed = len(slide_paths) - successful
+    successful = sum(1 for path in all_slide_paths if path.exists() and path.stat().st_size > 0)
+    failed = len(all_slide_paths) - successful
 
     print("\n📈 Slide generation complete:")
-    print(f"  ✓ Successful: {successful}/{len(slide_paths)}")
+    print(f"  ✓ Successful: {successful}/{len(all_slide_paths)}")
     if failed > 0:
-        print(f"  ✗ Failed: {failed}/{len(slide_paths)}")
+        print(f"  ✗ Failed: {failed}/{len(all_slide_paths)}")
         print("\n💡 Tip: Delete failed (0-byte) slides and run again to retry only those.")
 
-    return slide_paths
+    return all_slide_paths
