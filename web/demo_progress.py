@@ -5,7 +5,6 @@ This script simulates the progress flow without actually running video generatio
 """
 
 import asyncio
-from pathlib import Path
 
 
 async def simulate_progress():
@@ -65,7 +64,7 @@ async def simulate_progress():
                 await log_progress(pct, f"スライド生成中 ({i}/{slide_count})", "slides")
 
     # Video rendering
-    print(f"\n📊 動画レンダリング")
+    print("\n📊 動画レンダリング")
     await log_progress(82, "動画をレンダリング中...", "video")
     await asyncio.sleep(2)
     await log_progress(100, "動画生成完了", "video")
