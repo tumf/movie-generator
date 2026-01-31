@@ -87,7 +87,8 @@ def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
         parts = scenes_arg.split("-")
         if len(parts) != 2:
             raise ValueError(
-                f"Invalid scene range format: '{scenes_arg}'. Expected format: '1-3', '6-', '-3', or '2'"
+                f"Invalid scene range format: '{scenes_arg}'. "
+                "Expected format: '1-3', '6-', '-3', or '2'"
             )
 
         # Handle "-3" format (from beginning to scene 3)
@@ -146,6 +147,132 @@ def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
             raise ValueError(f"Scene number must be >= 1, got: {scene_num}")
         # Convert to 0-based indexing
         return (scene_num - 1, scene_num - 1)
+
+
+def _load_script_from_yaml(script_path: Path) -> Any:
+    """Load and parse script YAML file into VideoScript.
+
+    Args:
+        script_path: Path to script.yaml file.
+
+    Returns:
+        VideoScript object.
+    """
+    from .script.generator import Narration, ScriptSection, VideoScript
+
+    with open(script_path, encoding="utf-8") as f:
+        script_dict = yaml.safe_load(f)
+
+    # Parse sections
+    sections = []
+    for section in script_dict["sections"]:
+        narrations: list[Narration] = []
+
+        if "narrations" in section and section["narrations"]:
+            for n in section["narrations"]:
+                if isinstance(n, str):
+                    narrations.append(Narration(text=n, reading=n))
+                else:
+                    reading = n.get("reading", n["text"])
+                    narrations.append(
+                        Narration(text=n["text"], reading=reading, persona_id=n.get("persona_id"))
+                    )
+        elif "dialogues" in section and section["dialogues"]:
+            for d in section["dialogues"]:
+                reading = d.get("reading", d["narration"])
+                narrations.append(
+                    Narration(text=d["narration"], reading=reading, persona_id=d["persona_id"])
+                )
+        elif "narration" in section:
+            narrations.append(Narration(text=section["narration"], reading=section["narration"]))
+
+        sections.append(
+            ScriptSection(
+                title=section["title"],
+                narrations=narrations,
+                slide_prompt=section.get("slide_prompt"),
+                source_image_url=section.get("source_image_url"),
+                background=section.get("background"),
+            )
+        )
+
+    return VideoScript(
+        title=script_dict["title"],
+        description=script_dict["description"],
+        sections=sections,
+    )
+
+
+def _filter_sections_by_scene_range(
+    sections: list[Any], scene_start: int | None, scene_end: int | None
+) -> list[Any]:
+    """Filter sections based on scene range.
+
+    Args:
+        sections: List of ScriptSection objects.
+        scene_start: Start index (0-based, inclusive), None for beginning.
+        scene_end: End index (0-based, inclusive), None for end.
+
+    Returns:
+        Filtered list of sections.
+    """
+    filtered = []
+    for section_idx, section in enumerate(sections):
+        if scene_start is not None and section_idx < scene_start:
+            continue
+        if scene_end is not None and section_idx > scene_end:
+            continue
+        filtered.append(section)
+    return filtered
+
+
+def _prepare_phrases_with_scene_range(
+    video_script: Any, scene_start: int | None, scene_end: int | None, cfg: Config
+) -> list[Phrase]:
+    """Convert script to phrases with scene range filtering.
+
+    Args:
+        video_script: VideoScript object.
+        scene_start: Start index (0-based, inclusive), None for beginning.
+        scene_end: End index (0-based, inclusive), None for end.
+        cfg: Configuration object for persona mapping.
+
+    Returns:
+        List of Phrase objects with section_index and original_index set.
+    """
+    all_sections_phrases = []
+    for section_idx, section in enumerate(video_script.sections):
+        section_phrases = []
+        for narration in section.narrations:
+            phrase = Phrase(text=narration.text, reading=narration.reading)
+            phrase.section_index = section_idx
+            if narration.persona_id:
+                phrase.persona_id = narration.persona_id
+                if cfg.personas:
+                    for p in cfg.personas:
+                        if p.id == narration.persona_id:
+                            phrase.persona_name = p.name
+                            break
+            section_phrases.append(phrase)
+        all_sections_phrases.append(section_phrases)
+
+    # Assign original_index to all phrases
+    original_index = 0
+    for section_phrases in all_sections_phrases:
+        for phrase in section_phrases:
+            phrase.original_index = original_index
+            original_index += 1
+
+    # Filter phrases based on scene range
+    filtered_phrases = []
+    for section_idx, section_phrases in enumerate(all_sections_phrases):
+        if scene_start is not None and section_idx < scene_start:
+            continue
+        if scene_end is not None and section_idx > scene_end:
+            continue
+        filtered_phrases.extend(section_phrases)
+
+    return filtered_phrases
 
 
 @click.group()
@@ -271,63 +398,8 @@ def generate(
         # Step 1: Fetch content (only if URL provided and script doesn't exist)
         if script_path.exists():
             console.print(f"[yellow]⊙ Script already exists, loading: {script_path}[/yellow]")
-            with open(script_path, encoding="utf-8") as f:
-                script_dict = yaml.safe_load(f)
-            from .script.generator import (
-                Narration,
-                ScriptSection,
-                VideoScript,
-            )
-
-            # Parse sections with unified narrations format
-            sections = []
-            for section in script_dict["sections"]:
-                narrations: list[Narration] = []
-
-                if "narrations" in section and section["narrations"]:
-                    # New unified format
-                    for n in section["narrations"]:
-                        if isinstance(n, str):
-                            # Legacy string format - use text as reading
-                            narrations.append(Narration(text=n, reading=n))
-                        else:
-                            # Object format - use reading field or fallback to text
-                            reading = n.get("reading", n["text"])
-                            narrations.append(
-                                Narration(
-                                    text=n["text"], reading=reading, persona_id=n.get("persona_id")
-                                )
-                            )
-                elif "dialogues" in section and section["dialogues"]:
-                    # Legacy dialogue format
-                    for d in section["dialogues"]:
-                        reading = d.get("reading", d["narration"])
-                        narrations.append(
-                            Narration(
-                                text=d["narration"], reading=reading, persona_id=d["persona_id"]
-                            )
-                        )
-                elif "narration" in section:
-                    # Legacy single narration format
-                    narrations.append(
-                        Narration(text=section["narration"], reading=section["narration"])
-                    )
-
-                sections.append(
-                    ScriptSection(
-                        title=section["title"],
-                        narrations=narrations,
-                        slide_prompt=section.get("slide_prompt"),
-                        source_image_url=section.get("source_image_url"),
-                        background=section.get("background"),
-                    )
-                )
-
-            script = VideoScript(
-                title=script_dict["title"],
-                description=script_dict["description"],
-                sections=sections,
-            )
+            # Load script using common helper
+            script = _load_script_from_yaml(script_path)
         else:
             # Need URL to generate new script
             if not url:
@@ -444,41 +516,8 @@ def generate(
         # Step 4: Convert narrations to phrases (pre-split by LLM)
         task = progress.add_task("Converting narrations to phrases...", total=None)
 
-        # First pass: generate all phrases to determine original_index
-        all_sections_phrases = []
-        for section_idx, section in enumerate(script.sections):
-            section_phrases = []
-            for narration in section.narrations:
-                # Each narration is already split by LLM (~40 chars)
-                phrase = Phrase(text=narration.text, reading=narration.reading)
-                phrase.section_index = section_idx
-                if narration.persona_id:
-                    phrase.persona_id = narration.persona_id
-                    # Look up persona name from config
-                    if cfg.personas:
-                        for p in cfg.personas:
-                            if p.id == narration.persona_id:
-                                phrase.persona_name = p.name
-                                break
-                section_phrases.append(phrase)
-            all_sections_phrases.append((section_idx, section_phrases))
-
-        # Set original_index for all phrases globally
-        global_index = 0
-        for section_idx, phrases in all_sections_phrases:
-            for phrase in phrases:
-                phrase.original_index = global_index
-                global_index += 1
-
-        # Second pass: filter by scene range if specified
-        all_phrases = []
-        for section_idx, phrases in all_sections_phrases:
-            # Skip sections outside scene range
-            if scene_start is not None and section_idx < scene_start:
-                continue
-            if scene_end is not None and section_idx > scene_end:
-                continue
-            all_phrases.extend(phrases)
+        # Use common helper for phrase preparation
+        all_phrases = _prepare_phrases_with_scene_range(script, scene_start, scene_end, cfg)
 
         progress.update(task, completed=True)
         console.print(f"✓ Converted {len(all_phrases)} phrases")
@@ -741,7 +780,8 @@ def generate(
                         f"[yellow]⚠ Warning: {failed_count} slides failed to generate[/yellow]"
                     )
                     console.print(
-                        f"[dim]  Run 'find {slide_dir} -size 0 -delete' to remove failed slides and retry[/dim]"
+                        f"[dim]  Run 'find {slide_dir} -size 0 -delete' to remove "
+                        "failed slides and retry[/dim]"
                     )
             except Exception as e:
                 progress.update(task, completed=True)
@@ -1213,50 +1253,8 @@ def generate_audio_cmd(
         console.print(f"[bold]Generating audio from script:[/bold] {script}")
         console.print(f"[bold]Output directory:[/bold] {audio_dir}")
 
-    # Load script
-    from .script.generator import Narration, ScriptSection, VideoScript
-
-    with open(script, encoding="utf-8") as f:
-        script_dict = yaml.safe_load(f)
-
-    # Parse sections (reuse logic from generate command)
-    sections = []
-    for section in script_dict["sections"]:
-        narrations: list[Narration] = []
-
-        if "narrations" in section and section["narrations"]:
-            for n in section["narrations"]:
-                if isinstance(n, str):
-                    narrations.append(Narration(text=n, reading=n))
-                else:
-                    reading = n.get("reading", n["text"])
-                    narrations.append(
-                        Narration(text=n["text"], reading=reading, persona_id=n.get("persona_id"))
-                    )
-        elif "dialogues" in section and section["dialogues"]:
-            for d in section["dialogues"]:
-                reading = d.get("reading", d["narration"])
-                narrations.append(
-                    Narration(text=d["narration"], reading=reading, persona_id=d["persona_id"])
-                )
-        elif "narration" in section:
-            narrations.append(Narration(text=section["narration"], reading=section["narration"]))
-
-        sections.append(
-            ScriptSection(
-                title=section["title"],
-                narrations=narrations,
-                slide_prompt=section.get("slide_prompt"),
-                source_image_url=section.get("source_image_url"),
-                background=section.get("background"),
-            )
-        )
-
-    video_script = VideoScript(
-        title=script_dict["title"],
-        description=script_dict["description"],
-        sections=sections,
-    )
+    # Load script using common helper
+    video_script = _load_script_from_yaml(script)
 
     # Parse scene range if specified
     scene_start: int | None = None
@@ -1270,38 +1268,8 @@ def generate_audio_cmd(
         elif scene_end is not None:
             console.print(f"[cyan]Filtering to scenes 1-{scene_end + 1}[/cyan]")
 
-    # Convert to phrases
-    all_sections_phrases = []
-    for section_idx, section in enumerate(video_script.sections):
-        section_phrases = []
-        for narration in section.narrations:
-            phrase = Phrase(text=narration.text, reading=narration.reading)
-            phrase.section_index = section_idx
-            if narration.persona_id:
-                phrase.persona_id = narration.persona_id
-                if cfg.personas:
-                    for p in cfg.personas:
-                        if p.id == narration.persona_id:
-                            phrase.persona_name = p.name
-                            break
-            section_phrases.append(phrase)
-        all_sections_phrases.append((section_idx, section_phrases))
-
-    # Set original_index
-    global_index = 0
-    for section_idx, phrases in all_sections_phrases:
-        for phrase in phrases:
-            phrase.original_index = global_index
-            global_index += 1
-
-    # Filter by scene range
-    all_phrases = []
-    for section_idx, phrases in all_sections_phrases:
-        if scene_start is not None and section_idx < scene_start:
-            continue
-        if scene_end is not None and section_idx > scene_end:
-            continue
-        all_phrases.extend(phrases)
+    # Prepare phrases using common helper
+    all_phrases = _prepare_phrases_with_scene_range(video_script, scene_start, scene_end, cfg)
 
     console.print(f"✓ Converted {len(all_phrases)} phrases")
 
@@ -1321,37 +1289,71 @@ def generate_audio_cmd(
 
         if has_personas:
             # Multi-speaker mode
-            from .audio.voicevox import VoicevoxSynthesizer
-
             synthesizers: dict[str, Any] = {}
-            for persona_config in cfg.personas:
-                synthesizer = VoicevoxSynthesizer(
-                    speaker_id=persona_config.synthesizer.speaker_id,
-                    speed_scale=persona_config.synthesizer.speed_scale,
-                    dictionary=None,
-                )
-                synthesizers[persona_config.id] = synthesizer
 
-            # Initialize VOICEVOX
-            import os
+            # Try to use VOICEVOX, fall back to placeholder if allowed
+            try:
+                from .audio.voicevox import VOICEVOX_AVAILABLE, VoicevoxSynthesizer
 
-            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+                if not VOICEVOX_AVAILABLE:
+                    if allow_placeholder:
+                        raise ImportError("VOICEVOX not available, using placeholder")
+                    else:
+                        raise click.ClickException(
+                            "VOICEVOX Core is not installed.\n"
+                            "Use --allow-placeholder to generate silent placeholder audio,\n"
+                            "or install VOICEVOX (see docs/VOICEVOX_SETUP.md)."
+                        )
 
-            if not dict_dir_str or not model_path_str:
-                raise click.ClickException(
-                    "VOICEVOX environment variables not set.\n"
-                    "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
-                    "See docs/VOICEVOX_SETUP.md for instructions."
-                )
+                for persona_config in cfg.personas:
+                    synthesizer = VoicevoxSynthesizer(
+                        speaker_id=persona_config.synthesizer.speaker_id,
+                        speed_scale=persona_config.synthesizer.speed_scale,
+                        dictionary=None,
+                    )
+                    synthesizers[persona_config.id] = synthesizer
 
-            for persona_synthesizer in synthesizers.values():
-                persona_synthesizer.initialize(
-                    dict_dir=Path(dict_dir_str),
-                    model_path=Path(model_path_str),
-                    onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
-                )
+                # Initialize VOICEVOX
+                import os
+
+                dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+                model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+                onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+
+                if not dict_dir_str or not model_path_str:
+                    if allow_placeholder:
+                        raise ImportError("VOICEVOX env vars not set, using placeholder")
+                    else:
+                        raise click.ClickException(
+                            "VOICEVOX environment variables not set.\n"
+                            "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
+                            "Use --allow-placeholder to generate silent placeholder audio,\n"
+                            "or see docs/VOICEVOX_SETUP.md for instructions."
+                        )
+
+                for persona_synthesizer in synthesizers.values():
+                    persona_synthesizer.initialize(
+                        dict_dir=Path(dict_dir_str),
+                        model_path=Path(model_path_str),
+                        onnxruntime_path=Path(onnxruntime_path_str)
+                        if onnxruntime_path_str
+                        else None,
+                    )
+
+            except (ImportError, Exception):
+                if allow_placeholder:
+                    console.print(
+                        "[yellow]⚠ VOICEVOX not available, using placeholder audio[/yellow]"
+                    )
+                    from .audio.placeholder import PlaceholderSynthesizer
+
+                    synthesizers = {}
+                    for persona_config in cfg.personas:
+                        synthesizer = PlaceholderSynthesizer()
+                        synthesizer.initialize()
+                        synthesizers[persona_config.id] = synthesizer
+                else:
+                    raise
 
             # Debug: Log available synthesizers
             logger.debug(f"Available synthesizers: {list(synthesizers.keys())}")
@@ -1427,27 +1429,56 @@ def generate_audio_cmd(
                 )
         else:
             # Single-speaker mode
-            synthesizer = create_synthesizer_from_config(cfg)
+            try:
+                from .audio.voicevox import VOICEVOX_AVAILABLE
 
-            # Initialize VOICEVOX
-            import os
+                if not VOICEVOX_AVAILABLE:
+                    if allow_placeholder:
+                        raise ImportError("VOICEVOX not available, using placeholder")
+                    else:
+                        raise click.ClickException(
+                            "VOICEVOX Core is not installed.\n"
+                            "Use --allow-placeholder to generate silent placeholder audio,\n"
+                            "or install VOICEVOX (see docs/VOICEVOX_SETUP.md)."
+                        )
 
-            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+                synthesizer = create_synthesizer_from_config(cfg)
 
-            if not dict_dir_str or not model_path_str:
-                raise click.ClickException(
-                    "VOICEVOX environment variables not set.\n"
-                    "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
-                    "See docs/VOICEVOX_SETUP.md for instructions."
+                # Initialize VOICEVOX
+                import os
+
+                dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
+                model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
+                onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
+
+                if not dict_dir_str or not model_path_str:
+                    if allow_placeholder:
+                        raise ImportError("VOICEVOX env vars not set, using placeholder")
+                    else:
+                        raise click.ClickException(
+                            "VOICEVOX environment variables not set.\n"
+                            "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
+                            "Use --allow-placeholder to generate silent placeholder audio,\n"
+                            "or see docs/VOICEVOX_SETUP.md for instructions."
+                        )
+
+                synthesizer.initialize(
+                    dict_dir=Path(dict_dir_str),
+                    model_path=Path(model_path_str),
+                    onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
                 )
 
-            synthesizer.initialize(
-                dict_dir=Path(dict_dir_str),
-                model_path=Path(model_path_str),
-                onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
-            )
+            except (ImportError, Exception):
+                if allow_placeholder:
+                    console.print(
+                        "[yellow]⚠ VOICEVOX not available, using placeholder audio[/yellow]"
+                    )
+                    from .audio.placeholder import PlaceholderSynthesizer
+
+                    synthesizer = PlaceholderSynthesizer()
+                    synthesizer.initialize()
+                else:
+                    raise
 
             # Count existing audio files
             existing_audio_count = sum(
@@ -1564,50 +1595,8 @@ def generate_slides_cmd(
         console.print(f"[bold]Generating slides from script:[/bold] {script}")
         console.print(f"[bold]Output directory:[/bold] {slide_dir}")
 
-    # Load script
-    from .script.generator import Narration, ScriptSection, VideoScript
-
-    with open(script, encoding="utf-8") as f:
-        script_dict = yaml.safe_load(f)
-
-    # Parse sections
-    sections = []
-    for section in script_dict["sections"]:
-        narrations: list[Narration] = []
-
-        if "narrations" in section and section["narrations"]:
-            for n in section["narrations"]:
-                if isinstance(n, str):
-                    narrations.append(Narration(text=n, reading=n))
-                else:
-                    reading = n.get("reading", n["text"])
-                    narrations.append(
-                        Narration(text=n["text"], reading=reading, persona_id=n.get("persona_id"))
-                    )
-        elif "dialogues" in section and section["dialogues"]:
-            for d in section["dialogues"]:
-                reading = d.get("reading", d["narration"])
-                narrations.append(
-                    Narration(text=d["narration"], reading=reading, persona_id=d["persona_id"])
-                )
-        elif "narration" in section:
-            narrations.append(Narration(text=section["narration"], reading=section["narration"]))
-
-        sections.append(
-            ScriptSection(
-                title=section["title"],
-                narrations=narrations,
-                slide_prompt=section.get("slide_prompt"),
-                source_image_url=section.get("source_image_url"),
-                background=section.get("background"),
-            )
-        )
-
-    video_script = VideoScript(
-        title=script_dict["title"],
-        description=script_dict["description"],
-        sections=sections,
-    )
+    # Load script using common helper
+    video_script = _load_script_from_yaml(script)
 
     # Parse scene range if specified
     scene_start: int | None = None
@@ -1621,14 +1610,16 @@ def generate_slides_cmd(
         elif scene_end is not None:
             console.print(f"[cyan]Filtering to scenes 1-{scene_end + 1}[/cyan]")
 
-    # Filter slide prompts based on scene range
+    # Filter sections using common helper
+    filtered_sections = _filter_sections_by_scene_range(
+        video_script.sections, scene_start, scene_end
+    )
+
+    # Prepare slide prompts from filtered sections
     slide_prompts = []
     slide_indices = []
-    for section_idx, section in enumerate(video_script.sections):
-        if scene_start is not None and section_idx < scene_start:
-            continue
-        if scene_end is not None and section_idx > scene_end:
-            continue
+    for section in filtered_sections:
+        section_idx = video_script.sections.index(section)
         slide_prompts.append(
             (section.title, section.slide_prompt or section.title, section.source_image_url)
         )
@@ -1698,7 +1689,8 @@ def generate_slides_cmd(
                     f"[yellow]⚠ Warning: {failed_count} slides failed to generate[/yellow]"
                 )
                 console.print(
-                    f"[dim]  Run 'find {slide_dir} -size 0 -delete' to remove failed slides and retry[/dim]"
+                    f"[dim]  Run 'find {slide_dir} -size 0 -delete' to remove "
+                    "failed slides and retry[/dim]"
                 )
         except Exception as e:
             progress.update(task, completed=True)
@@ -1806,50 +1798,8 @@ def render_video_cmd(
         console.print(f"[bold]Rendering video from script:[/bold] {script}")
         console.print(f"[bold]Output directory:[/bold] {output_dir}")
 
-    # Load script
-    from .script.generator import Narration, ScriptSection, VideoScript
-
-    with open(script, encoding="utf-8") as f:
-        script_dict = yaml.safe_load(f)
-
-    # Parse sections
-    sections = []
-    for section in script_dict["sections"]:
-        narrations: list[Narration] = []
-
-        if "narrations" in section and section["narrations"]:
-            for n in section["narrations"]:
-                if isinstance(n, str):
-                    narrations.append(Narration(text=n, reading=n))
-                else:
-                    reading = n.get("reading", n["text"])
-                    narrations.append(
-                        Narration(text=n["text"], reading=reading, persona_id=n.get("persona_id"))
-                    )
-        elif "dialogues" in section and section["dialogues"]:
-            for d in section["dialogues"]:
-                reading = d.get("reading", d["narration"])
-                narrations.append(
-                    Narration(text=d["narration"], reading=reading, persona_id=d["persona_id"])
-                )
-        elif "narration" in section:
-            narrations.append(Narration(text=section["narration"], reading=section["narration"]))
-
-        sections.append(
-            ScriptSection(
-                title=section["title"],
-                narrations=narrations,
-                slide_prompt=section.get("slide_prompt"),
-                source_image_url=section.get("source_image_url"),
-                background=section.get("background"),
-            )
-        )
-
-    video_script = VideoScript(
-        title=script_dict["title"],
-        description=script_dict["description"],
-        sections=sections,
-    )
+    # Load script using common helper
+    video_script = _load_script_from_yaml(script)
 
     # Extract language ID from script filename
     language_id = "ja"
@@ -1870,38 +1820,8 @@ def render_video_cmd(
         elif scene_end is not None:
             console.print(f"[cyan]Filtering to scenes 1-{scene_end + 1}[/cyan]")
 
-    # Convert to phrases
-    all_sections_phrases = []
-    for section_idx, section in enumerate(video_script.sections):
-        section_phrases = []
-        for narration in section.narrations:
-            phrase = Phrase(text=narration.text, reading=narration.reading)
-            phrase.section_index = section_idx
-            if narration.persona_id:
-                phrase.persona_id = narration.persona_id
-                if cfg.personas:
-                    for p in cfg.personas:
-                        if p.id == narration.persona_id:
-                            phrase.persona_name = p.name
-                            break
-            section_phrases.append(phrase)
-        all_sections_phrases.append((section_idx, section_phrases))
-
-    # Set original_index
-    global_index = 0
-    for section_idx, phrases in all_sections_phrases:
-        for phrase in phrases:
-            phrase.original_index = global_index
-            global_index += 1
-
-    # Filter by scene range
-    all_phrases = []
-    for section_idx, phrases in all_sections_phrases:
-        if scene_start is not None and section_idx < scene_start:
-            continue
-        if scene_end is not None and section_idx > scene_end:
-            continue
-        all_phrases.extend(phrases)
+    # Prepare phrases using common helper
+    all_phrases = _prepare_phrases_with_scene_range(video_script, scene_start, scene_end, cfg)
 
     console.print(f"✓ Will render {len(all_phrases)} phrases")
 

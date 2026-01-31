@@ -86,7 +86,7 @@ class SynthesizerFactory:
         """Create an audio synthesizer instance.
 
         Args:
-            engine: Synthesizer engine type (e.g., "voicevox").
+            engine: Synthesizer engine type (e.g., "voicevox", "placeholder").
             **kwargs: Engine-specific parameters.
 
         Returns:
@@ -99,7 +99,12 @@ class SynthesizerFactory:
             from .voicevox_impl import VoicevoxSynthesizer
 
             return VoicevoxSynthesizer(**kwargs)
+        elif engine == "placeholder":
+            from .placeholder import PlaceholderSynthesizer
+
+            return PlaceholderSynthesizer(**kwargs)
         else:
             raise ValueError(
-                f"Unsupported synthesizer engine: {engine}. Supported engines: voicevox"
+                f"Unsupported synthesizer engine: {engine}. "
+                f"Supported engines: voicevox, placeholder"
             )
