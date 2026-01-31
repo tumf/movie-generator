@@ -177,13 +177,7 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
     """
     # Global cache directory for Chrome Headless Shell
     # Place it at the project root level (parent of output directories)
-    # In Docker, use PROJECT_ROOT env var or default /app; otherwise use cwd
-    import os
-
-    if os.getenv("DOCKER_ENV"):
-        project_root = ProjectPaths.get_docker_project_root()
-    else:
-        project_root = Path.cwd()
+    project_root = ProjectPaths.get_project_root()
     global_cache = project_root / ".cache" / "remotion" / "chrome-headless-shell"
 
     # Target path in this project's node_modules

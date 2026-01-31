@@ -292,16 +292,8 @@ def render_video_for_script(
     project.characters_dir = output_dir / "assets" / "characters"
 
     # Copy character assets
-    # In Docker, source_root is PROJECT_ROOT env var (default: /app) where assets/characters is located
-    # In local dev, source_root is Path.cwd() which defaults to project root
-    import os
-
-    if os.getenv("DOCKER_ENV"):
-        # Docker container: assets are at {project_root}/assets/characters
-        source_root = ProjectPaths.get_docker_project_root()
-    else:
-        # Local development: assets are at project root
-        source_root = Path.cwd()
+    # Get project root based on environment (Docker or local)
+    source_root = ProjectPaths.get_project_root()
     project.copy_character_assets(source_root=source_root)
     project.setup_remotion_project()
     project.project_dir = original_project_dir
