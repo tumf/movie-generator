@@ -1,21 +1,21 @@
 """Main FastAPI application."""
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pocketbase_client import PocketBaseClient
+from routes import api_routes, web_routes
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from config import settings
-from pocketbase_client import PocketBaseClient
-from routes import api_routes, web_routes
 
 # Configure logging
 logging.basicConfig(
