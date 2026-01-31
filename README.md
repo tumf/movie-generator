@@ -14,6 +14,10 @@ https://github.com/user-attachments/assets/67a9bac8-86d4-4d8e-bb33-20678b86e3a5
 
 ![Video Result](docs/images/video-result.png)
 
+## Blog Post
+
+詳しい解説記事はこちら: [なんでも解説動画ジェネレーターを作った](https://blog.tumf.dev/posts/diary/2026/1/31/nandemo-kaisetsu-movie-generator/)
+
 ## Quick Start with Docker (Web UI)
 
 For quick setup, use Docker Compose to launch the web interface:
@@ -760,6 +764,36 @@ movie-generator/
 - Slide generation may take time depending on API rate limits
 
 See `openspec/` for detailed specifications and roadmap.
+
+## Credits
+
+### Voice Synthesis
+
+This project uses [VOICEVOX](https://voicevox.hiroshiba.jp/) for voice synthesis.
+
+- **VOICEVOX**: Hiroshiba
+- **VOICEVOX Core**: [GitHub](https://github.com/VOICEVOX/voicevox_core)
+
+### Character Voices and Illustrations
+
+- **Zundamon (ずんだもん)**
+  - Voice: VOICEVOX:ずんだもん
+  - Illustration: 坂本アヒル氏 (Sakamoto Ahiru)
+  - © Sakamoto Ahiru / SSS LLC.
+
+- **Shikoku Metan (四国めたん)**
+  - Voice: VOICEVOX:四国めたん
+  - Illustration: 坂本アヒル氏 (Sakamoto Ahiru)
+  - © Sakamoto Ahiru / SSS LLC.
+
+- **Kasukabe Tsumugi (春日部つむぎ)**
+  - Voice: 春日部つくし氏 (Kasukabe Tsukushi)
+  - Illustration: 春日部つくし氏 (Kasukabe Tsukushi)
+  - © KASUKABE project
+
+For character usage terms, please refer to:
+- [VOICEVOX Character Terms](https://voicevox.hiroshiba.jp/term/)
+- [Zundamon Terms of Use](https://zunko.jp/con_voice.html)
 
 ## License
 
