@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -59,7 +58,7 @@ class Config:
             self.mcp_config_path = Path(mcp_config_path_str)
 
 
-def create_default_movie_config(config_path: Path | None = None) -> "MovieConfig":
+def create_default_movie_config(config_path: Path | None = None) -> MovieConfig:
     """Create default movie-generator Config with bundled assets.
 
     Args:
@@ -72,11 +71,13 @@ def create_default_movie_config(config_path: Path | None = None) -> "MovieConfig
     from movie_generator.config import (
         BackgroundConfig,
         BgmConfig,
-        Config as MovieConfig,
         PersonaConfig,
         VideoConfig,
         VoicevoxSynthesizerConfig,
         load_config,
+    )
+    from movie_generator.config import (
+        Config as MovieConfig,
     )
 
     # If config_path is provided, load config from file
@@ -396,7 +397,9 @@ class MovieGeneratorWrapper:
                         logger.info(
                             f"Using MCP agent mode with config: {self.config.mcp_config_path}"
                         )
-                        from movie_generator.script import generate_script_from_url_with_agent  # type: ignore
+                        from movie_generator.script import (
+                            generate_script_from_url_with_agent,  # type: ignore
+                        )
 
                         script_path = await generate_script_from_url_with_agent(
                             url=url,
@@ -506,8 +509,9 @@ class MovieGeneratorWrapper:
                 )
 
                 # Use direct API call instead of subprocess
-                from movie_generator.slides import generate_slides_for_script  # type: ignore
                 import os
+
+                from movie_generator.slides import generate_slides_for_script  # type: ignore
 
                 api_key = os.getenv("OPENROUTER_API_KEY")
                 if not api_key:

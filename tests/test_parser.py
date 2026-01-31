@@ -1,6 +1,5 @@
 """Tests for content parser."""
 
-
 from movie_generator.content.parser import parse_html
 
 

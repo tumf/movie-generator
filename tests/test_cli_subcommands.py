@@ -3,10 +3,9 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
 from click.testing import CliRunner
 
-from movie_generator.cli import audio, config, script, slides, video
+from movie_generator.cli import audio, script, slides, video
 
 
 class TestScriptCreate:
