@@ -27,6 +27,7 @@ from .script.phrases import Phrase, calculate_phrase_timings
 from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
 from .video.remotion_renderer import render_video_with_remotion
+from .video.renderer import CompositionConfig, RenderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -850,24 +851,32 @@ def stage_video_rendering(
                 for p in params.config.personas
             ]
 
-        render_video_with_remotion(
+        composition_config = CompositionConfig(
             phrases=all_phrases,
             audio_paths=audio_paths,
             slide_paths=slide_paths,
-            output_path=video_path,
-            remotion_root=remotion_dir,
             project_name=project_name,
-            show_progress=params.show_progress,
+            fps=params.config.style.fps,
+            resolution=params.config.style.resolution,
             transition=transition_config,
             personas=personas_for_render,
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+        )
+
+        render_config = RenderConfig(
+            output_path=video_path,
+            remotion_root=remotion_dir,
+            show_progress=params.show_progress,
             crf=params.config.style.crf,
-            fps=params.config.style.fps,
-            resolution=params.config.style.resolution,
             render_concurrency=params.config.video.render_concurrency,
             render_timeout_seconds=params.config.video.render_timeout_seconds,
+        )
+
+        render_video_with_remotion(
+            composition_config=composition_config,
+            render_config=render_config,
         )
 
         progress.update(task, completed=True)

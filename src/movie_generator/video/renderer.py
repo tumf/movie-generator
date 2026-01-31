@@ -76,6 +76,24 @@ class CompositionConfig(BaseModel):
     section_backgrounds: dict[int, dict[str, Any]] | None = None
 
 
+class RenderConfig(BaseModel):
+    """Configuration for Remotion video rendering execution.
+
+    This class consolidates rendering-specific parameters to reduce
+    function call complexity and improve maintainability.
+    """
+
+    # Rendering paths
+    output_path: Path
+    remotion_root: Path
+
+    # Rendering behavior
+    show_progress: bool = False
+    crf: int = 28  # Constant Rate Factor (0-51, lower = higher quality)
+    render_concurrency: int = 4
+    render_timeout_seconds: int = 300
+
+
 def create_composition(
     title: str,
     phrases: list[Phrase],
