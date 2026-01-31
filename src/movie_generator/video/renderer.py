@@ -51,6 +51,31 @@ class CompositionData(BaseModel):
     transition: dict[str, Any] | None = None
 
 
+class CompositionConfig(BaseModel):
+    """Configuration for building composition.json.
+
+    This class consolidates all inputs needed to generate composition data,
+    centralizing default handling and backward compatibility logic.
+    """
+
+    # Required data
+    phrases: list[Phrase]
+    audio_paths: list[Path]
+    slide_paths: list[Path] | None = None
+
+    # Basic configuration
+    project_name: str = "video"
+    fps: int = 30
+    resolution: tuple[int, int] = (1280, 720)
+
+    # Optional features
+    transition: dict[str, Any] | None = None
+    personas: list[dict[str, Any]] | None = None
+    background: dict[str, Any] | None = None
+    bgm: dict[str, Any] | None = None
+    section_backgrounds: dict[int, dict[str, Any]] | None = None
+
+
 def create_composition(
     title: str,
     phrases: list[Phrase],

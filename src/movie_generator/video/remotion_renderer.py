@@ -14,7 +14,7 @@ from rich.console import Console
 from ..constants import ProjectPaths, SubtitleConstants, TimeoutConstants, VideoConstants
 from ..exceptions import RenderingError
 from ..script.phrases import Phrase
-from .renderer import CompositionPhrase
+from .renderer import CompositionConfig, CompositionPhrase
 
 console = Console()
 
@@ -268,46 +268,32 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
         shutil.copytree(global_cache, local_browser_path)
 
 
-def update_composition_json(
+def build_composition_data(
+    config: CompositionConfig,
     remotion_root: Path,
-    phrases: list[Phrase],
-    audio_paths: list[Path],
-    slide_paths: list[Path] | None,
-    project_name: str = "video",
-    transition: dict[str, Any] | None = None,
-    personas: list[dict[str, Any]] | None = None,
-    background: dict[str, Any] | None = None,
-    bgm: dict[str, Any] | None = None,
-    section_backgrounds: dict[int, dict[str, Any]] | None = None,
-    fps: int = VideoConstants.DEFAULT_FPS,
-    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
-) -> None:
-    """Update composition.json with current phrase data.
+) -> dict[str, Any]:
+    """Build composition data dictionary from configuration.
+
+    This function centralizes the logic for generating composition.json data,
+    including default handling and backward compatibility for speaker information.
 
     Args:
-        remotion_root: Path to Remotion project root.
-        phrases: List of phrases with timing.
-        audio_paths: List of audio file paths (relative to project).
-        slide_paths: Optional list of slide image paths (relative to project).
-        project_name: Name of the project.
-        transition: Transition configuration (type, duration_frames, timing).
-        personas: Optional list of persona configurations for multi-speaker dialogue.
-        background: Optional global background configuration (type, path, fit).
-        bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
-        section_backgrounds: Optional map of section_index to background override.
-        fps: Frames per second.
-        resolution: Video resolution as (width, height) tuple.
+        config: Configuration object with all composition inputs.
+        remotion_root: Path to Remotion project root (needed for asset path conversion).
+
+    Returns:
+        Dictionary containing composition data ready for JSON serialization.
     """
     # Build slide map for efficient lookup
-    slide_map = _build_slide_map(slide_paths) if slide_paths else {}
+    slide_map = _build_slide_map(config.slide_paths) if config.slide_paths else {}
 
     # Build persona lookup map and position assignment map
     persona_map: dict[str, dict[str, Any]] = {}
     persona_position_map: dict[str, str] = {}
-    if personas:
+    if config.personas:
         # Assign positions based on persona order
         positions = ["left", "right", "center"]
-        for i, persona in enumerate(personas):
+        for i, persona in enumerate(config.personas):
             persona_id = persona["id"]
             persona_map[persona_id] = persona
             # Assign position: first persona -> left, second -> right, third+ -> center
@@ -315,12 +301,12 @@ def update_composition_json(
 
     # Create CompositionPhrase objects
     composition_phrases = []
-    for phrase in phrases:
+    for phrase in config.phrases:
         persona_fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         # Get background override for this section
         bg_override = None
-        if section_backgrounds and phrase.section_index in section_backgrounds:
-            bg_dict = section_backgrounds[phrase.section_index].copy()
+        if config.section_backgrounds and phrase.section_index in config.section_backgrounds:
+            bg_dict = config.section_backgrounds[phrase.section_index].copy()
             # Convert background path to public-relative
             bg_dict["path"] = _copy_asset_to_public(
                 Path(bg_dict["path"]), remotion_root, "backgrounds"
@@ -347,25 +333,25 @@ def update_composition_json(
         )
 
     composition_data = {
-        "title": project_name,
-        "fps": fps,
-        "width": resolution[0],
-        "height": resolution[1],
+        "title": config.project_name,
+        "fps": config.fps,
+        "width": config.resolution[0],
+        "height": config.resolution[1],
         "phrases": [p.model_dump(exclude_none=True, by_alias=True) for p in composition_phrases],
     }
 
     # Add transition config if provided
-    if transition:
-        composition_data["transition"] = transition
+    if config.transition:
+        composition_data["transition"] = config.transition
 
     # Add background config if provided (convert path to public-relative)
-    if background:
-        bg_config = background.copy()
-        original_path = Path(background["path"])
+    if config.background:
+        bg_config = config.background.copy()
+        original_path = Path(config.background["path"])
         bg_config["path"] = _copy_asset_to_public(original_path, remotion_root, "backgrounds")
 
         # For video backgrounds, get the video duration for proper looping
-        if background.get("type") == "video":
+        if config.background.get("type") == "video":
             loop_frames = _get_video_duration_frames(original_path)
             if loop_frames:
                 bg_config["loopDurationInFrames"] = loop_frames
@@ -373,17 +359,17 @@ def update_composition_json(
         composition_data["background"] = bg_config
 
     # Add BGM config if provided (convert path to public-relative)
-    if bgm:
-        bgm_config = bgm.copy()
-        bgm_config["path"] = _copy_asset_to_public(Path(bgm["path"]), remotion_root, "bgm")
+    if config.bgm:
+        bgm_config = config.bgm.copy()
+        bgm_config["path"] = _copy_asset_to_public(Path(config.bgm["path"]), remotion_root, "bgm")
         composition_data["bgm"] = bgm_config
 
     # Add personas config if provided (for persistent character display)
-    if personas:
+    if config.personas:
         # Convert asset paths in personas to be relative to public/
         # Auto-assign character_position only if not configured
         converted_personas = []
-        for i, persona in enumerate(personas):
+        for i, persona in enumerate(config.personas):
             persona_copy = persona.copy()
 
             # CRITICAL: Always ensure character_position is set
@@ -416,6 +402,58 @@ def update_composition_json(
             converted_personas.append(persona_copy)
         composition_data["personas"] = converted_personas
 
+    return composition_data
+
+
+def update_composition_json(
+    remotion_root: Path,
+    phrases: list[Phrase],
+    audio_paths: list[Path],
+    slide_paths: list[Path] | None,
+    project_name: str = "video",
+    transition: dict[str, Any] | None = None,
+    personas: list[dict[str, Any]] | None = None,
+    background: dict[str, Any] | None = None,
+    bgm: dict[str, Any] | None = None,
+    section_backgrounds: dict[int, dict[str, Any]] | None = None,
+    fps: int = VideoConstants.DEFAULT_FPS,
+    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
+) -> None:
+    """Update composition.json with current phrase data.
+
+    Args:
+        remotion_root: Path to Remotion project root.
+        phrases: List of phrases with timing.
+        audio_paths: List of audio file paths (relative to project).
+        slide_paths: Optional list of slide image paths (relative to project).
+        project_name: Name of the project.
+        transition: Transition configuration (type, duration_frames, timing).
+        personas: Optional list of persona configurations for multi-speaker dialogue.
+        background: Optional global background configuration (type, path, fit).
+        bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
+        section_backgrounds: Optional map of section_index to background override.
+        fps: Frames per second.
+        resolution: Video resolution as (width, height) tuple.
+    """
+    # Create configuration object
+    config = CompositionConfig(
+        phrases=phrases,
+        audio_paths=audio_paths,
+        slide_paths=slide_paths,
+        project_name=project_name,
+        fps=fps,
+        resolution=resolution,
+        transition=transition,
+        personas=personas,
+        background=background,
+        bgm=bgm,
+        section_backgrounds=section_backgrounds,
+    )
+
+    # Build composition data using centralized builder
+    composition_data = build_composition_data(config, remotion_root)
+
+    # Write to file
     composition_path = remotion_root / "composition.json"
     with composition_path.open("w", encoding="utf-8") as f:
         json.dump(composition_data, f, indent=2, ensure_ascii=False)
