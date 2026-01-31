@@ -17,6 +17,8 @@ The command SHALL accept the following options:
 - `--style <style>`: Narration style
 - `--model <model>`: LLM model to use
 
+The implementation SHALL reuse the same common URL/content/script pipeline as `generate` to avoid drift.
+
 #### Scenario: Generate script from URL
 - **GIVEN** a valid blog URL
 - **WHEN** user runs `movie-generator script create https://example.com/blog`

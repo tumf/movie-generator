@@ -39,6 +39,47 @@ class TestScriptCreate:
         assert result.exit_code != 0
         assert "mutually exclusive" in result.output
 
+    def test_skip_existing_script(self) -> None:
+        """Test that script create skips if script.yaml exists without --force."""
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            # Create an existing script file
+            script_path = Path("script.yaml")
+            script_path.write_text("existing: content")
+
+            result = runner.invoke(script, ["create", "https://example.com"])
+            assert result.exit_code != 0
+            assert "already exists" in result.output
+            assert "Use --force to overwrite" in result.output
+
+    @patch("movie_generator.cli._fetch_and_generate_script")
+    def test_uses_common_function(self, mock_fetch: Mock) -> None:
+        """Test that script create uses the common _fetch_and_generate_script function."""
+        from movie_generator.script.generator import Narration, ScriptSection, VideoScript
+
+        # Mock the common function to return a simple script
+        mock_script = VideoScript(
+            title="Test Script",
+            description="Test Description",
+            sections=[
+                ScriptSection(
+                    title="Section 1",
+                    narrations=[Narration(text="Hello", reading="ハロー")],
+                )
+            ],
+        )
+        mock_fetch.return_value = mock_script
+
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            result = runner.invoke(script, ["create", "https://example.com"])
+            assert result.exit_code == 0
+            # Verify the common function was called
+            mock_fetch.assert_called_once()
+            # Verify script was saved
+            script_path = Path("script.yaml")
+            assert script_path.exists()
+
 
 class TestAudioGenerate:
     """Test audio generate command."""
