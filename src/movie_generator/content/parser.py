@@ -4,9 +4,10 @@ Parses HTML content and extracts metadata and main content.
 """
 
 from datetime import datetime
+from typing import Any
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from markdownify import markdownify
 from pydantic import BaseModel
 
@@ -57,19 +58,19 @@ def parse_html(html: str, base_url: str | None = None) -> ParsedContent:
 
     # Title
     if title_tag := soup.find("title"):
-        metadata.title = title_tag.get_text().strip()
+        metadata.title = title_tag.get_text().strip()  # type: ignore[union-attr]
     elif og_title := soup.find("meta", property="og:title"):
-        metadata.title = og_title.get("content", "").strip()
+        metadata.title = og_title.get("content", "").strip()  # type: ignore[union-attr]
 
     # Author
     if author_meta := soup.find("meta", attrs={"name": "author"}):
-        metadata.author = author_meta.get("content", "").strip()
+        metadata.author = author_meta.get("content", "").strip()  # type: ignore[union-attr]
 
     # Description
     if desc_meta := soup.find("meta", attrs={"name": "description"}):
-        metadata.description = desc_meta.get("content", "").strip()
+        metadata.description = desc_meta.get("content", "").strip()  # type: ignore[union-attr]
     elif og_desc := soup.find("meta", property="og:description"):
-        metadata.description = og_desc.get("content", "").strip()
+        metadata.description = og_desc.get("content", "").strip()  # type: ignore[union-attr]
 
     # Extract main content (try common article selectors)
     content_element = (
@@ -78,11 +79,11 @@ def parse_html(html: str, base_url: str | None = None) -> ParsedContent:
 
     if content_element:
         # Remove script and style elements
-        for script in content_element(["script", "style"]):
+        for script in content_element(["script", "style"]):  # type: ignore[operator]
             script.decompose()
 
         content_html = str(content_element)
-        content_text = content_element.get_text(separator="\n", strip=True)
+        content_text = content_element.get_text(separator="\n", strip=True)  # type: ignore[union-attr]
         markdown_content = markdownify(content_html, heading_style="ATX")
     else:
         content_text = ""
@@ -94,6 +95,100 @@ def parse_html(html: str, base_url: str | None = None) -> ParsedContent:
     return ParsedContent(
         metadata=metadata, content=content_text, markdown=markdown_content, images=images
     )
+
+
+def _extract_image_attributes(img_tag: Tag) -> dict[str, Any]:
+    """Extract basic attributes from an img tag.
+
+    Args:
+        img_tag: BeautifulSoup img element.
+
+    Returns:
+        Dictionary with src, alt, title, aria_describedby_id, width, and height.
+    """
+    src = img_tag.get("src")
+    alt = img_tag.get("alt")
+    title = img_tag.get("title")
+    aria_describedby_id = img_tag.get("aria-describedby")
+
+    # Extract width and height if available
+    width: int | None = None
+    height: int | None = None
+    try:
+        if width_attr := img_tag.get("width"):
+            width = int(width_attr)  # type: ignore[arg-type]
+        if height_attr := img_tag.get("height"):
+            height = int(height_attr)  # type: ignore[arg-type]
+    except (ValueError, TypeError):
+        pass
+
+    return {
+        "src": src,
+        "alt": alt,
+        "title": title,
+        "aria_describedby_id": aria_describedby_id,
+        "width": width,
+        "height": height,
+    }
+
+
+def _resolve_url(src: str, base_url: str | None) -> str:
+    """Resolve relative URL to absolute URL.
+
+    Args:
+        src: Image source URL (may be relative).
+        base_url: Base URL for resolution.
+
+    Returns:
+        Absolute URL.
+    """
+    if base_url:
+        return urljoin(base_url, src)
+    return src
+
+
+def _resolve_aria_describedby(aria_describedby_id: str | None, soup: BeautifulSoup) -> str | None:
+    """Resolve aria-describedby ID to referenced element's text content.
+
+    Args:
+        aria_describedby_id: ID of the element referenced by aria-describedby.
+        soup: BeautifulSoup object of the HTML content.
+
+    Returns:
+        Text content of the referenced element, or None if not found.
+    """
+    if not aria_describedby_id:
+        return None
+
+    described_element = soup.find(id=aria_describedby_id)
+    if described_element:
+        return described_element.get_text(strip=True)
+    return None
+
+
+def _has_meaningful_description(
+    alt: str | None, title: str | None, aria_describedby: str | None
+) -> bool:
+    """Check if an image has meaningful description.
+
+    Meaningful description is defined as:
+    - alt text with 10+ characters, OR
+    - non-empty title attribute, OR
+    - non-empty aria-describedby text
+
+    Args:
+        alt: Alt text attribute.
+        title: Title attribute.
+        aria_describedby: Resolved aria-describedby text.
+
+    Returns:
+        True if image has meaningful description.
+    """
+    has_meaningful_alt = bool(alt and len(alt.strip()) >= 10)
+    has_title = bool(title and len(title.strip()) > 0)
+    has_aria_description = bool(aria_describedby and len(aria_describedby.strip()) > 0)
+
+    return has_meaningful_alt or has_title or has_aria_description
 
 
 def _extract_images(soup: BeautifulSoup, base_url: str | None = None) -> list[ImageInfo]:
@@ -109,52 +204,28 @@ def _extract_images(soup: BeautifulSoup, base_url: str | None = None) -> list[Im
     images = []
 
     for img_tag in soup.find_all("img"):
-        src = img_tag.get("src")
-        if not src:
+        # Step 1: Extract attributes
+        attrs = _extract_image_attributes(img_tag)  # type: ignore[arg-type]
+        src = attrs["src"]
+        if not src or not isinstance(src, str):
             continue
 
-        # Resolve relative URLs to absolute URLs
-        if base_url:
-            src = urljoin(base_url, src)
+        # Step 2: Resolve relative URL to absolute URL
+        src = _resolve_url(src, base_url)
 
-        # Extract alt and title attributes
-        alt = img_tag.get("alt")
-        title = img_tag.get("title")
+        # Step 3: Resolve aria-describedby reference
+        aria_describedby = _resolve_aria_describedby(attrs["aria_describedby_id"], soup)
 
-        # Extract aria-describedby if present
-        aria_describedby = None
-        aria_describedby_id = img_tag.get("aria-describedby")
-        if aria_describedby_id:
-            described_element = soup.find(id=aria_describedby_id)
-            if described_element:
-                aria_describedby = described_element.get_text(strip=True)
-
-        # Extract width and height if available
-        width = None
-        height = None
-        try:
-            if width_attr := img_tag.get("width"):
-                width = int(width_attr)
-            if height_attr := img_tag.get("height"):
-                height = int(height_attr)
-        except (ValueError, TypeError):
-            pass
-
-        # Filter images by meaningful description (as per spec)
-        # Meaningful: alt text (10+ chars) OR title OR aria-describedby
-        has_meaningful_alt = alt and len(alt.strip()) >= 10
-        has_title = title and len(title.strip()) > 0
-        has_aria_description = aria_describedby and len(aria_describedby.strip()) > 0
-
-        if has_meaningful_alt or has_title or has_aria_description:
+        # Step 4: Filter by meaningful description
+        if _has_meaningful_description(attrs["alt"], attrs["title"], aria_describedby):
             images.append(
                 ImageInfo(
                     src=src,
-                    alt=alt,
-                    title=title,
+                    alt=attrs["alt"],
+                    title=attrs["title"],
                     aria_describedby=aria_describedby,
-                    width=width,
-                    height=height,
+                    width=attrs["width"],
+                    height=attrs["height"],
                 )
             )
 
