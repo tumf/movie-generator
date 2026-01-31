@@ -64,6 +64,20 @@ class ProjectPaths:
         """
         return Path(os.getenv("PROJECT_ROOT", "/app"))
 
+    @staticmethod
+    def get_project_root() -> Path:
+        """Get project root based on environment.
+
+        In Docker environment (DOCKER_ENV set), returns PROJECT_ROOT env var or /app.
+        In local development, returns current working directory.
+
+        Returns:
+            Path to project root directory.
+        """
+        if os.getenv("DOCKER_ENV"):
+            return ProjectPaths.get_docker_project_root()
+        return Path.cwd()
+
 
 class RetryConfig:
     """Retry operation configuration."""

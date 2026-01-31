@@ -14,7 +14,7 @@ from rich.console import Console
 from ..constants import ProjectPaths, SubtitleConstants, TimeoutConstants, VideoConstants
 from ..exceptions import RenderingError
 from ..script.phrases import Phrase
-from .renderer import CompositionPhrase
+from .renderer import CompositionConfig, CompositionPhrase, RenderConfig
 
 console = Console()
 
@@ -163,6 +163,41 @@ def ensure_pnpm_dependencies(remotion_root: Path) -> None:
         raise RenderingError("pnpm install failed") from e
 
 
+def ensure_rendering_environment(remotion_root: Path) -> None:
+    """Ensure all rendering dependencies and environment setup are ready.
+
+    This function centralizes environment checks and setup, including:
+    - pnpm dependency installation
+    - Chrome Headless Shell download/linking
+    - Asset symlink creation (for Docker environments)
+
+    Args:
+        remotion_root: Path to Remotion project root directory.
+
+    Raises:
+        RuntimeError: If environment setup fails.
+    """
+    # 1. Ensure pnpm dependencies are installed
+    ensure_pnpm_dependencies(remotion_root)
+
+    # 2. Ensure Chrome Headless Shell is downloaded
+    ensure_chrome_headless_shell(remotion_root)
+
+    # 3. Create symlink to assets directory from job directory
+    # This is needed for Docker environment where working directory is job dir
+    # but assets are in project root ({project_root}/assets)
+    job_dir = remotion_root.parent
+    assets_symlink = job_dir / "assets"
+    if not assets_symlink.exists():
+        import os
+
+        project_root = ProjectPaths.get_docker_project_root()
+        assets_dir = project_root / "assets"
+        if assets_dir.exists():
+            os.symlink(assets_dir, assets_symlink)
+            console.print(f"[green]Created symlink: {assets_symlink} -> {assets_dir}[/green]")
+
+
 def ensure_chrome_headless_shell(remotion_root: Path) -> None:
     """Ensure Chrome Headless Shell is downloaded for Remotion rendering.
 
@@ -177,13 +212,7 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
     """
     # Global cache directory for Chrome Headless Shell
     # Place it at the project root level (parent of output directories)
-    # In Docker, use PROJECT_ROOT env var or default /app; otherwise use cwd
-    import os
-
-    if os.getenv("DOCKER_ENV"):
-        project_root = ProjectPaths.get_docker_project_root()
-    else:
-        project_root = Path.cwd()
+    project_root = ProjectPaths.get_project_root()
     global_cache = project_root / ".cache" / "remotion" / "chrome-headless-shell"
 
     # Target path in this project's node_modules
@@ -274,46 +303,32 @@ def ensure_chrome_headless_shell(remotion_root: Path) -> None:
         shutil.copytree(global_cache, local_browser_path)
 
 
-def update_composition_json(
+def build_composition_data(
+    config: CompositionConfig,
     remotion_root: Path,
-    phrases: list[Phrase],
-    audio_paths: list[Path],
-    slide_paths: list[Path] | None,
-    project_name: str = "video",
-    transition: dict[str, Any] | None = None,
-    personas: list[dict[str, Any]] | None = None,
-    background: dict[str, Any] | None = None,
-    bgm: dict[str, Any] | None = None,
-    section_backgrounds: dict[int, dict[str, Any]] | None = None,
-    fps: int = VideoConstants.DEFAULT_FPS,
-    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
-) -> None:
-    """Update composition.json with current phrase data.
+) -> dict[str, Any]:
+    """Build composition data dictionary from configuration.
+
+    This function centralizes the logic for generating composition.json data,
+    including default handling and backward compatibility for speaker information.
 
     Args:
-        remotion_root: Path to Remotion project root.
-        phrases: List of phrases with timing.
-        audio_paths: List of audio file paths (relative to project).
-        slide_paths: Optional list of slide image paths (relative to project).
-        project_name: Name of the project.
-        transition: Transition configuration (type, duration_frames, timing).
-        personas: Optional list of persona configurations for multi-speaker dialogue.
-        background: Optional global background configuration (type, path, fit).
-        bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
-        section_backgrounds: Optional map of section_index to background override.
-        fps: Frames per second.
-        resolution: Video resolution as (width, height) tuple.
+        config: Configuration object with all composition inputs.
+        remotion_root: Path to Remotion project root (needed for asset path conversion).
+
+    Returns:
+        Dictionary containing composition data ready for JSON serialization.
     """
     # Build slide map for efficient lookup
-    slide_map = _build_slide_map(slide_paths) if slide_paths else {}
+    slide_map = _build_slide_map(config.slide_paths) if config.slide_paths else {}
 
     # Build persona lookup map and position assignment map
     persona_map: dict[str, dict[str, Any]] = {}
     persona_position_map: dict[str, str] = {}
-    if personas:
+    if config.personas:
         # Assign positions based on persona order
         positions = ["left", "right", "center"]
-        for i, persona in enumerate(personas):
+        for i, persona in enumerate(config.personas):
             persona_id = persona["id"]
             persona_map[persona_id] = persona
             # Assign position: first persona -> left, second -> right, third+ -> center
@@ -321,12 +336,12 @@ def update_composition_json(
 
     # Create CompositionPhrase objects
     composition_phrases = []
-    for phrase in phrases:
+    for phrase in config.phrases:
         persona_fields = _get_persona_fields(phrase, persona_map, persona_position_map)
         # Get background override for this section
         bg_override = None
-        if section_backgrounds and phrase.section_index in section_backgrounds:
-            bg_dict = section_backgrounds[phrase.section_index].copy()
+        if config.section_backgrounds and phrase.section_index in config.section_backgrounds:
+            bg_dict = config.section_backgrounds[phrase.section_index].copy()
             # Convert background path to public-relative
             bg_dict["path"] = _copy_asset_to_public(
                 Path(bg_dict["path"]), remotion_root, "backgrounds"
@@ -353,25 +368,25 @@ def update_composition_json(
         )
 
     composition_data = {
-        "title": project_name,
-        "fps": fps,
-        "width": resolution[0],
-        "height": resolution[1],
+        "title": config.project_name,
+        "fps": config.fps,
+        "width": config.resolution[0],
+        "height": config.resolution[1],
         "phrases": [p.model_dump(exclude_none=True, by_alias=True) for p in composition_phrases],
     }
 
     # Add transition config if provided
-    if transition:
-        composition_data["transition"] = transition
+    if config.transition:
+        composition_data["transition"] = config.transition
 
     # Add background config if provided (convert path to public-relative)
-    if background:
-        bg_config = background.copy()
-        original_path = Path(background["path"])
+    if config.background:
+        bg_config = config.background.copy()
+        original_path = Path(config.background["path"])
         bg_config["path"] = _copy_asset_to_public(original_path, remotion_root, "backgrounds")
 
         # For video backgrounds, get the video duration for proper looping
-        if background.get("type") == "video":
+        if config.background.get("type") == "video":
             loop_frames = _get_video_duration_frames(original_path)
             if loop_frames:
                 bg_config["loopDurationInFrames"] = loop_frames
@@ -379,17 +394,17 @@ def update_composition_json(
         composition_data["background"] = bg_config
 
     # Add BGM config if provided (convert path to public-relative)
-    if bgm:
-        bgm_config = bgm.copy()
-        bgm_config["path"] = _copy_asset_to_public(Path(bgm["path"]), remotion_root, "bgm")
+    if config.bgm:
+        bgm_config = config.bgm.copy()
+        bgm_config["path"] = _copy_asset_to_public(Path(config.bgm["path"]), remotion_root, "bgm")
         composition_data["bgm"] = bgm_config
 
     # Add personas config if provided (for persistent character display)
-    if personas:
+    if config.personas:
         # Convert asset paths in personas to be relative to public/
         # Auto-assign character_position only if not configured
         converted_personas = []
-        for i, persona in enumerate(personas):
+        for i, persona in enumerate(config.personas):
             persona_copy = persona.copy()
 
             # CRITICAL: Always ensure character_position is set
@@ -422,6 +437,58 @@ def update_composition_json(
             converted_personas.append(persona_copy)
         composition_data["personas"] = converted_personas
 
+    return composition_data
+
+
+def update_composition_json(
+    remotion_root: Path,
+    phrases: list[Phrase],
+    audio_paths: list[Path],
+    slide_paths: list[Path] | None,
+    project_name: str = "video",
+    transition: dict[str, Any] | None = None,
+    personas: list[dict[str, Any]] | None = None,
+    background: dict[str, Any] | None = None,
+    bgm: dict[str, Any] | None = None,
+    section_backgrounds: dict[int, dict[str, Any]] | None = None,
+    fps: int = VideoConstants.DEFAULT_FPS,
+    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
+) -> None:
+    """Update composition.json with current phrase data.
+
+    Args:
+        remotion_root: Path to Remotion project root.
+        phrases: List of phrases with timing.
+        audio_paths: List of audio file paths (relative to project).
+        slide_paths: Optional list of slide image paths (relative to project).
+        project_name: Name of the project.
+        transition: Transition configuration (type, duration_frames, timing).
+        personas: Optional list of persona configurations for multi-speaker dialogue.
+        background: Optional global background configuration (type, path, fit).
+        bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
+        section_backgrounds: Optional map of section_index to background override.
+        fps: Frames per second.
+        resolution: Video resolution as (width, height) tuple.
+    """
+    # Create configuration object
+    config = CompositionConfig(
+        phrases=phrases,
+        audio_paths=audio_paths,
+        slide_paths=slide_paths,
+        project_name=project_name,
+        fps=fps,
+        resolution=resolution,
+        transition=transition,
+        personas=personas,
+        background=background,
+        bgm=bgm,
+        section_backgrounds=section_backgrounds,
+    )
+
+    # Build composition data using centralized builder
+    composition_data = build_composition_data(config, remotion_root)
+
+    # Write to file
     composition_path = remotion_root / "composition.json"
     with composition_path.open("w", encoding="utf-8") as f:
         json.dump(composition_data, f, indent=2, ensure_ascii=False)
@@ -641,100 +708,58 @@ def _copy_asset_to_public(asset_path: Path, remotion_root: Path, category: str) 
 
 
 def render_video_with_remotion(
-    phrases: list[Phrase],
-    audio_paths: list[Path],
-    slide_paths: list[Path] | None,
-    output_path: Path,
-    remotion_root: Path,
-    project_name: str = "video",
-    show_progress: bool = False,
-    transition: dict[str, Any] | None = None,
-    personas: list[dict[str, Any]] | None = None,
-    background: dict[str, Any] | None = None,
-    bgm: dict[str, Any] | None = None,
-    section_backgrounds: dict[int, dict[str, Any]] | None = None,
-    crf: int = VideoConstants.DEFAULT_CRF,
-    fps: int = VideoConstants.DEFAULT_FPS,
-    resolution: tuple[int, int] = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT),
-    render_concurrency: int = 4,
-    render_timeout_seconds: int = 300,
+    composition_config: CompositionConfig,
+    render_config: RenderConfig,
 ) -> None:
     """Render video using Remotion CLI with per-project setup.
 
+    This function consolidates rendering execution by accepting configuration objects
+    instead of many individual parameters, improving maintainability and reducing
+    the risk of parameter mismatches.
+
     Args:
-        phrases: List of phrases with timing.
-        audio_paths: List of audio file paths.
-        slide_paths: Optional list of slide image paths.
-        output_path: Path to save rendered video.
-        remotion_root: Path to Remotion project root directory.
-        project_name: Name of the project for metadata.
-        show_progress: If True, show real-time rendering progress. Default False.
-        transition: Transition configuration (type, duration_frames, timing).
-        personas: Optional list of persona configurations for multi-speaker dialogue.
-        background: Optional global background configuration (type, path, fit).
-        bgm: Optional BGM configuration (path, volume, fade_in_seconds, fade_out_seconds, loop).
-        section_backgrounds: Optional map of section_index to background override.
-        crf: Constant Rate Factor for video encoding (0-51, default 28).
-        fps: Frames per second.
-        resolution: Video resolution as (width, height) tuple.
-        render_concurrency: Number of concurrent frames to render (default 4).
-        render_timeout_seconds: Timeout for Remotion delayRender calls in seconds (default 300).
+        composition_config: Configuration for composition.json (phrases, audio, slides, etc.)
+        render_config: Configuration for rendering execution (paths, concurrency, etc.)
 
     Raises:
         FileNotFoundError: If Remotion is not installed.
         RuntimeError: If video rendering fails.
     """
-    # Create symlink to assets directory from job directory
-    # This is needed for Docker environment where working directory is job dir
-    # but assets are in project root ({project_root}/assets)
-    job_dir = remotion_root.parent
-    assets_symlink = job_dir / "assets"
-    if not assets_symlink.exists():
-        import os
-
-        project_root = ProjectPaths.get_docker_project_root()
-        assets_dir = project_root / "assets"
-        if assets_dir.exists():
-            os.symlink(assets_dir, assets_symlink)
-            console.print(f"[green]Created symlink: {assets_symlink} -> {assets_dir}[/green]")
-
-    # Ensure pnpm dependencies are installed
-    ensure_pnpm_dependencies(remotion_root)
-
-    # Ensure Chrome Headless Shell is downloaded
-    ensure_chrome_headless_shell(remotion_root)
+    # Ensure rendering environment is ready (dependencies, Chrome, assets)
+    ensure_rendering_environment(render_config.remotion_root)
 
     # Update composition.json with current data
     update_composition_json(
-        remotion_root,
-        phrases,
-        audio_paths,
-        slide_paths,
-        project_name,
-        transition,
-        personas,
-        background,
-        bgm,
-        section_backgrounds,
-        fps,
-        resolution,
+        render_config.remotion_root,
+        composition_config.phrases,
+        composition_config.audio_paths,
+        composition_config.slide_paths,
+        composition_config.project_name,
+        composition_config.transition,
+        composition_config.personas,
+        composition_config.background,
+        composition_config.bgm,
+        composition_config.section_backgrounds,
+        composition_config.fps,
+        composition_config.resolution,
     )
 
     # Ensure output directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    render_config.output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Calculate total duration including pauses
     # Use last phrase's end time (start_time + duration) + 1 second ending pause
-    if phrases:
-        total_duration = phrases[-1].start_time + phrases[-1].duration + 1.0  # +1s ending pause
+    if composition_config.phrases:
+        last_phrase = composition_config.phrases[-1]
+        total_duration = last_phrase.start_time + last_phrase.duration + 1.0  # +1s ending pause
     else:
         total_duration = 0.0
-    total_frames = int(total_duration * fps)
+    total_frames = int(total_duration * composition_config.fps)
 
     # Render video using Remotion CLI
     try:
         # Only show initial message when progress is hidden
-        if not show_progress:
+        if not render_config.show_progress:
             console.print(
                 f"[cyan]🎬 Rendering video with Remotion "
                 f"({total_duration:.1f}s, {total_frames} frames)...[/cyan]"
@@ -747,28 +772,28 @@ def render_video_with_remotion(
                 "remotion",
                 "render",
                 "VideoGenerator",
-                str(output_path.absolute()),
+                str(render_config.output_path.absolute()),
                 "--overwrite",
                 "--concurrency",
-                str(render_concurrency),
+                str(render_config.render_concurrency),
                 "--timeout",
-                str(render_timeout_seconds * 1000),  # Convert seconds to milliseconds
+                str(render_config.render_timeout_seconds * 1000),  # Convert seconds to milliseconds
                 "--crf",
-                str(crf),
+                str(render_config.crf),
             ],
-            cwd=remotion_root,
+            cwd=render_config.remotion_root,
             check=True,
             # Show progress only if requested
-            capture_output=not show_progress,
+            capture_output=not render_config.show_progress,
             text=True,
         )
 
         # Only show completion message when progress is hidden
-        if not show_progress:
-            console.print(f"[green]✓ Video rendered: {output_path}[/green]")
+        if not render_config.show_progress:
+            console.print(f"[green]✓ Video rendered: {render_config.output_path}[/green]")
 
     except subprocess.CalledProcessError as e:
-        if show_progress:
+        if render_config.show_progress:
             console.print(f"[red]Remotion rendering failed with exit code {e.returncode}[/red]")
         else:
             error_msg = f"Remotion rendering failed:\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}"

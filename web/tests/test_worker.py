@@ -1,6 +1,5 @@
 """Tests for worker functionality."""
 
-import pytest
 
 # TODO: Implement worker tests
 # Example structure:

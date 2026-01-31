@@ -1,7 +1,7 @@
 """Firecrawl API client for content quality checking."""
 
+
 import httpx
-from typing import Dict, Any
 
 from config import settings
 
