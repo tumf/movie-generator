@@ -4,15 +4,7 @@
 
 ### デモ動画
 
-<!-- 
-動画の埋め込み方法：
-1. GitHubのissueまたはPRのコメント欄を開く
-2. docs/videos/demo.mp4 をドラッグ&ドロップ
-3. 自動生成されたURLをここに貼り付け
-例: https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/demo.mp4
--->
-
-[📹 デモ動画を見る](docs/videos/demo.mp4)
+https://github.com/user-attachments/assets/67a9bac8-86d4-4d8e-bb33-20678b86e3a5
 
 *実際の生成例を動画でご覧いただけます*
 
