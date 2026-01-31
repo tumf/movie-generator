@@ -572,10 +572,17 @@ class Project:
     def update_composition_json(self, phrases: list[dict[str, Any]], language: str = "ja") -> None:
         """Update composition.json with phrase data.
 
+        This method now uses the centralized composition builder to ensure
+        consistent defaulting and schema mapping across all composition.json
+        generation paths.
+
         Args:
             phrases: List of phrase dictionaries with text, duration, etc.
             language: Language code for slides path (e.g., "ja", "en"). Defaults to "ja".
         """
+        from .script.phrases import Phrase
+        from .video.remotion_renderer import update_composition_json as centralized_update
+
         remotion_dir = self.project_dir / "remotion"
         if not remotion_dir.exists():
             raise FileNotFoundError(
@@ -599,29 +606,48 @@ class Project:
             resolution = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
             fps = VideoConstants.DEFAULT_FPS
 
-        # Build composition data
-        composition_data = {
-            "title": self.name,
-            "fps": fps,
-            "width": resolution[0],
-            "height": resolution[1],
-            "phrases": [
-                {
-                    "text": phrase.get("text", ""),
-                    "audioFile": f"audio/{phrase.get('audio_file', '')}",
-                    "slideFile": f"slides/{language}/{phrase.get('slide_file', '')}"
-                    if phrase.get("slide_file")
-                    else None,
-                    "duration": phrase.get("duration", 0.0),
-                }
-                for phrase in phrases
-            ],
-            "transition": transition_config,
-        }
+        # Convert phrase dicts to Phrase objects
+        phrase_objects = []
+        audio_paths = []
+        slide_paths = []
 
-        composition_path = remotion_dir / "composition.json"
-        with composition_path.open("w", encoding="utf-8") as f:
-            json.dump(composition_data, f, indent=2, ensure_ascii=False)
+        for idx, phrase_dict in enumerate(phrases):
+            # Create Phrase object
+            phrase_obj = Phrase(
+                text=phrase_dict.get("text", ""),
+                duration=phrase_dict.get("duration", 0.0),
+                start_time=phrase_dict.get("start_time", 0.0),
+                section_index=phrase_dict.get("section_index", idx),
+                original_index=phrase_dict.get("original_index", idx),
+                persona_id=phrase_dict.get("persona_id", ""),
+                persona_name=phrase_dict.get("persona_name", ""),
+            )
+            phrase_objects.append(phrase_obj)
+
+            # Extract audio and slide paths
+            audio_file = phrase_dict.get("audio_file", "")
+            if audio_file:
+                audio_paths.append(self.project_dir / "audio" / audio_file)
+
+            slide_file = phrase_dict.get("slide_file", "")
+            if slide_file:
+                slide_paths.append(self.project_dir / "slides" / language / slide_file)
+
+        # Use centralized composition builder
+        centralized_update(
+            remotion_root=remotion_dir,
+            phrases=phrase_objects,
+            audio_paths=audio_paths,
+            slide_paths=slide_paths if slide_paths else None,
+            project_name=self.name,
+            transition=transition_config,
+            personas=None,  # Not provided in this simplified interface
+            background=None,
+            bgm=None,
+            section_backgrounds=None,
+            fps=fps,
+            resolution=resolution,
+        )
 
         console.print(
             f"[green]✓ Updated composition.json with {len(phrases)} phrases (language: {language})[/green]"
