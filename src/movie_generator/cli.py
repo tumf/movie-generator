@@ -38,6 +38,7 @@ from .script.generator import generate_script, validate_script
 from .script.phrases import Phrase, calculate_phrase_timings
 from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
+from .utils.scene_range import parse_scene_range
 from .video.remotion_renderer import render_video_with_remotion
 
 console = Console()
@@ -185,86 +186,6 @@ def _fetch_and_generate_script(
     console.print(f"  Sections: {len(script.sections)}")
 
     return script
-
-
-def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
-    """Parse scene range argument.
-
-    Args:
-        scenes_arg: Scene range string (e.g., "1-3", "6-" for 6 onwards, "-3" for up to 3, or "2").
-
-    Returns:
-        Tuple of (start_index, end_index) (0-based, inclusive).
-        start_index can be None to indicate "from the beginning".
-        end_index can be None to indicate "to the end".
-
-    Raises:
-        ValueError: If the format is invalid or range is invalid.
-    """
-    if "-" in scenes_arg:
-        parts = scenes_arg.split("-")
-        if len(parts) != 2:
-            raise ValueError(
-                f"Invalid scene range format: '{scenes_arg}'. "
-                "Expected format: '1-3', '6-', '-3', or '2'"
-            )
-
-        # Handle "-3" format (from beginning to scene 3)
-        if parts[0] == "":
-            if parts[1] == "":
-                raise ValueError(
-                    f"Invalid scene range format: '{scenes_arg}'. Cannot use '-' alone."
-                )
-
-            try:
-                end = int(parts[1])
-            except ValueError:
-                raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
-
-            if end < 1:
-                raise ValueError(f"Scene number must be >= 1, got: {end}")
-
-            # "-3" format - from beginning to scene 3
-            return (None, end - 1)
-
-        # Parse start
-        try:
-            start = int(parts[0])
-        except ValueError:
-            raise ValueError(f"Invalid start scene number: '{parts[0]}'. Must be an integer.")
-
-        if start < 1:
-            raise ValueError(f"Scene number must be >= 1, got: {start}")
-
-        # Parse end (can be empty for "N-" format)
-        if parts[1] == "":
-            # "6-" format - from scene 6 to the end
-            return (start - 1, None)
-
-        try:
-            end = int(parts[1])
-        except ValueError:
-            raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
-
-        if end < 1:
-            raise ValueError(f"Scene numbers must be >= 1, got: {scenes_arg}")
-        if start > end:
-            raise ValueError(
-                f"Invalid scene range: {scenes_arg}. Start must be <= end. "
-                f"Example: '1-3' for scenes 1 through 3."
-            )
-        # Convert to 0-based indexing
-        return (start - 1, end - 1)
-    else:
-        try:
-            scene_num = int(scenes_arg)
-        except ValueError:
-            raise ValueError(f"Invalid scene number: '{scenes_arg}'. Must be an integer.")
-
-        if scene_num < 1:
-            raise ValueError(f"Scene number must be >= 1, got: {scene_num}")
-        # Convert to 0-based indexing
-        return (scene_num - 1, scene_num - 1)
 
 
 @click.group()
