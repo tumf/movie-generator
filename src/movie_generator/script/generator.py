@@ -784,21 +784,53 @@ def select_personas_from_pool(
     return selected
 
 
-async def generate_script(
+def _format_images_section(images: list[dict[str, str]] | None, language: str) -> str:
+    """Format images section for prompt.
+
+    Args:
+        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
+        language: Language code ('ja' or 'en').
+
+    Returns:
+        Formatted images section string.
+    """
+    if not images:
+        return ""
+
+    if language == "ja":
+        section = "【利用可能な画像】\n以下の画像がブログ記事内で利用可能です。適切なセクションに割り当ててください：\n"
+    else:
+        section = "[Available Images]\nThe following images are available from the blog content. Assign them to appropriate sections:\n"
+
+    for idx, img in enumerate(images, 1):
+        alt_text = img.get("alt", "")
+        title_text = img.get("title", "")
+        aria_text = img.get("aria_describedby", "")
+        description_parts = []
+        if alt_text:
+            description_parts.append(f"Alt: {alt_text}")
+        if title_text:
+            description_parts.append(f"Title: {title_text}")
+        if aria_text:
+            description_parts.append(f"Description: {aria_text}")
+        description = ", ".join(description_parts) if description_parts else "No description"
+
+        section += f"{idx}. URL: {img['src']}\n   {description}\n"
+
+    return section
+
+
+def _build_prompt(
     content: str,
-    model: str,
-    title: str | None = None,
-    description: str | None = None,
-    character: str = "ずんだもん",
-    style: str = "casual",
-    language: str = "ja",
-    api_key: str | None = None,
-    base_url: str = "https://openrouter.ai/api/v1",
-    images: list[dict[str, str]] | None = None,
-    personas: list[dict[str, str]] | None = None,
-    pool_config: dict[str, Any] | None = None,
-) -> VideoScript:
-    """Generate video script from content using LLM.
+    title: str | None,
+    description: str | None,
+    character: str,
+    style: str,
+    language: str,
+    images_section: str,
+    personas: list[dict[str, str]] | None,
+) -> str:
+    """Build prompt for LLM script generation.
 
     Args:
         content: Source content (markdown or text).
@@ -807,67 +839,22 @@ async def generate_script(
         character: Character name for narration (used when no personas defined).
         style: Narration style (casual, formal, educational).
         language: Language code for script generation (ja, en).
-        api_key: OpenRouter API key.
-        model: Model identifier.
-        base_url: API base URL.
-        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
+        images_section: Formatted images section string.
         personas: List of persona dicts with 'id', 'name', 'character' keys.
-                  If provided, multi-speaker dialogue mode is used.
-        pool_config: PersonaPoolConfig dict for random persona selection.
-                     If enabled, randomly selects subset of personas.
 
     Returns:
-        Generated video script.
-
-    Raises:
-        httpx.HTTPError: If API request fails.
-        ValueError: If response parsing fails.
+        Formatted prompt string.
     """
-    # Apply persona pool selection if configured
-    if personas and pool_config:
-        import logging
-
-        logger = logging.getLogger(__name__)
-        original_count = len(personas)
-        personas = select_personas_from_pool(personas, pool_config)
-        selected_ids = [p["id"] for p in personas]
-        ids_str = ", ".join(selected_ids)
-        logger.info(f"Persona pool: selected {len(personas)}/{original_count} personas: {ids_str}")
-    # Format images section for prompt
-    images_section = ""
-    if images:
-        if language == "ja":
-            images_section = "【利用可能な画像】\n以下の画像がブログ記事内で利用可能です。適切なセクションに割り当ててください：\n"
-        else:
-            images_section = "[Available Images]\nThe following images are available from the blog content. Assign them to appropriate sections:\n"
-
-        for idx, img in enumerate(images, 1):
-            alt_text = img.get("alt", "")
-            title_text = img.get("title", "")
-            aria_text = img.get("aria_describedby", "")
-            description_parts = []
-            if alt_text:
-                description_parts.append(f"Alt: {alt_text}")
-            if title_text:
-                description_parts.append(f"Title: {title_text}")
-            if aria_text:
-                description_parts.append(f"Description: {aria_text}")
-            description = ", ".join(description_parts) if description_parts else "No description"
-
-            images_section += f"{idx}. URL: {img['src']}\n   {description}\n"
-
-    # Select prompt template based on personas presence
     if personas:
         prompt_template = SCRIPT_GENERATION_PROMPTS_DIALOGUE.get(
             language, SCRIPT_GENERATION_PROMPT_DIALOGUE_JA
         )
         # Format personas description
         personas_description = ""
-        if personas:
-            for persona in personas:
-                personas_description += (
-                    f"- {persona['name']} (ID: {persona['id']}): {persona.get('character', '')}\n"
-                )
+        for persona in personas:
+            personas_description += (
+                f"- {persona['name']} (ID: {persona['id']}): {persona.get('character', '')}\n"
+            )
         prompt = prompt_template.format(
             personas_description=personas_description,
             style=style,
@@ -876,8 +863,6 @@ async def generate_script(
             content=content,
             images_section=images_section,
         )
-        # Add critical reminder at the end
-        prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
     else:
         prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
         prompt = prompt_template.format(
@@ -888,50 +873,24 @@ async def generate_script(
             content=content,
             images_section=images_section,
         )
-        # Add critical reminder at the end
-        prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+    # Add critical reminder at the end
+    prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
+    return prompt
 
-    # System prompt to enforce reading field generation
-    system_prompt = (
-        "You are a script generator for video narration. "
-        "CRITICAL REQUIREMENT: Every single narration MUST include a 'reading' field in katakana. "
-        "This is not optional. Missing 'reading' field will cause system failure. "
-        "Always generate both 'text' and 'reading' for each narration."
-    )
 
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
-        ],
-        "response_format": {"type": "json_object"},
-        "max_tokens": 16000,  # Ensure sufficient output for complete scripts
-    }
+def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
+    """Parse LLM response into VideoScript.
 
-    async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_EXTENDED) as client:
-        url = f"{base_url}/chat/completions"
-        response = await client.post(url, headers=headers, json=payload)
-        if response.status_code != 200:
-            error_detail = response.text[:500] if response.text else "No response body"
-            raise RuntimeError(
-                f"LLM API request failed: {response.status_code} for {url}\n"
-                f"Model: {model}\n"
-                f"Response: {error_detail}"
-            )
-        data = response.json()
+    Args:
+        script_data: Parsed JSON response from LLM.
 
-    # Parse response
-    import json
+    Returns:
+        VideoScript object.
 
-    message_content = data["choices"][0]["message"]["content"]
-    script_data = json.loads(message_content)
-
+    Raises:
+        ValueError: If response format is invalid or missing required fields.
+    """
     # Parse sections - unified format with narrations list
     sections = []
     for section in script_data["sections"]:
@@ -992,21 +951,170 @@ async def generate_script(
             for entry in script_data["role_assignments"]
         ]
 
-    # Validate script completeness
-    if not sections:
-        raise ValueError("Script generation failed: no sections were generated")
-    if not sections[-1].narrations:
-        raise ValueError(
-            f"Script generation incomplete: last section '{sections[-1].title}' has no narrations. "
-            "The LLM response may have been truncated. Try regenerating the script."
-        )
-
     return VideoScript(
         title=script_data["title"],
         description=script_data["description"],
         sections=sections,
         role_assignments=role_assignments,
     )
+
+
+def _validate_script_completeness(script: VideoScript) -> None:
+    """Validate script completeness.
+
+    Args:
+        script: VideoScript to validate.
+
+    Raises:
+        ValueError: If script is incomplete.
+    """
+    if not script.sections:
+        raise ValueError("Script generation failed: no sections were generated")
+    if not script.sections[-1].narrations:
+        raise ValueError(
+            f"Script generation incomplete: last section '{script.sections[-1].title}' has no narrations. "
+            "The LLM response may have been truncated. Try regenerating the script."
+        )
+
+
+async def _call_llm_api(prompt: str, model: str, api_key: str, base_url: str) -> dict[str, Any]:
+    """Call LLM API for script generation.
+
+    Args:
+        prompt: Formatted prompt string.
+        model: Model identifier.
+        api_key: API key for authentication.
+        base_url: API base URL.
+
+    Returns:
+        Parsed JSON response from LLM.
+
+    Raises:
+        RuntimeError: If API request fails.
+        ValueError: If response format is invalid.
+    """
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    # System prompt to enforce reading field generation
+    system_prompt = (
+        "You are a script generator for video narration. "
+        "CRITICAL REQUIREMENT: Every single narration MUST include a 'reading' field in katakana. "
+        "This is not optional. Missing 'reading' field will cause system failure. "
+        "Always generate both 'text' and 'reading' for each narration."
+    )
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+        "response_format": {"type": "json_object"},
+        "max_tokens": 16000,  # Ensure sufficient output for complete scripts
+    }
+
+    async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_EXTENDED) as client:
+        url = f"{base_url}/chat/completions"
+        response = await client.post(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            error_detail = response.text[:500] if response.text else "No response body"
+            raise RuntimeError(
+                f"LLM API request failed: {response.status_code} for {url}\n"
+                f"Model: {model}\n"
+                f"Response: {error_detail}"
+            )
+        data = response.json()
+
+    # Parse response
+    import json
+
+    message_content = data["choices"][0]["message"]["content"]
+    return json.loads(message_content)
+
+
+async def generate_script(
+    content: str,
+    model: str,
+    title: str | None = None,
+    description: str | None = None,
+    character: str = "ずんだもん",
+    style: str = "casual",
+    language: str = "ja",
+    api_key: str | None = None,
+    base_url: str = "https://openrouter.ai/api/v1",
+    images: list[dict[str, str]] | None = None,
+    personas: list[dict[str, str]] | None = None,
+    pool_config: dict[str, Any] | None = None,
+) -> VideoScript:
+    """Generate video script from content using LLM.
+
+    Args:
+        content: Source content (markdown or text).
+        title: Content title.
+        description: Content description.
+        character: Character name for narration (used when no personas defined).
+        style: Narration style (casual, formal, educational).
+        language: Language code for script generation (ja, en).
+        api_key: OpenRouter API key.
+        model: Model identifier.
+        base_url: API base URL.
+        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
+        personas: List of persona dicts with 'id', 'name', 'character' keys.
+                  If provided, multi-speaker dialogue mode is used.
+        pool_config: PersonaPoolConfig dict for random persona selection.
+                     If enabled, randomly selects subset of personas.
+
+    Returns:
+        Generated video script.
+
+    Raises:
+        httpx.HTTPError: If API request fails.
+        ValueError: If response parsing fails.
+    """
+    # Apply persona pool selection if configured
+    if personas and pool_config:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        original_count = len(personas)
+        personas = select_personas_from_pool(personas, pool_config)
+        selected_ids = [p["id"] for p in personas]
+        ids_str = ", ".join(selected_ids)
+        logger.info(f"Persona pool: selected {len(personas)}/{original_count} personas: {ids_str}")
+
+    # Format images section for prompt
+    images_section = _format_images_section(images, language)
+
+    # Build prompt
+    prompt = _build_prompt(
+        content=content,
+        title=title,
+        description=description,
+        character=character,
+        style=style,
+        language=language,
+        images_section=images_section,
+        personas=personas,
+    )
+
+    # Call LLM API
+    script_data = await _call_llm_api(
+        prompt=prompt,
+        model=model,
+        api_key=api_key or "",
+        base_url=base_url,
+    )
+
+    # Parse response
+    script = _parse_script_response(script_data)
+
+    # Validate completeness
+    _validate_script_completeness(script)
+
+    return script
 
 
 class ScriptValidationResult:
