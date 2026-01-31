@@ -69,6 +69,116 @@ def common_options(func: Any) -> Any:
     return func
 
 
+def _fetch_and_generate_script(
+    url: str,
+    cfg: Config,
+    api_key: str | None,
+    mcp_config: Path | None,
+    persona_pool_count: int | None,
+    persona_pool_seed: int | None,
+    progress: Any,
+    console: Console,
+) -> Any:
+    """Fetch content from URL and generate script.
+
+    Common function used by both `generate` and `script create` commands.
+
+    Args:
+        url: Blog URL to fetch.
+        cfg: Configuration object.
+        api_key: OpenRouter API key.
+        mcp_config: Path to MCP configuration file.
+        persona_pool_count: Override persona pool count.
+        persona_pool_seed: Random seed for persona selection.
+        progress: Rich Progress object.
+        console: Rich Console object.
+
+    Returns:
+        VideoScript object.
+    """
+    task = progress.add_task("Fetching content...", total=None)
+
+    # Use MCP if config provided, otherwise use standard fetcher
+    if mcp_config:
+        try:
+            from .mcp import fetch_content_with_mcp
+
+            console.print(f"[dim]Using MCP server from: {mcp_config}[/dim]")
+            markdown_content = asyncio.run(fetch_content_with_mcp(url, mcp_config))
+            from .content.parser import ContentMetadata, ParsedContent
+
+            parsed = ParsedContent(
+                content=markdown_content,
+                markdown=markdown_content,
+                metadata=ContentMetadata(title="", description=""),
+            )
+            progress.update(task, completed=True)
+            console.print(f"✓ Fetched via MCP: {len(markdown_content)} chars")
+        except Exception as e:
+            console.print(f"[yellow]⚠ MCP fetch failed: {e}[/yellow]")
+            console.print("[dim]Falling back to standard fetcher...[/dim]")
+            html_content = fetch_url_sync(url)
+            parsed = parse_html(html_content, base_url=url)
+            progress.update(task, completed=True)
+            console.print(f"✓ Fetched: {parsed.metadata.title}")
+    else:
+        html_content = fetch_url_sync(url)
+        parsed = parse_html(html_content, base_url=url)
+        progress.update(task, completed=True)
+        console.print(f"✓ Fetched: {parsed.metadata.title}")
+
+    # Prepare images metadata
+    images_metadata = None
+    if parsed.images:
+        images_metadata = [
+            img.model_dump(
+                include={"src", "alt", "title", "aria_describedby"},
+                exclude_none=True,
+            )
+            for img in parsed.images
+        ]
+        console.print(f"  Found {len(parsed.images)} usable images in content")
+
+    task = progress.add_task("Generating script...", total=None)
+
+    # Prepare personas if defined
+    personas_for_script = None
+    if cfg.personas:
+        personas_for_script = [
+            p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
+        ]
+
+    # Prepare persona pool config
+    pool_config = None
+    if cfg.persona_pool:
+        pool_config = cfg.persona_pool.model_dump()
+        # Apply CLI overrides if provided
+        if persona_pool_count is not None:
+            pool_config["count"] = persona_pool_count
+        if persona_pool_seed is not None:
+            pool_config["seed"] = persona_pool_seed
+
+    script = asyncio.run(
+        generate_script(
+            content=parsed.markdown,
+            title=parsed.metadata.title,
+            description=parsed.metadata.description,
+            character=cfg.narration.character,
+            style=cfg.narration.style,
+            api_key=api_key,
+            model=cfg.content.llm.model,
+            images=images_metadata,
+            personas=personas_for_script,
+            pool_config=pool_config,
+        )
+    )
+    progress.update(task, completed=True)
+    console.print(f"✓ Generated script: {script.title}")
+    console.print(f"  Sections: {len(script.sections)}")
+
+    return script
+
+
 def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
     """Parse scene range argument.
 
@@ -87,7 +197,8 @@ def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
         parts = scenes_arg.split("-")
         if len(parts) != 2:
             raise ValueError(
-                f"Invalid scene range format: '{scenes_arg}'. Expected format: '1-3', '6-', '-3', or '2'"
+                f"Invalid scene range format: '{scenes_arg}'. "
+                "Expected format: '1-3', '6-', '-3', or '2'"
             )
 
         # Handle "-3" format (from beginning to scene 3)
@@ -340,86 +451,18 @@ def generate(
                 raise click.Abort()
 
             console.print(f"[bold]Generating video from URL:[/bold] {url}")
-            task = progress.add_task("Fetching content...", total=None)
 
-            # Use MCP if config provided, otherwise use standard fetcher
-            if mcp_config:
-                try:
-                    from .mcp import fetch_content_with_mcp
-
-                    console.print(f"[dim]Using MCP server from: {mcp_config}[/dim]")
-                    markdown_content = asyncio.run(fetch_content_with_mcp(url, mcp_config))
-                    # Create a simple metadata-like structure
-                    from .content.parser import ContentMetadata, ParsedContent
-
-                    parsed = ParsedContent(
-                        content=markdown_content,
-                        markdown=markdown_content,
-                        metadata=ContentMetadata(title="", description=""),
-                    )
-                    progress.update(task, completed=True)
-                    console.print(f"✓ Fetched via MCP: {len(markdown_content)} chars")
-                except Exception as e:
-                    console.print(f"[yellow]⚠ MCP fetch failed: {e}[/yellow]")
-                    console.print("[dim]Falling back to standard fetcher...[/dim]")
-                    html_content = fetch_url_sync(url)
-                    parsed = parse_html(html_content, base_url=url)
-                    progress.update(task, completed=True)
-                    console.print(f"✓ Fetched: {parsed.metadata.title}")
-            else:
-                html_content = fetch_url_sync(url)
-                parsed = parse_html(html_content, base_url=url)
-                progress.update(task, completed=True)
-                console.print(f"✓ Fetched: {parsed.metadata.title}")
-
-            # Prepare images metadata for script generation
-            images_metadata = None
-            if parsed.images:
-                images_metadata = [
-                    img.model_dump(
-                        include={"src", "alt", "title", "aria_describedby"},
-                        exclude_none=True,
-                    )
-                    for img in parsed.images
-                ]
-                console.print(f"  Found {len(parsed.images)} usable images in content")
-
-            task = progress.add_task("Generating script...", total=None)
-
-            # Prepare personas if defined (enables multi-speaker mode automatically)
-            personas_for_script = None
-            if cfg.personas:
-                personas_for_script = [
-                    p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
-                ]
-
-            # Prepare persona pool config
-            pool_config = None
-            if cfg.persona_pool:
-                pool_config = cfg.persona_pool.model_dump()
-                # Apply CLI overrides if provided
-                if persona_pool_count is not None:
-                    pool_config["count"] = persona_pool_count
-                if persona_pool_seed is not None:
-                    pool_config["seed"] = persona_pool_seed
-
-            script = asyncio.run(
-                generate_script(
-                    content=parsed.markdown,
-                    title=parsed.metadata.title,
-                    description=parsed.metadata.description,
-                    character=cfg.narration.character,
-                    style=cfg.narration.style,
-                    api_key=api_key,
-                    model=cfg.content.llm.model,
-                    images=images_metadata,
-                    personas=personas_for_script,
-                    pool_config=pool_config,
-                )
+            # Fetch content and generate script using common function
+            script = _fetch_and_generate_script(
+                url=url,
+                cfg=cfg,
+                api_key=api_key,
+                mcp_config=mcp_config,
+                persona_pool_count=persona_pool_count,
+                persona_pool_seed=persona_pool_seed,
+                progress=progress,
+                console=console,
             )
-            progress.update(task, completed=True)
-            console.print(f"✓ Generated script: {script.title}")
-            console.print(f"  Sections: {len(script.sections)}")
 
             # Save script to YAML using Pydantic's model_dump()
             # This ensures all fields are included automatically
@@ -741,7 +784,8 @@ def generate(
                         f"[yellow]⚠ Warning: {failed_count} slides failed to generate[/yellow]"
                     )
                     console.print(
-                        f"[dim]  Run 'find {slide_dir} -size 0 -delete' to remove failed slides and retry[/dim]"
+                        f"[dim]  Run 'find {slide_dir} -size 0 -delete' "
+                        "to remove failed slides and retry[/dim]"
                     )
             except Exception as e:
                 progress.update(task, completed=True)
@@ -966,85 +1010,17 @@ def create(
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        task = progress.add_task("Fetching content...", total=None)
-
-        # Use MCP if config provided, otherwise use standard fetcher
-        if mcp_config:
-            try:
-                from .mcp import fetch_content_with_mcp
-
-                console.print(f"[dim]Using MCP server from: {mcp_config}[/dim]")
-                markdown_content = asyncio.run(fetch_content_with_mcp(url, mcp_config))
-                from .content.parser import ContentMetadata, ParsedContent
-
-                parsed = ParsedContent(
-                    content=markdown_content,
-                    markdown=markdown_content,
-                    metadata=ContentMetadata(title="", description=""),
-                )
-                progress.update(task, completed=True)
-                console.print(f"✓ Fetched via MCP: {len(markdown_content)} chars")
-            except Exception as e:
-                console.print(f"[yellow]⚠ MCP fetch failed: {e}[/yellow]")
-                console.print("[dim]Falling back to standard fetcher...[/dim]")
-                html_content = fetch_url_sync(url)
-                parsed = parse_html(html_content, base_url=url)
-                progress.update(task, completed=True)
-                console.print(f"✓ Fetched: {parsed.metadata.title}")
-        else:
-            html_content = fetch_url_sync(url)
-            parsed = parse_html(html_content, base_url=url)
-            progress.update(task, completed=True)
-            console.print(f"✓ Fetched: {parsed.metadata.title}")
-
-        # Prepare images metadata
-        images_metadata = None
-        if parsed.images:
-            images_metadata = [
-                img.model_dump(
-                    include={"src", "alt", "title", "aria_describedby"},
-                    exclude_none=True,
-                )
-                for img in parsed.images
-            ]
-            console.print(f"  Found {len(parsed.images)} usable images in content")
-
-        task = progress.add_task("Generating script...", total=None)
-
-        # Prepare personas if defined
-        personas_for_script = None
-        if cfg.personas:
-            personas_for_script = [
-                p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
-            ]
-
-        # Prepare persona pool config
-        pool_config = None
-        if cfg.persona_pool:
-            pool_config = cfg.persona_pool.model_dump()
-            # Apply CLI overrides if provided
-            if persona_pool_count is not None:
-                pool_config["count"] = persona_pool_count
-            if persona_pool_seed is not None:
-                pool_config["seed"] = persona_pool_seed
-
-        script = asyncio.run(
-            generate_script(
-                content=parsed.markdown,
-                title=parsed.metadata.title,
-                description=parsed.metadata.description,
-                character=cfg.narration.character,
-                style=cfg.narration.style,
-                api_key=api_key,
-                model=cfg.content.llm.model,
-                images=images_metadata,
-                personas=personas_for_script,
-                pool_config=pool_config,
-            )
+        # Fetch content and generate script using common function
+        script = _fetch_and_generate_script(
+            url=url,
+            cfg=cfg,
+            api_key=api_key,
+            mcp_config=mcp_config,
+            persona_pool_count=persona_pool_count,
+            persona_pool_seed=persona_pool_seed,
+            progress=progress,
+            console=console,
         )
-        progress.update(task, completed=True)
-        console.print(f"✓ Generated script: {script.title}")
-        console.print(f"  Sections: {len(script.sections)}")
 
         # Save script
         script_dict = script.model_dump(exclude_none=True)
@@ -1698,7 +1674,8 @@ def generate_slides_cmd(
                     f"[yellow]⚠ Warning: {failed_count} slides failed to generate[/yellow]"
                 )
                 console.print(
-                    f"[dim]  Run 'find {slide_dir} -size 0 -delete' to remove failed slides and retry[/dim]"
+                    f"[dim]  Run 'find {slide_dir} -size 0 -delete' "
+                    "to remove failed slides and retry[/dim]"
                 )
         except Exception as e:
             progress.update(task, completed=True)
