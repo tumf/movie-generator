@@ -261,6 +261,6 @@ class TestSubtitleColorIntegration:
 
             assert zundamon_phrase["subtitleColor"] == "#8FCF4F", "Zundamon should be green"
             assert metan_phrase["subtitleColor"] == "#FF69B4", "Metan should be pink"
-            assert (
-                zundamon_phrase["subtitleColor"] != metan_phrase["subtitleColor"]
-            ), "Colors should be different"
+            assert zundamon_phrase["subtitleColor"] != metan_phrase["subtitleColor"], (
+                "Colors should be different"
+            )
