@@ -7,3 +7,6 @@
 
 ## 3. Verification
 - [x] 3.1 全テストが通る（検証: `uv run pytest`）
+
+## Acceptance #1 Failure Follow-up
+- [x] Remove duplicate `background` field in ScriptSection class (src/movie_generator/script/generator.py:30-31)

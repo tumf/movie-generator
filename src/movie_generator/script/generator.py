@@ -28,7 +28,6 @@ class ScriptSection(BaseModel):
     slide_prompt: str | None = None
     source_image_url: str | None = None
     background: dict[str, Any] | None = None  # Optional section-level background override
-    background: dict[str, Any] | None = None  # Optional section-level background override
 
 
 class RoleAssignment(BaseModel):
