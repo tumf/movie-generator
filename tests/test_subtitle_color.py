@@ -13,8 +13,6 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from movie_generator.config import PersonaConfig, VoicevoxSynthesizerConfig
 from movie_generator.constants import SubtitleConstants
 from movie_generator.script.phrases import Phrase
