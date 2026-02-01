@@ -127,6 +127,8 @@ archived in `openspec-archive/changes/add-video-generator/specs/config-managemen
 
 The system SHALL provide a CLI command to output the default configuration file.
 
+The default YAML output SHALL be generated from a maintained template so formatting and comments remain stable.
+
 #### Scenario: Output to stdout
 - **WHEN** `movie-generator config init` is executed without options
 - **THEN** the default configuration is output to stdout in YAML format

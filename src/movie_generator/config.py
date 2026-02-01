@@ -3,6 +3,7 @@
 Loads and validates YAML configuration files using Pydantic.
 """
 
+import importlib.resources
 from pathlib import Path
 from typing import Any, Literal
 
@@ -454,145 +455,15 @@ def merge_configs(base: Config, override: Config) -> Config:
 def generate_default_config_yaml() -> str:
     """Generate default configuration as YAML with helpful comments.
 
+    Reads the default configuration from the bundled template file.
+
     Returns:
         YAML string with inline comments explaining each field.
     """
-    yaml_lines = [
-        "# Default configuration for movie-generator",
-        "",
-        "# Project settings",
-        "project:",
-        f'  name: "{ConfigDefaults.PROJECT_NAME}"  # Your channel name',
-        f'  output_dir: "{ConfigDefaults.PROJECT_OUTPUT_DIR}"  # Directory for generated files',
-        "",
-        "# Video style settings",
-        "style:",
-        f"  resolution: [{VideoConstants.DEFAULT_WIDTH}, {VideoConstants.DEFAULT_HEIGHT}]"
-        "  # Video resolution (width, height)",
-        f"  fps: {VideoConstants.DEFAULT_FPS}  # Frames per second",
-        f"  crf: {ConfigDefaults.VIDEO_CRF_DEFAULT}"
-        f"  # Video quality ({ConfigDefaults.VIDEO_CRF_MIN}-{ConfigDefaults.VIDEO_CRF_MAX}, "
-        "lower = better quality, larger file)",
-        f'  font_family: "{ConfigDefaults.STYLE_FONT_FAMILY}"  # Font for text overlays',
-        f'  primary_color: "{ConfigDefaults.STYLE_PRIMARY_COLOR}"  # Primary text color (hex)',
-        f'  background_color: "{ConfigDefaults.STYLE_BACKGROUND_COLOR}"  # Background color (hex)',
-        "",
-        "# Audio generation settings",
-        "audio:",
-        f'  engine: "{ConfigDefaults.AUDIO_ENGINE}"  # Audio synthesis engine',
-        f"  speaker_id: {ConfigDefaults.AUDIO_SPEAKER_ID}"
-        f"  # VOICEVOX speaker ID ({ConfigDefaults.AUDIO_SPEAKER_ID} = Zundamon)",
-        f"  speed_scale: {ConfigDefaults.AUDIO_SPEED_SCALE}"
-        f"  # Speech speed multiplier ({ConfigDefaults.AUDIO_SPEED_SCALE} = normal)",
-        "  enable_furigana: true  # Auto-generate furigana using morphological analysis",
-        f'  pronunciation_model: "{ConfigDefaults.AUDIO_PRONUNCIATION_MODEL}"'
-        "  # LLM model for pronunciation generation",
-        "",
-        "# Narration style settings",
-        "narration:",
-        f'  character: "{ConfigDefaults.NARRATION_CHARACTER}"'
-        "  # Narrator character name (used when no personas defined)",
-        f'  style: "{ConfigDefaults.NARRATION_STYLE}"'
-        "  # Narration style: casual, formal, educational",
-        "",
-        "# Persona configurations for multi-speaker dialogue",
-        "# Uncomment and configure for dialogue mode",
-        "# personas:",
-        '#   - id: "zundamon"',
-        '#     name: "ずんだもん"',
-        '#     character: "元気で明るい東北の妖精"',
-        "#     synthesizer:",
-        f'#       engine: "{ConfigDefaults.AUDIO_ENGINE}"',
-        f"#       speaker_id: {ConfigDefaults.AUDIO_SPEAKER_ID}",
-        f"#       speed_scale: {ConfigDefaults.AUDIO_SPEED_SCALE}",
-        '#     subtitle_color: "#8FCF4F"',
-        '#     character_image: "assets/characters/zundamon/base.png"  # Base character image',
-        '#     character_position: "left"  # Position: left, right, center',
-        '#     mouth_open_image: "assets/characters/zundamon/mouth_open.png"  # For lip sync',
-        '#     eye_close_image: "assets/characters/zundamon/eye_close.png"  # For blinking',
-        f'#     animation_style: "{ConfigDefaults.PERSONA_ANIMATION_STYLE}"'
-        "  # Animation style: bounce, sway, static",
-        '#   - id: "metan"',
-        '#     name: "四国めたん"',
-        '#     character: "優しくて落ち着いた四国の妖精"',
-        "#     synthesizer:",
-        f'#       engine: "{ConfigDefaults.AUDIO_ENGINE}"',
-        "#       speaker_id: 2",
-        f"#       speed_scale: {ConfigDefaults.AUDIO_SPEED_SCALE}",
-        '#     subtitle_color: "#FF69B4"',
-        '#     character_image: "assets/characters/metan/base.png"',
-        '#     character_position: "right"',
-        "",
-        "# Content generation settings",
-        "content:",
-        "  llm:",
-        f'    provider: "{ConfigDefaults.LLM_PROVIDER}"  # LLM provider for script generation',
-        f'    model: "{ConfigDefaults.LLM_MODEL}"  # Model to use for content generation',
-        f'    base_url: "{ConfigDefaults.LLM_BASE_URL}"'
-        "  # LLM API base URL (e.g., proxy or local endpoint)",
-        f"  languages: {ConfigDefaults.CONTENT_LANGUAGES_DEFAULT}"
-        '  # Languages for content generation (e.g., ["ja", "en"])',
-        "",
-        "# Slide generation settings",
-        "slides:",
-        "  llm:",
-        f'    provider: "{ConfigDefaults.SLIDES_LLM_PROVIDER}"'
-        "  # LLM provider for slide generation",
-        f'    model: "{ConfigDefaults.SLIDES_LLM_MODEL}"  # Model for slide images',
-        f'    base_url: "{ConfigDefaults.SLIDES_LLM_BASE_URL}"'
-        "  # LLM API base URL (e.g., proxy or local endpoint)",
-        f'  style: "{ConfigDefaults.SLIDES_STYLE}"'
-        "  # Slide style: presentation, illustration, minimal",
-        "",
-        "# Video rendering settings",
-        "video:",
-        f'  renderer: "{ConfigDefaults.VIDEO_RENDERER}"  # Video rendering engine',
-        f'  template: "{ConfigDefaults.VIDEO_TEMPLATE}"  # Video template to use',
-        f'  output_format: "{ConfigDefaults.VIDEO_OUTPUT_FORMAT}"  # Output video format',
-        f"  render_concurrency: {ConfigDefaults.VIDEO_RENDER_CONCURRENCY}"
-        "  # Number of concurrent frames to render (higher = faster but more memory)",
-        f"  render_timeout_seconds: {ConfigDefaults.VIDEO_RENDER_TIMEOUT}"
-        "  # Timeout for Remotion delayRender calls in seconds",
-        "  transition:",
-        f'    type: "{ConfigDefaults.TRANSITION_TYPE}"'
-        "  # Transition type: fade, slide, wipe, flip, clockWipe, none",
-        f"    duration_frames: {ConfigDefaults.TRANSITION_DURATION_FRAMES}"
-        f"  # Transition duration in frames "
-        f"({ConfigDefaults.TRANSITION_DURATION_FRAMES / VideoConstants.DEFAULT_FPS:.1f}s "
-        f"at {VideoConstants.DEFAULT_FPS}fps)",
-        f'    timing: "{ConfigDefaults.TRANSITION_TIMING}"  # Timing function: linear, spring',
-        "  background:",
-        '    type: "video"  # Background type: image or video',
-        '    path: "assets/backgrounds/default-background.mp4"  # Path to background file',
-        f'    fit: "{ConfigDefaults.BACKGROUND_FIT}"'
-        "  # How to fit: cover (fill), contain (fit inside), fill (stretch)",
-        "  bgm:",
-        '    path: "assets/bgm/default-bgm.mp3"  # Path to background music file',
-        f"    volume: {ConfigDefaults.BGM_VOLUME_DEFAULT}"
-        f"  # BGM volume ({ConfigDefaults.BGM_VOLUME_MIN}-{ConfigDefaults.BGM_VOLUME_MAX}, "
-        f"default {ConfigDefaults.BGM_VOLUME_DEFAULT} to avoid overpowering narration)",
-        f"    fade_in_seconds: {ConfigDefaults.BGM_FADE_IN_SECONDS}  # Fade-in duration in seconds",
-        f"    fade_out_seconds: {ConfigDefaults.BGM_FADE_OUT_SECONDS}"
-        "  # Fade-out duration in seconds",
-        "    loop: true  # Loop BGM if shorter than video duration",
-        "",
-        "# Pronunciation dictionary for proper nouns and technical terms",
-        "pronunciation:",
-        "  custom:",
-        '    "Bubble Tea":',
-        '      reading: "バブルティー"  # Katakana reading',
-        f"      accent: 5  # Accent position ({ConfigDefaults.PRONUNCIATION_ACCENT} = auto)",
-        f'      word_type: "{ConfigDefaults.PRONUNCIATION_WORD_TYPE}"  # Word type',
-        f"      priority: {ConfigDefaults.PRONUNCIATION_PRIORITY_DEFAULT}"
-        f"  # Priority ({ConfigDefaults.PRONUNCIATION_PRIORITY_MIN}-"
-        f"{ConfigDefaults.PRONUNCIATION_PRIORITY_MAX}, higher = more important)",
-        '    "Ratatui":',
-        '      reading: "ラタトゥイ"',
-        "      accent: 4",
-        f'      word_type: "{ConfigDefaults.PRONUNCIATION_WORD_TYPE}"',
-        f"      priority: {ConfigDefaults.PRONUNCIATION_PRIORITY_DEFAULT}",
-    ]
-    return "\n".join(yaml_lines)
+    # Load template from package resources
+    template_pkg = importlib.resources.files("movie_generator.templates")
+    template_file = template_pkg / "default_config.yaml"
+    return template_file.read_text(encoding="utf-8")
 
 
 def write_config_to_file(output_path: Path, overwrite: bool = False) -> None:
@@ -609,8 +480,9 @@ def write_config_to_file(output_path: Path, overwrite: bool = False) -> None:
     if output_path.exists() and not overwrite:
         raise FileExistsError(f"File already exists: {output_path}")
 
-    # Ensure parent directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Check that parent directory exists
+    if not output_path.parent.exists():
+        raise OSError(f"Directory does not exist: {output_path.parent}")
 
     # Write config
     config_yaml = generate_default_config_yaml()
