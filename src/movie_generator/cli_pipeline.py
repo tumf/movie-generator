@@ -280,9 +280,9 @@ def stage_script_resolution(
         task = progress.add_task("Generating script...", total=None)
 
         try:
-            # Prepare personas if defined
+            # Prepare personas if defined (enables multi-speaker mode for 2+ personas)
             personas_for_script = None
-            if params.config.personas:
+            if params.config.personas and len(params.config.personas) >= 2:
                 personas_for_script = [
                     p.model_dump(include={"id", "name", "character"})
                     for p in params.config.personas

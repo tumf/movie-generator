@@ -878,11 +878,15 @@ def _build_prompt(
     return prompt
 
 
-def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
+def _parse_script_response(
+    script_data: dict[str, Any], personas: list[dict[str, str]] | None = None
+) -> VideoScript:
     """Parse LLM response into VideoScript.
 
     Args:
         script_data: Parsed JSON response from LLM.
+        personas: Optional list of persona dicts. If provided and length is 1,
+                  assigns that persona_id to all narrations without persona_id.
 
     Returns:
         VideoScript object.
@@ -891,6 +895,11 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
         ValueError: If response format is invalid or missing required fields.
     """
     # Parse sections - unified format with narrations list
+    # Determine default persona_id for single-speaker mode
+    default_persona_id = None
+    if personas and len(personas) == 1:
+        default_persona_id = personas[0]["id"]
+
     sections = []
     for section in script_data["sections"]:
         narrations: list[Narration] = []
@@ -900,7 +909,7 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
             for n in section["narrations"]:
                 if isinstance(n, str):
                     # Simple string format (single speaker) - legacy, use text as reading
-                    narrations.append(Narration(text=n, reading=n))
+                    narrations.append(Narration(text=n, reading=n, persona_id=default_persona_id))
                 else:
                     # Object format with required reading field
                     if "reading" not in n or not n["reading"]:
@@ -909,10 +918,10 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
                             f"The LLM did not generate the required 'reading' field. "
                             f"This is a critical error in script generation."
                         )
+                    # Use persona_id from response, or default for single-speaker mode
+                    persona_id = n.get("persona_id") or default_persona_id
                     narrations.append(
-                        Narration(
-                            text=n["text"], reading=n["reading"], persona_id=n.get("persona_id")
-                        )
+                        Narration(text=n["text"], reading=n["reading"], persona_id=persona_id)
                     )
         elif "dialogues" in section and section["dialogues"]:
             # Legacy dialogue format (backward compatibility)
@@ -927,7 +936,13 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
                 )
         elif "narration" in section:
             # Legacy single narration format (backward compatibility)
-            narrations.append(Narration(text=section["narration"], reading=section["narration"]))
+            narrations.append(
+                Narration(
+                    text=section["narration"],
+                    reading=section["narration"],
+                    persona_id=default_persona_id,
+                )
+            )
 
         sections.append(
             ScriptSection(
@@ -1107,8 +1122,8 @@ async def generate_script(
         base_url=base_url,
     )
 
-    # Parse response
-    script = _parse_script_response(script_data)
+    # Parse response (pass personas for single-speaker mode persona_id assignment)
+    script = _parse_script_response(script_data, personas=personas)
 
     # Validate completeness
     _validate_script_completeness(script)

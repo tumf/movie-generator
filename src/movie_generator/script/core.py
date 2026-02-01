@@ -114,9 +114,9 @@ async def generate_script_from_url(
             for img in parsed.images
         ]
 
-    # Prepare personas if defined (enables multi-speaker mode automatically)
+    # Prepare personas if defined (enables multi-speaker mode for 2+ personas)
     personas_for_script = None
-    if cfg.personas:
+    if cfg.personas and len(cfg.personas) >= 2:
         personas_for_script = [
             p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
         ]
@@ -328,9 +328,9 @@ Please use the available tools to accomplish this task.
         title = "Generated Video"  # Default title
         description = ""
 
-        # Prepare personas if defined (enables multi-speaker mode automatically)
+        # Prepare personas if defined (enables multi-speaker mode for 2+ personas)
         personas_for_script = None
-        if cfg.personas:
+        if cfg.personas and len(cfg.personas) >= 2:
             personas_for_script = [
                 p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
             ]
