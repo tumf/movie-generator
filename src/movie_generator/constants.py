@@ -127,6 +127,7 @@ class ConfigDefaults:
     # Audio synthesis defaults
     AUDIO_ENGINE = "voicevox"
     AUDIO_SPEAKER_ID = 3  # Zundamon
+    AUDIO_SPEAKER_ID_MIN = 0  # Inclusive minimum (ge=0)
     AUDIO_SPEED_SCALE = 1.0
     AUDIO_SPEED_SCALE_MIN = 0.0  # Exclusive minimum (gt=0.0)
     AUDIO_PRONUNCIATION_MODEL = "openai/gpt-4o-mini"
@@ -143,17 +144,21 @@ class ConfigDefaults:
     VIDEO_CRF_DEFAULT = 28
     VIDEO_CRF_MIN = 0
     VIDEO_CRF_MAX = 51
+    VIDEO_FPS_MIN = 1  # Inclusive minimum (ge=1)
 
     # Video rendering defaults
     VIDEO_RENDERER = "remotion"
     VIDEO_TEMPLATE = "default"
     VIDEO_OUTPUT_FORMAT = "mp4"
     VIDEO_RENDER_CONCURRENCY = 4
+    VIDEO_RENDER_CONCURRENCY_MIN = 1  # Inclusive minimum (ge=1)
     VIDEO_RENDER_TIMEOUT = 300  # seconds
+    VIDEO_RENDER_TIMEOUT_MIN = 1  # Inclusive minimum (ge=1)
 
     # Transition defaults
     TRANSITION_TYPE = "fade"
     TRANSITION_DURATION_FRAMES = 15
+    TRANSITION_DURATION_FRAMES_MIN = 1  # Inclusive minimum (ge=1)
     TRANSITION_TIMING = "linear"
 
     # BGM defaults
@@ -161,7 +166,9 @@ class ConfigDefaults:
     BGM_VOLUME_MIN = 0.0
     BGM_VOLUME_MAX = 1.0
     BGM_FADE_IN_SECONDS = 2.0
+    BGM_FADE_IN_SECONDS_MIN = 0.0  # Inclusive minimum (ge=0.0)
     BGM_FADE_OUT_SECONDS = 2.0
+    BGM_FADE_OUT_SECONDS_MIN = 0.0  # Inclusive minimum (ge=0.0)
 
     # Background defaults
     BACKGROUND_FIT = "cover"
@@ -179,6 +186,7 @@ class ConfigDefaults:
 
     # Pronunciation defaults
     PRONUNCIATION_ACCENT = 0  # Auto-detect
+    PRONUNCIATION_ACCENT_MIN = 0  # Inclusive minimum (ge=0)
     PRONUNCIATION_WORD_TYPE = "PROPER_NOUN"
     PRONUNCIATION_PRIORITY_DEFAULT = 10
     PRONUNCIATION_PRIORITY_MIN = 1
@@ -186,6 +194,7 @@ class ConfigDefaults:
 
     # Persona pool defaults
     PERSONA_POOL_COUNT = 2
+    PERSONA_POOL_COUNT_MIN = 1  # Inclusive minimum (ge=1)
 
     # Persona animation defaults
     PERSONA_ANIMATION_STYLE = "sway"

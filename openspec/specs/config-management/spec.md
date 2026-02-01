@@ -22,6 +22,8 @@ The system SHALL load and validate YAML configuration files.
 
 The system SHALL provide default configuration and merge it with user configuration, including language settings.
 
+Default values and validation bounds SHALL be expressed as named constants to avoid scattered magic numbers.
+
 #### Scenario: Apply Default Configuration
 - **WHEN** user configuration specifies only some fields
 - **THEN** unspecified fields use default values
