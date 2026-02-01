@@ -1,75 +1,85 @@
-# Change: Codebase Structure Refactoring
+# Spec: Codebase Structure Refactoring
 
 <!-- Original Japanese proposal: openspec-archive/changes/refactor-codebase-structure/proposal.md -->
 
-## Why
+## Purpose
 
-Analysis of the entire codebase identified the following issues:
+Establish a well-organized codebase structure with reusable utilities, consolidated constants, clear exception hierarchy, and improved type safety to enhance maintainability, testability, and code reusability.
+## Requirements
+### Requirement: Utility Modules Organization
+The system SHALL provide dedicated utility modules for common operations including filesystem operations, retry logic, subprocess execution, and text processing.
 
-1. **Code Duplication** - File existence checks, retry logic, and subprocess execution patterns are duplicated across multiple locations
-2. **Overly Long Functions** - `cli.py::generate()` is 409 lines with excessive responsibilities
-3. **Inconsistent Error Handling** - Bare except clauses, mixed exception types
-4. **Magic Numbers/Strings** - FPS value 30, directory names, etc. are hardcoded
-5. **Lack of Type Safety** - 9 instances of `type: ignore`, absence of TypedDict
+#### Scenario: File operations through utilities
+- **WHEN** code needs to check file existence or perform path operations
+- **THEN** it uses functions from `utils/filesystem.py`
 
-These issues impact maintainability, testability, and code reusability.
+#### Scenario: Retry with exponential backoff
+- **WHEN** code needs to retry an operation
+- **THEN** it uses retry utilities from `utils/retry.py` with configurable backoff
 
-## What Changes
+#### Scenario: Subprocess execution
+- **WHEN** code needs to execute external commands
+- **THEN** it uses helpers from `utils/subprocess.py`
 
-### Phase 1: Create Utility Modules
-- New `src/movie_generator/utils/` package
-  - `filesystem.py` - File existence checks, path operations
-  - `retry.py` - Retry logic with exponential backoff
-  - `subprocess.py` - Subprocess execution helpers
-  - `text.py` - Text processing utilities
+### Requirement: Constants Consolidation
+The system SHALL consolidate magic numbers and strings into typed constant classes covering video parameters, file extensions, project paths, and retry configuration.
 
-### Phase 2: Consolidate Constants
-- New `src/movie_generator/constants.py`
-  - `VideoConstants` - FPS, resolution
-  - `FileExtensions` - Supported file extensions
-  - `ProjectPaths` - Standard directory names
-  - `RetryConfig` - Retry parameters
+#### Scenario: Video rendering with standard FPS
+- **WHEN** video rendering is performed
+- **THEN** it uses `VideoConstants.FPS` instead of hardcoded value 30
 
-### Phase 3: Organize Exception Hierarchy
-- New `src/movie_generator/exceptions.py`
-  - `MovieGeneratorError` - Base exception
-  - `ConfigurationError` - Configuration-related errors
-  - `RenderingError` - Rendering errors
-  - `MCPError` - MCP communication errors
+#### Scenario: File extension validation
+- **WHEN** code validates file types
+- **THEN** it uses `FileExtensions` constants
 
-### Phase 4: Split CLI Functions
-- Split `cli.py::generate()` into smaller functions
-- Split `cli.py::parse_scene_range()` into sub-functions
+### Requirement: Exception Hierarchy
+The system SHALL define a clear exception hierarchy with `MovieGeneratorError` as base class and specific exceptions for configuration, rendering, and MCP errors.
 
-### Phase 5: Remove Dead Code
-- Remove unreachable code in `video/remotion_renderer.py:109-122`
-- Remove unused functions or add warnings
+#### Scenario: Configuration error handling
+- **WHEN** configuration is invalid
+- **THEN** `ConfigurationError` is raised with descriptive message
 
-### Phase 6: Improve Type Safety
-- Introduce TypedDict (CompositionData, PhraseDict)
-- Reduce `type: ignore` annotations
+#### Scenario: Rendering failure
+- **WHEN** video rendering fails
+- **THEN** `RenderingError` is raised
 
-## Impact
+### Requirement: CLI Function Decomposition
+The system SHALL decompose oversized CLI functions into smaller, focused functions with single responsibilities.
 
-- Affected specs: None (internal refactoring only)
-- Affected code:
-  - `src/movie_generator/cli.py`
-  - `src/movie_generator/slides/generator.py`
-  - `src/movie_generator/audio/voicevox.py`
-  - `src/movie_generator/video/remotion_renderer.py`
-  - `src/movie_generator/project.py`
-  - `src/movie_generator/assets/downloader.py`
-  - `src/movie_generator/mcp/client.py`
+#### Scenario: Generate command broken into steps
+- **WHEN** `generate()` command is executed
+- **THEN** it delegates to separate functions for each phase (content fetch, script generation, audio synthesis, video rendering)
 
-## Risk
+### Requirement: Dead Code Removal
+The system SHALL remove unreachable code and unused functions to maintain codebase clarity.
 
-- **Low Risk**: Maintains backward compatibility
-- All changes can be implemented incrementally
-- Validation via test suite execution after each phase
+#### Scenario: Unreachable code blocks removed
+- **WHEN** code analysis identifies unreachable code
+- **THEN** it is removed from the codebase
 
-## Success Criteria
+### Requirement: Type Safety Improvements
+The system SHALL use TypedDict for structured data and reduce use of type ignore annotations to improve type checking.
 
-- `uv run pytest` all tests pass
-- `uv run mypy src/` no errors
-- `uv run ruff check .` no warnings
-- Code coverage maintained or improved
+#### Scenario: Composition data with TypedDict
+- **WHEN** composition data is structured
+- **THEN** it uses TypedDict definitions for type safety
+
+#### Scenario: Reduced type ignores
+- **WHEN** code is type-checked
+- **THEN** the number of `type: ignore` annotations is minimized
+
+### Requirement: Web APIユーティリティの共通化
+システムは、Web APIルートで共通のリクエストユーティリティ（IP取得）と日時処理ユーティリティを再利用可能なモジュールに分割し、応答内容を変えずに保守性を向上させなければならない（SHALL）。
+
+#### Scenario: ルート間で同一のユーティリティを使用する
+- **WHEN** `api_routes.py` と `web_routes.py` がリクエスト処理を行う
+- **THEN** IP取得と日時処理は共通ユーティリティを経由する
+- **AND** レスポンスの内容は変更されない
+
+### Requirement: Pydantic v2 バリデーションの維持
+システムは、`JobResponse` の日時フィールドに対する空文字→`None` 変換を、Pydantic v2 のバリデータAPIで維持しなければならない（SHALL）。
+
+#### Scenario: 空文字の日時を `None` に正規化する
+- **WHEN** `JobResponse` に空文字の日時フィールドが渡される
+- **THEN** そのフィールドは `None` に変換される
+
