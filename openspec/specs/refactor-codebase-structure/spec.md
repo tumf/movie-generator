@@ -74,3 +74,18 @@ The system SHALL maintain unique environment variable definitions in `web/docker
 - **WHEN** `docker-compose config` is executed
 - **THEN** PocketBase environment variables SHALL have no duplicate keys
 
+### Requirement: Web API Utility Consolidation
+The system SHALL consolidate common request utilities (IP retrieval) and datetime processing utilities used in Web API routes into reusable modules, improving maintainability without changing response content.
+
+#### Scenario: Same utilities used across routes
+- **WHEN** `api_routes.py` and `web_routes.py` perform request processing
+- **THEN** IP retrieval and datetime processing SHALL use common utilities
+- **AND** response content SHALL remain unchanged
+
+### Requirement: Pydantic v2 Validation Maintenance
+The system SHALL maintain empty string to `None` conversion for datetime fields in `JobResponse` using Pydantic v2 validator API.
+
+#### Scenario: Empty datetime normalized to None
+- **WHEN** `JobResponse` receives empty string datetime fields
+- **THEN** those fields SHALL be converted to `None`
+
