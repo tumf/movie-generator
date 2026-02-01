@@ -10,6 +10,7 @@ import httpx
 from pydantic import BaseModel
 
 from ..constants import TimeoutConstants
+from .phrases import split_into_phrases
 
 
 class Narration(BaseModel):
@@ -806,18 +807,21 @@ def _build_prompt(
         Formatted prompt string.
     """
     # Select prompt template based on personas presence
-    is_dialogue = bool(personas)
+    # Multi-speaker dialogue mode requires at least 2 personas
+    is_dialogue = bool(personas) and len(personas) >= 2
 
     # Get shared components
     output_format = get_output_format_json_example(language, is_dialogue)
     reading_instructions = get_reading_field_instructions(language)
     slide_instructions = get_slide_image_instructions(language)
 
-    if personas:
+    if is_dialogue:
         prompt_template = SCRIPT_GENERATION_PROMPTS_DIALOGUE.get(
             language, SCRIPT_GENERATION_PROMPT_DIALOGUE_JA
         )
         # Format personas description
+        # personas is guaranteed to be non-None when is_dialogue is True
+        assert personas is not None
         personas_description = ""
         for persona in personas:
             personas_description += (
@@ -835,6 +839,7 @@ def _build_prompt(
             slide_instructions=slide_instructions,
         )
     else:
+        # Single-speaker mode: use traditional single-speaker prompt
         prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
         prompt = prompt_template.format(
             character=character,
@@ -853,11 +858,15 @@ def _build_prompt(
     return prompt
 
 
-def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
+def _parse_script_response(
+    script_data: dict[str, Any], personas: list[dict[str, str]] | None = None
+) -> VideoScript:
     """Parse LLM response into VideoScript.
 
     Args:
         script_data: Parsed JSON response from LLM.
+        personas: Optional list of persona dicts. If provided and length is 1,
+                  assigns that persona_id to all narrations without persona_id.
 
     Returns:
         VideoScript object.
@@ -866,6 +875,11 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
         ValueError: If response format is invalid or missing required fields.
     """
     # Parse sections - unified format with narrations list
+    # Determine default persona_id for single-speaker mode
+    default_persona_id = None
+    if personas and len(personas) == 1:
+        default_persona_id = personas[0]["id"]
+
     sections = []
     for section in script_data["sections"]:
         narrations: list[Narration] = []
@@ -875,7 +889,7 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
             for n in section["narrations"]:
                 if isinstance(n, str):
                     # Simple string format (single speaker) - legacy, use text as reading
-                    narrations.append(Narration(text=n, reading=n))
+                    narrations.append(Narration(text=n, reading=n, persona_id=default_persona_id))
                 else:
                     # Object format with required reading field
                     if "reading" not in n or not n["reading"]:
@@ -884,10 +898,10 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
                             f"The LLM did not generate the required 'reading' field. "
                             f"This is a critical error in script generation."
                         )
+                    # Use persona_id from response, or default for single-speaker mode
+                    persona_id = n.get("persona_id") or default_persona_id
                     narrations.append(
-                        Narration(
-                            text=n["text"], reading=n["reading"], persona_id=n.get("persona_id")
-                        )
+                        Narration(text=n["text"], reading=n["reading"], persona_id=persona_id)
                     )
         elif "dialogues" in section and section["dialogues"]:
             # Legacy dialogue format (backward compatibility)
@@ -902,7 +916,17 @@ def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
                 )
         elif "narration" in section:
             # Legacy single narration format (backward compatibility)
-            narrations.append(Narration(text=section["narration"], reading=section["narration"]))
+            # Split into phrases per spec requirement
+            narration_text = section["narration"]
+            phrases = split_into_phrases(narration_text)
+            for phrase in phrases:
+                narrations.append(
+                    Narration(
+                        text=phrase.text,
+                        reading=phrase.text,  # Use phrase text as reading
+                        persona_id=default_persona_id,
+                    )
+                )
 
         sections.append(
             ScriptSection(
@@ -1082,8 +1106,8 @@ async def generate_script(
         base_url=base_url,
     )
 
-    # Parse response
-    script = _parse_script_response(script_data)
+    # Parse response (pass personas for single-speaker mode persona_id assignment)
+    script = _parse_script_response(script_data, personas=personas)
 
     # Validate completeness
     _validate_script_completeness(script)

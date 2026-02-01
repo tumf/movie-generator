@@ -285,8 +285,10 @@ def stage_script_resolution(
 
         try:
             # Prepare personas if defined
+            # - For 1 persona: enables persona_id assignment in single-speaker mode
+            # - For 2+ personas: enables multi-speaker dialogue mode
             personas_for_script = None
-            if params.config.personas:
+            if params.config.personas and len(params.config.personas) >= 1:
                 personas_for_script = [
                     p.model_dump(include={"id", "name", "character"})
                     for p in params.config.personas
