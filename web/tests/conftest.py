@@ -1,7 +1,6 @@
 """Pytest configuration and fixtures."""
 
 import pytest
-from httpx import AsyncClient
 
 # Add fixtures here for testing
 

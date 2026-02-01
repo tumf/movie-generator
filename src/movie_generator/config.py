@@ -18,7 +18,9 @@ class VoicevoxSynthesizerConfig(BaseModel):
     """VOICEVOX synthesizer configuration."""
 
     engine: Literal["voicevox"] = ConfigDefaults.AUDIO_ENGINE
-    speaker_id: int = Field(ge=0, description="VOICEVOX speaker ID")
+    speaker_id: int = Field(
+        ge=ConfigDefaults.AUDIO_SPEAKER_ID_MIN, description="VOICEVOX speaker ID"
+    )
     speed_scale: float = Field(
         default=ConfigDefaults.AUDIO_SPEED_SCALE,
         gt=ConfigDefaults.AUDIO_SPEED_SCALE_MIN,
@@ -78,7 +80,7 @@ class StyleConfig(BaseModel):
     resolution: tuple[int, int] = Field(
         default=(VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
     )
-    fps: int = Field(default=VideoConstants.DEFAULT_FPS, ge=1)
+    fps: int = Field(default=VideoConstants.DEFAULT_FPS, ge=ConfigDefaults.VIDEO_FPS_MIN)
     crf: int = Field(
         default=ConfigDefaults.VIDEO_CRF_DEFAULT,
         ge=ConfigDefaults.VIDEO_CRF_MIN,
@@ -95,7 +97,9 @@ class AudioConfig(BaseModel):
     """Audio generation configuration."""
 
     engine: str = Field(default=ConfigDefaults.AUDIO_ENGINE)
-    speaker_id: int = Field(default=ConfigDefaults.AUDIO_SPEAKER_ID, ge=0)
+    speaker_id: int = Field(
+        default=ConfigDefaults.AUDIO_SPEAKER_ID, ge=ConfigDefaults.AUDIO_SPEAKER_ID_MIN
+    )
     speed_scale: float = Field(
         default=ConfigDefaults.AUDIO_SPEED_SCALE, gt=ConfigDefaults.AUDIO_SPEED_SCALE_MIN
     )
@@ -186,7 +190,7 @@ class TransitionConfig(BaseModel):
     )
     duration_frames: int = Field(
         default=ConfigDefaults.TRANSITION_DURATION_FRAMES,
-        ge=1,
+        ge=ConfigDefaults.TRANSITION_DURATION_FRAMES_MIN,
         description="Transition duration in frames",
     )
     timing: str = Field(
@@ -258,12 +262,12 @@ class BgmConfig(BaseModel):
     )
     fade_in_seconds: float = Field(
         default=ConfigDefaults.BGM_FADE_IN_SECONDS,
-        ge=0.0,
+        ge=ConfigDefaults.BGM_FADE_IN_SECONDS_MIN,
         description="Fade-in duration in seconds",
     )
     fade_out_seconds: float = Field(
         default=ConfigDefaults.BGM_FADE_OUT_SECONDS,
-        ge=0.0,
+        ge=ConfigDefaults.BGM_FADE_OUT_SECONDS_MIN,
         description="Fade-out duration in seconds",
     )
     loop: bool = Field(default=True, description="Loop BGM if shorter than video duration")
@@ -300,12 +304,12 @@ class VideoConfig(BaseModel):
     bgm: BgmConfig | None = Field(default=None, description="Optional background music")
     render_concurrency: int = Field(
         default=ConfigDefaults.VIDEO_RENDER_CONCURRENCY,
-        ge=1,
+        ge=ConfigDefaults.VIDEO_RENDER_CONCURRENCY_MIN,
         description="Number of concurrent frames to render (higher = faster but more memory)",
     )
     render_timeout_seconds: int = Field(
         default=ConfigDefaults.VIDEO_RENDER_TIMEOUT,
-        ge=1,
+        ge=ConfigDefaults.VIDEO_RENDER_TIMEOUT_MIN,
         description="Timeout for Remotion delayRender calls in seconds",
     )
 
@@ -315,7 +319,9 @@ class PronunciationWord(BaseModel):
 
     reading: str = Field(description="Katakana reading")
     accent: int = Field(
-        default=ConfigDefaults.PRONUNCIATION_ACCENT, ge=0, description="Accent position (0=auto)"
+        default=ConfigDefaults.PRONUNCIATION_ACCENT,
+        ge=ConfigDefaults.PRONUNCIATION_ACCENT_MIN,
+        description="Accent position (0=auto)",
     )
     word_type: str = Field(default=ConfigDefaults.PRONUNCIATION_WORD_TYPE)
     priority: int = Field(
@@ -340,7 +346,7 @@ class PersonaPoolConfig(BaseModel):
     )
     count: int = Field(
         default=ConfigDefaults.PERSONA_POOL_COUNT,
-        ge=1,
+        ge=ConfigDefaults.PERSONA_POOL_COUNT_MIN,
         description="Number of personas to randomly select from pool",
     )
     seed: int | None = Field(
@@ -456,30 +462,38 @@ def generate_default_config_yaml() -> str:
         "",
         "# Project settings",
         "project:",
-        '  name: "My YouTube Channel"  # Your channel name',
-        '  output_dir: "./output"  # Directory for generated files',
+        f'  name: "{ConfigDefaults.PROJECT_NAME}"  # Your channel name',
+        f'  output_dir: "{ConfigDefaults.PROJECT_OUTPUT_DIR}"  # Directory for generated files',
         "",
         "# Video style settings",
         "style:",
-        "  resolution: [1280, 720]  # Video resolution (width, height)",
-        "  fps: 30  # Frames per second",
-        "  crf: 28  # Video quality (0-51, lower = better quality, larger file)",
-        '  font_family: "Noto Sans JP"  # Font for text overlays',
-        '  primary_color: "#FFFFFF"  # Primary text color (hex)',
-        '  background_color: "#1a1a2e"  # Background color (hex)',
+        f"  resolution: [{VideoConstants.DEFAULT_WIDTH}, {VideoConstants.DEFAULT_HEIGHT}]"
+        "  # Video resolution (width, height)",
+        f"  fps: {VideoConstants.DEFAULT_FPS}  # Frames per second",
+        f"  crf: {ConfigDefaults.VIDEO_CRF_DEFAULT}"
+        f"  # Video quality ({ConfigDefaults.VIDEO_CRF_MIN}-{ConfigDefaults.VIDEO_CRF_MAX}, "
+        "lower = better quality, larger file)",
+        f'  font_family: "{ConfigDefaults.STYLE_FONT_FAMILY}"  # Font for text overlays',
+        f'  primary_color: "{ConfigDefaults.STYLE_PRIMARY_COLOR}"  # Primary text color (hex)',
+        f'  background_color: "{ConfigDefaults.STYLE_BACKGROUND_COLOR}"  # Background color (hex)',
         "",
         "# Audio generation settings",
         "audio:",
-        '  engine: "voicevox"  # Audio synthesis engine',
-        "  speaker_id: 3  # VOICEVOX speaker ID (3 = Zundamon)",
-        "  speed_scale: 1.0  # Speech speed multiplier (1.0 = normal)",
+        f'  engine: "{ConfigDefaults.AUDIO_ENGINE}"  # Audio synthesis engine',
+        f"  speaker_id: {ConfigDefaults.AUDIO_SPEAKER_ID}"
+        f"  # VOICEVOX speaker ID ({ConfigDefaults.AUDIO_SPEAKER_ID} = Zundamon)",
+        f"  speed_scale: {ConfigDefaults.AUDIO_SPEED_SCALE}"
+        f"  # Speech speed multiplier ({ConfigDefaults.AUDIO_SPEED_SCALE} = normal)",
         "  enable_furigana: true  # Auto-generate furigana using morphological analysis",
-        '  pronunciation_model: "openai/gpt-4o-mini"  # LLM model for pronunciation generation',
+        f'  pronunciation_model: "{ConfigDefaults.AUDIO_PRONUNCIATION_MODEL}"'
+        "  # LLM model for pronunciation generation",
         "",
         "# Narration style settings",
         "narration:",
-        '  character: "ずんだもん"  # Narrator character name (used when no personas defined)',
-        '  style: "casual"  # Narration style: casual, formal, educational',
+        f'  character: "{ConfigDefaults.NARRATION_CHARACTER}"'
+        "  # Narrator character name (used when no personas defined)",
+        f'  style: "{ConfigDefaults.NARRATION_STYLE}"'
+        "  # Narration style: casual, formal, educational",
         "",
         "# Persona configurations for multi-speaker dialogue",
         "# Uncomment and configure for dialogue mode",
@@ -488,22 +502,23 @@ def generate_default_config_yaml() -> str:
         '#     name: "ずんだもん"',
         '#     character: "元気で明るい東北の妖精"',
         "#     synthesizer:",
-        '#       engine: "voicevox"',
-        "#       speaker_id: 3",
-        "#       speed_scale: 1.0",
+        f'#       engine: "{ConfigDefaults.AUDIO_ENGINE}"',
+        f"#       speaker_id: {ConfigDefaults.AUDIO_SPEAKER_ID}",
+        f"#       speed_scale: {ConfigDefaults.AUDIO_SPEED_SCALE}",
         '#     subtitle_color: "#8FCF4F"',
         '#     character_image: "assets/characters/zundamon/base.png"  # Base character image',
         '#     character_position: "left"  # Position: left, right, center',
         '#     mouth_open_image: "assets/characters/zundamon/mouth_open.png"  # For lip sync',
         '#     eye_close_image: "assets/characters/zundamon/eye_close.png"  # For blinking',
-        '#     animation_style: "sway"  # Animation style: bounce, sway, static',
+        f'#     animation_style: "{ConfigDefaults.PERSONA_ANIMATION_STYLE}"'
+        "  # Animation style: bounce, sway, static",
         '#   - id: "metan"',
         '#     name: "四国めたん"',
         '#     character: "優しくて落ち着いた四国の妖精"',
         "#     synthesizer:",
-        '#       engine: "voicevox"',
+        f'#       engine: "{ConfigDefaults.AUDIO_ENGINE}"',
         "#       speaker_id: 2",
-        "#       speed_scale: 1.0",
+        f"#       speed_scale: {ConfigDefaults.AUDIO_SPEED_SCALE}",
         '#     subtitle_color: "#FF69B4"',
         '#     character_image: "assets/characters/metan/base.png"',
         '#     character_position: "right"',
@@ -511,39 +526,54 @@ def generate_default_config_yaml() -> str:
         "# Content generation settings",
         "content:",
         "  llm:",
-        '    provider: "openrouter"  # LLM provider for script generation',
-        '    model: "openai/gpt-5.2"  # Model to use for content generation',
-        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
-        '  languages: ["ja"]  # Languages for content generation (e.g., ["ja", "en"])',
+        f'    provider: "{ConfigDefaults.LLM_PROVIDER}"  # LLM provider for script generation',
+        f'    model: "{ConfigDefaults.LLM_MODEL}"  # Model to use for content generation',
+        f'    base_url: "{ConfigDefaults.LLM_BASE_URL}"'
+        "  # LLM API base URL (e.g., proxy or local endpoint)",
+        f"  languages: {ConfigDefaults.CONTENT_LANGUAGES_DEFAULT}"
+        '  # Languages for content generation (e.g., ["ja", "en"])',
         "",
         "# Slide generation settings",
         "slides:",
         "  llm:",
-        '    provider: "openrouter"  # LLM provider for slide generation',
-        '    model: "google/gemini-3-pro-image-preview"  # Model for slide images',
-        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
-        '  style: "presentation"  # Slide style: presentation, illustration, minimal',
+        f'    provider: "{ConfigDefaults.SLIDES_LLM_PROVIDER}"'
+        "  # LLM provider for slide generation",
+        f'    model: "{ConfigDefaults.SLIDES_LLM_MODEL}"  # Model for slide images',
+        f'    base_url: "{ConfigDefaults.SLIDES_LLM_BASE_URL}"'
+        "  # LLM API base URL (e.g., proxy or local endpoint)",
+        f'  style: "{ConfigDefaults.SLIDES_STYLE}"'
+        "  # Slide style: presentation, illustration, minimal",
         "",
         "# Video rendering settings",
         "video:",
-        '  renderer: "remotion"  # Video rendering engine',
-        '  template: "default"  # Video template to use',
-        '  output_format: "mp4"  # Output video format',
-        "  render_concurrency: 4  # Number of concurrent frames to render (higher = faster but more memory)",
-        "  render_timeout_seconds: 300  # Timeout for Remotion delayRender calls in seconds",
+        f'  renderer: "{ConfigDefaults.VIDEO_RENDERER}"  # Video rendering engine',
+        f'  template: "{ConfigDefaults.VIDEO_TEMPLATE}"  # Video template to use',
+        f'  output_format: "{ConfigDefaults.VIDEO_OUTPUT_FORMAT}"  # Output video format',
+        f"  render_concurrency: {ConfigDefaults.VIDEO_RENDER_CONCURRENCY}"
+        "  # Number of concurrent frames to render (higher = faster but more memory)",
+        f"  render_timeout_seconds: {ConfigDefaults.VIDEO_RENDER_TIMEOUT}"
+        "  # Timeout for Remotion delayRender calls in seconds",
         "  transition:",
-        '    type: "fade"  # Transition type: fade, slide, wipe, flip, clockWipe, none',
-        "    duration_frames: 15  # Transition duration in frames (0.5s at 30fps)",
-        '    timing: "linear"  # Timing function: linear, spring',
+        f'    type: "{ConfigDefaults.TRANSITION_TYPE}"'
+        "  # Transition type: fade, slide, wipe, flip, clockWipe, none",
+        f"    duration_frames: {ConfigDefaults.TRANSITION_DURATION_FRAMES}"
+        f"  # Transition duration in frames "
+        f"({ConfigDefaults.TRANSITION_DURATION_FRAMES / VideoConstants.DEFAULT_FPS:.1f}s "
+        f"at {VideoConstants.DEFAULT_FPS}fps)",
+        f'    timing: "{ConfigDefaults.TRANSITION_TIMING}"  # Timing function: linear, spring',
         "  background:",
         '    type: "video"  # Background type: image or video',
         '    path: "assets/backgrounds/default-background.mp4"  # Path to background file',
-        '    fit: "cover"  # How to fit: cover (fill), contain (fit inside), fill (stretch)',
+        f'    fit: "{ConfigDefaults.BACKGROUND_FIT}"'
+        "  # How to fit: cover (fill), contain (fit inside), fill (stretch)",
         "  bgm:",
         '    path: "assets/bgm/default-bgm.mp3"  # Path to background music file',
-        "    volume: 0.3  # BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)",
-        "    fade_in_seconds: 2.0  # Fade-in duration in seconds",
-        "    fade_out_seconds: 2.0  # Fade-out duration in seconds",
+        f"    volume: {ConfigDefaults.BGM_VOLUME_DEFAULT}"
+        f"  # BGM volume ({ConfigDefaults.BGM_VOLUME_MIN}-{ConfigDefaults.BGM_VOLUME_MAX}, "
+        f"default {ConfigDefaults.BGM_VOLUME_DEFAULT} to avoid overpowering narration)",
+        f"    fade_in_seconds: {ConfigDefaults.BGM_FADE_IN_SECONDS}  # Fade-in duration in seconds",
+        f"    fade_out_seconds: {ConfigDefaults.BGM_FADE_OUT_SECONDS}"
+        "  # Fade-out duration in seconds",
         "    loop: true  # Loop BGM if shorter than video duration",
         "",
         "# Pronunciation dictionary for proper nouns and technical terms",
@@ -551,14 +581,16 @@ def generate_default_config_yaml() -> str:
         "  custom:",
         '    "Bubble Tea":',
         '      reading: "バブルティー"  # Katakana reading',
-        "      accent: 5  # Accent position (0 = auto)",
-        '      word_type: "PROPER_NOUN"  # Word type',
-        "      priority: 10  # Priority (1-10, higher = more important)",
+        f"      accent: 5  # Accent position ({ConfigDefaults.PRONUNCIATION_ACCENT} = auto)",
+        f'      word_type: "{ConfigDefaults.PRONUNCIATION_WORD_TYPE}"  # Word type',
+        f"      priority: {ConfigDefaults.PRONUNCIATION_PRIORITY_DEFAULT}"
+        f"  # Priority ({ConfigDefaults.PRONUNCIATION_PRIORITY_MIN}-"
+        f"{ConfigDefaults.PRONUNCIATION_PRIORITY_MAX}, higher = more important)",
         '    "Ratatui":',
         '      reading: "ラタトゥイ"',
         "      accent: 4",
-        '      word_type: "PROPER_NOUN"',
-        "      priority: 10",
+        f'      word_type: "{ConfigDefaults.PRONUNCIATION_WORD_TYPE}"',
+        f"      priority: {ConfigDefaults.PRONUNCIATION_PRIORITY_DEFAULT}",
     ]
     return "\n".join(yaml_lines)
 
@@ -706,7 +738,8 @@ def validate_config(config_path: Path) -> ValidationResult:
 
             if not img_path.exists():
                 result.add_error(
-                    f"Character image not found for persona '{persona.id}': {persona.character_image}"
+                    f"Character image not found for persona '{persona.id}': "
+                    f"{persona.character_image}"
                 )
 
         if persona.mouth_open_image:
@@ -716,7 +749,8 @@ def validate_config(config_path: Path) -> ValidationResult:
 
             if not img_path.exists():
                 result.add_warning(
-                    f"Mouth open image not found for persona '{persona.id}': {persona.mouth_open_image}"
+                    f"Mouth open image not found for persona '{persona.id}': "
+                    f"{persona.mouth_open_image}"
                 )
 
         if persona.eye_close_image:
@@ -726,7 +760,8 @@ def validate_config(config_path: Path) -> ValidationResult:
 
             if not img_path.exists():
                 result.add_warning(
-                    f"Eye close image not found for persona '{persona.id}': {persona.eye_close_image}"
+                    f"Eye close image not found for persona '{persona.id}': "
+                    f"{persona.eye_close_image}"
                 )
 
     # Step 4: Persona ID uniqueness (already checked by Pydantic, but we verify here too)
