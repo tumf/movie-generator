@@ -44,6 +44,10 @@ The command SHALL accept the following options:
 - `--speaker-id <id>`: VOICEVOX speaker ID
 - `--allow-placeholder`: Generate placeholder audio without VOICEVOX
 
+The implementation SHALL reuse the same script loading and phrase preparation logic as `generate` to avoid drift.
+
+Scene range parsing and validation SHALL be shared across commands and report consistent errors.
+
 #### Scenario: Generate audio from script
 - **GIVEN** a valid `script.yaml` file
 - **WHEN** user runs `movie-generator audio generate ./output/script.yaml`
@@ -63,7 +67,11 @@ The command SHALL accept the following options:
 - **THEN** the system displays an error message
 - **AND** exits with non-zero status
 
----
+#### Scenario: Invalid scene range
+- **GIVEN** the user specifies an invalid scene range (e.g., `--scenes 0`, `--scenes 3-2`, `--scenes a-b`)
+- **WHEN** user runs `movie-generator audio generate <script.yaml> --scenes <range>`
+- **THEN** the system displays a consistent validation error message
+- **AND** exits with non-zero status
 
 ### Requirement: Slides Generation Command
 
@@ -306,11 +314,13 @@ The validation SHALL check:
 
 The existing `generate` command SHALL remain functional with all current options.
 
-The `generate` command SHALL internally use the extracted common functions:
-- `_create_script()` for script generation
-- `_generate_audio()` for audio synthesis
-- `_generate_slides()` for slide creation
-- `_render_video()` for video rendering
+The `generate` command SHALL delegate each pipeline stage to dedicated functions/modules so the command handler remains small and unit-testable.
+
+The `generate` command SHALL internally use the extracted stage functions:
+- `stage_script_resolution()` for script generation
+- `stage_audio_generation()` for audio synthesis
+- `stage_slides_generation()` for slide creation
+- `stage_video_rendering()` for video rendering
 
 The `generate` command SHALL also support the new common options:
 - `--force`

@@ -1,13 +1,9 @@
 """End-to-end tests for video generation with Remotion."""
 
-import sys
 import tempfile
 from pathlib import Path
 
 import pytest
-
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from movie_generator.script.phrases import Phrase
 from movie_generator.video.remotion_renderer import (

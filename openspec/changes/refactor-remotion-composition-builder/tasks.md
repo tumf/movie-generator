@@ -6,4 +6,4 @@
 - [x] 2.1 speaker 情報なし composition.json の互換動作をユニットテストで固定する（検証: `uv run pytest -k composition -v`）
 
 ## 3. Verification
-- [x] 3.1 全テストが通る（検証: `uv run pytest`）
+- [x] 3.1 全テストが通る（検証: `uv run pytest`)

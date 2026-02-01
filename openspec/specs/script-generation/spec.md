@@ -53,6 +53,8 @@ The system SHALL be able to generate dialogue-style scripts with multiple person
 
 The system SHALL continue to support the traditional single-speaker mode.
 
+The implementation SHALL separate prompt building, LLM calling, and response parsing into testable units while preserving behavior.
+
 #### Scenario: Generate Single-Speaker Script
 - **GIVEN** `narration.mode: "single"` is configured
 - **AND** only one persona is defined
@@ -133,6 +135,8 @@ Generated phrases SHALL include speaker information.
 
 The system SHALL provide dialogue format prompts for Japanese and English.
 
+Prompt templates SHALL be managed in a way that makes updating all language variants reliable (e.g., shared building blocks and tests).
+
 #### Scenario: Japanese Dialogue Prompt
 - **GIVEN** `language="ja"` is configured
 - **AND** `narration.mode="dialogue"` is configured
@@ -144,6 +148,11 @@ The system SHALL provide dialogue format prompts for Japanese and English.
 - **AND** `narration.mode="dialogue"` is configured
 - **WHEN** a prompt is generated
 - **THEN** `SCRIPT_GENERATION_PROMPT_DIALOGUE_EN` is used
+
+#### Scenario: Prompt variants stay in sync
+- **WHEN** a developer updates prompt output fields
+- **THEN** all dialogue prompt variants are updated consistently
+- **AND** tests fail if any variant misses required instructions/examples
 
 ### Requirement: Reading Field Generation
 
@@ -624,3 +633,4 @@ reading フィールドの品質はシステムの成否を左右します。以
   - [ ] すべてのreadingフィールドで促音が正しく使われているか？（「ツッテ」×、「ッテ」○）
   - [ ] 長い文にスペースが適切に挿入されているか？
   - [ ] 助詞の発音ルールが適用されているか？
+

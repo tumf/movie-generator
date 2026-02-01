@@ -137,17 +137,21 @@ def _fetch_and_generate_script(
         progress.update(task, completed=True)
         console.print(f"✓ Fetched: {parsed.metadata.title}")
 
-    # Prepare images metadata
+    # Prepare images metadata (filter to candidates only)
     images_metadata = None
     if parsed.images:
+        candidate_images = [img for img in parsed.images if img.is_candidate]
         images_metadata = [
             img.model_dump(
                 include={"src", "alt", "title", "aria_describedby"},
                 exclude_none=True,
             )
-            for img in parsed.images
+            for img in candidate_images
         ]
-        console.print(f"  Found {len(parsed.images)} usable images in content")
+        console.print(
+            f"  Found {len(candidate_images)} candidate images "
+            f"({len(parsed.images)} total) in content"
+        )
 
     task = progress.add_task("Generating script...", total=None)
 
@@ -287,6 +291,14 @@ def generate(
     if quiet:
         console.quiet = True  # type: ignore
 
+    # Configure logging level
+    if verbose:
+        import logging
+
+        logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+        logger = logging.getLogger("movie_generator")
+        logger.setLevel(logging.DEBUG)
+
     # Load configuration
     cfg = load_config(config) if config else Config()
 
@@ -310,6 +322,7 @@ def generate(
         url_or_script=url_or_script,
         config=cfg,
         output_dir=output_dir,
+        output_dir_explicit=output is not None,  # Track if --output was explicitly specified
         api_key=api_key,
         mcp_config=mcp_config,
         scenes=scenes,
@@ -317,6 +330,10 @@ def generate(
         persona_pool_count=persona_pool_count,
         persona_pool_seed=persona_pool_seed,
         strict=strict,
+        force=force,
+        quiet=quiet,
+        verbose=verbose,
+        dry_run=dry_run,
     )
 
     with Progress(
@@ -379,7 +396,7 @@ def script() -> None:
     "--output",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for script.yaml (default: current directory)",
+    help="Output directory for script.yaml (default: ./output)",
 )
 @click.option(
     "--config",
@@ -452,7 +469,7 @@ def create(
     if model:
         cfg.content.llm.model = model
 
-    output_dir = Path(output) if output else Path.cwd()
+    output_dir = Path(output) if output else Path("output")
     script_path = output_dir / "script.yaml"
 
     # Check for existing script file

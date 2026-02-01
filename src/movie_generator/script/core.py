@@ -103,20 +103,21 @@ async def generate_script_from_url(
     if progress_callback:
         progress_callback(40, 100, "Generating script with LLM...")
 
-    # Prepare images metadata for script generation
+    # Prepare images metadata for script generation (filter to candidates only)
     images_metadata = None
     if parsed.images:
+        candidate_images = [img for img in parsed.images if img.is_candidate]
         images_metadata = [
             img.model_dump(
                 include={"src", "alt", "title", "aria_describedby"},
                 exclude_none=True,
             )
-            for img in parsed.images
+            for img in candidate_images
         ]
 
-    # Prepare personas if defined (enables multi-speaker mode automatically)
+    # Prepare personas if defined (enables multi-speaker mode for 2+ personas)
     personas_for_script = None
-    if cfg.personas:
+    if cfg.personas and len(cfg.personas) >= 2:
         personas_for_script = [
             p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
         ]
@@ -328,9 +329,9 @@ Please use the available tools to accomplish this task.
         title = "Generated Video"  # Default title
         description = ""
 
-        # Prepare personas if defined (enables multi-speaker mode automatically)
+        # Prepare personas if defined (enables multi-speaker mode for 2+ personas)
         personas_for_script = None
-        if cfg.personas:
+        if cfg.personas and len(cfg.personas) >= 2:
             personas_for_script = [
                 p.model_dump(include={"id", "name", "character"}) for p in cfg.personas
             ]

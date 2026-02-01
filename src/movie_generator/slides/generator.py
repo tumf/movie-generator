@@ -15,6 +15,7 @@ from PIL import Image
 
 from ..constants import ProjectPaths, RetryConfig, TimeoutConstants, VideoConstants
 from ..utils.filesystem import is_valid_file, skip_if_exists
+from ..utils.retry import retry_with_backoff
 
 
 @dataclass(frozen=True)
@@ -160,8 +161,6 @@ async def generate_slide(
     base_url: str = "https://openrouter.ai/api/v1",
     width: int = VideoConstants.DEFAULT_WIDTH,
     height: int = VideoConstants.DEFAULT_HEIGHT,
-    max_retries: int = RetryConfig.MAX_RETRIES,
-    retry_delay: float = RetryConfig.INITIAL_DELAY,
 ) -> Path:
     """Generate a slide image from a prompt with retry logic.
 
@@ -173,8 +172,6 @@ async def generate_slide(
         base_url: API base URL.
         width: Image width in pixels.
         height: Image height in pixels.
-        max_retries: Maximum number of retry attempts on failure.
-        retry_delay: Initial delay between retries (exponential backoff).
 
     Returns:
         Path to generated image file.
@@ -194,105 +191,96 @@ async def generate_slide(
 
 Style: Clean presentation slide, modern flat design, 16:9 aspect ratio."""
 
-    last_error = None
-    for attempt in range(max_retries):
-        try:
-            async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_IMAGE_GENERATION) as client:
-                response = await client.post(
-                    f"{base_url}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
+    async def _generate_slide_api_call() -> Path:
+        """Core API call logic for slide generation."""
+        async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_IMAGE_GENERATION) as client:
+            response = await client.post(
+                f"{base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": full_prompt,
+                        }
+                    ],
+                    "modalities": ["image", "text"],
+                    "image_config": {
+                        "aspect_ratio": "16:9",
                     },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": full_prompt,
-                            }
-                        ],
-                        "modalities": ["image", "text"],
-                        "image_config": {
-                            "aspect_ratio": "16:9",
-                        },
-                    },
-                )
-                response.raise_for_status()
-                data = response.json()
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
 
-                # Extract image from response
-                message = data["choices"][0]["message"]
+            # Extract image from response
+            message = data["choices"][0]["message"]
 
-                # Check for images in the response
-                if "images" in message and len(message["images"]) > 0:
-                    image_data = message["images"][0]
-                    image_url = image_data["image_url"]["url"]
+            # Check for images in the response
+            if "images" in message and len(message["images"]) > 0:
+                image_data = message["images"][0]
+                image_url = image_data["image_url"]["url"]
 
-                    # Extract base64 data from data URL
-                    if image_url.startswith("data:image"):
-                        # Format: data:image/png;base64,<base64_data>
-                        if "base64," in image_url:
-                            b64_data = image_url.split("base64,")[1]
-                            img_bytes = base64.b64decode(b64_data)
-                            output_path.write_bytes(img_bytes)
-                            print(f"✓ Generated slide: {output_path.name}")
-                            return output_path
+                # Extract base64 data from data URL
+                if image_url.startswith("data:image"):
+                    # Format: data:image/png;base64,<base64_data>
+                    if "base64," in image_url:
+                        b64_data = image_url.split("base64,")[1]
+                        img_bytes = base64.b64decode(b64_data)
+                        output_path.write_bytes(img_bytes)
+                        print(f"✓ Generated slide: {output_path.name}")
+                        return output_path
 
-                # No image in response - treat as error
-                error_msg = f"No image data in API response for '{prompt[:50]}...'"
-                print(f"⚠ {error_msg}")
-                # Debug: show response structure
-                print(f"  Response keys: {list(data.keys())}")
-                if "choices" in data and data["choices"]:
-                    msg_keys = list(message.keys()) if message else []
-                    print(f"  Message keys: {msg_keys}")
-                    if "content" in message:
-                        content = message["content"]
-                        if isinstance(content, str):
-                            print(f"  Content (text): {content[:200]}...")
-                        elif isinstance(content, list):
-                            print(f"  Content (list): {len(content)} items")
-                            for idx, item in enumerate(content[:3]):
-                                if isinstance(item, dict):
-                                    item_type = item.get("type")
-                                    item_keys = list(item.keys())
-                                    print(f"    [{idx}] type={item_type}, keys={item_keys}")
-                last_error = ValueError(error_msg)
+            # No image in response - treat as error
+            error_msg = f"No image data in API response for '{prompt[:50]}...'"
+            print(f"⚠ {error_msg}")
+            # Debug: show response structure
+            print(f"  Response keys: {list(data.keys())}")
+            if "choices" in data and data["choices"]:
+                msg_keys = list(message.keys()) if message else []
+                print(f"  Message keys: {msg_keys}")
+                if "content" in message:
+                    content = message["content"]
+                    if isinstance(content, str):
+                        print(f"  Content (text): {content[:200]}...")
+                    elif isinstance(content, list):
+                        print(f"  Content (list): {len(content)} items")
+                        for idx, item in enumerate(content[:3]):
+                            if isinstance(item, dict):
+                                print(
+                                    f"    [{idx}] type={item.get('type')}, keys={list(item.keys())}"
+                                )
+            raise ValueError(error_msg)
 
-        except httpx.HTTPStatusError as e:
-            last_error = e
-            error_detail = ""
-            try:
-                error_detail = f"\n    Response: {e.response.text[:500]}"
-            except (AttributeError, Exception):
-                # response may not have text attribute or may fail to access
-                pass
-            print(f"⚠ HTTP error on attempt {attempt + 1}/{max_retries}: {e}{error_detail}")
-
-            # Don't retry on payment errors (402) - no point in retrying
-            if e.response.status_code == 402:
+    def _should_retry_error(error: Exception) -> bool:
+        """Determine if an error should be retried."""
+        # Don't retry on payment errors (402) - no point in retrying
+        if isinstance(error, httpx.HTTPStatusError):
+            if error.response.status_code == 402:
                 print("✗ Payment required error - check OpenRouter credits and retry")
-                break
-        except httpx.HTTPError as e:
-            last_error = e
-            print(f"⚠ HTTP error on attempt {attempt + 1}/{max_retries}: {e}")
-        except Exception as e:
-            last_error = e
-            print(f"⚠ Error on attempt {attempt + 1}/{max_retries}: {e}")
+                return False
+        return True
 
-        # Retry with exponential backoff
-        if attempt < max_retries - 1:
-            delay = retry_delay * (RetryConfig.BACKOFF_FACTOR**attempt)
-            print(f"  ⟳ Retrying in {delay:.1f}s...")
-            await asyncio.sleep(delay)
-
-    # All retries exhausted
-    print(f"✗ Failed to generate slide after {max_retries} attempts: {output_path.name}")
-    print(f"  Last error: {last_error}")
-    # Create 0-byte placeholder to mark as failed
-    output_path.write_bytes(b"")
-    return output_path
+    try:
+        return await retry_with_backoff(
+            _generate_slide_api_call,
+            max_retries=RetryConfig.MAX_RETRIES,
+            initial_delay=RetryConfig.BASE_DELAY_SECONDS,
+            backoff_factor=RetryConfig.BACKOFF_FACTOR,
+            error_message_prefix=f"Slide generation for '{output_path.name}'",
+            should_retry=_should_retry_error,
+        )
+    except Exception as e:
+        # All retries exhausted - create placeholder
+        print(f"✗ Failed to generate slide: {output_path.name}")
+        print(f"  Last error: {e}")
+        # Create 0-byte placeholder to mark as failed
+        output_path.write_bytes(b"")
+        return output_path
 
 
 def plan_slide_generation_tasks(
