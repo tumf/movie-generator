@@ -42,8 +42,10 @@ class TestScriptCreate:
         """Test that script create skips if script.yaml exists without --force."""
         runner = CliRunner()
         with runner.isolated_filesystem():
-            # Create an existing script file
-            script_path = Path("script.yaml")
+            # Create output directory and existing script file
+            output_dir = Path("output")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            script_path = output_dir / "script.yaml"
             script_path.write_text("existing: content")
 
             result = runner.invoke(script, ["create", "https://example.com"])
@@ -75,8 +77,8 @@ class TestScriptCreate:
             assert result.exit_code == 0
             # Verify the common function was called
             mock_fetch.assert_called_once()
-            # Verify script was saved
-            script_path = Path("script.yaml")
+            # Verify script was saved (default output dir is ./output)
+            script_path = Path("output/script.yaml")
             assert script_path.exists()
 
 
