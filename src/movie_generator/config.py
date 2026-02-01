@@ -3,6 +3,7 @@
 Loads and validates YAML configuration files using Pydantic.
 """
 
+import importlib.resources
 from pathlib import Path
 from typing import Any, Literal
 
@@ -10,16 +11,22 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
-from .constants import SubtitleConstants
+from .constants import ConfigDefaults, SubtitleConstants, VideoConstants
 from .exceptions import ConfigurationError
 
 
 class VoicevoxSynthesizerConfig(BaseModel):
     """VOICEVOX synthesizer configuration."""
 
-    engine: Literal["voicevox"] = "voicevox"
-    speaker_id: int = Field(ge=0, description="VOICEVOX speaker ID")
-    speed_scale: float = Field(default=1.0, gt=0.0, description="Speech speed multiplier")
+    engine: Literal["voicevox"] = ConfigDefaults.AUDIO_ENGINE
+    speaker_id: int = Field(
+        ge=ConfigDefaults.AUDIO_SPEAKER_ID_MIN, description="VOICEVOX speaker ID"
+    )
+    speed_scale: float = Field(
+        default=ConfigDefaults.AUDIO_SPEED_SCALE,
+        gt=ConfigDefaults.AUDIO_SPEED_SCALE_MIN,
+        description="Speech speed multiplier",
+    )
 
 
 class PersonaConfig(BaseModel):
@@ -54,7 +61,7 @@ class PersonaConfig(BaseModel):
         default=None, description="Path to character image with eyes closed (for blinking)"
     )
     animation_style: Literal["bounce", "sway", "static"] = Field(
-        default="sway", description="Character animation style"
+        default=ConfigDefaults.PERSONA_ANIMATION_STYLE, description="Character animation style"
     )
 
     @model_validator(mode="before")
@@ -71,32 +78,38 @@ class PersonaConfig(BaseModel):
 class StyleConfig(BaseModel):
     """Visual style configuration."""
 
-    resolution: tuple[int, int] = Field(default=(1280, 720))
-    fps: int = Field(default=30, ge=1)
+    resolution: tuple[int, int] = Field(
+        default=(VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
+    )
+    fps: int = Field(default=VideoConstants.DEFAULT_FPS, ge=ConfigDefaults.VIDEO_FPS_MIN)
     crf: int = Field(
-        default=28,
-        ge=0,
-        le=51,
+        default=ConfigDefaults.VIDEO_CRF_DEFAULT,
+        ge=ConfigDefaults.VIDEO_CRF_MIN,
+        le=ConfigDefaults.VIDEO_CRF_MAX,
         description="Constant Rate Factor for video encoding. Lower = better quality, larger file. "
         "Typical range: 18 (near lossless) to 28 (good compression).",
     )
-    font_family: str = Field(default="Noto Sans JP")
-    primary_color: str = Field(default="#FFFFFF")
-    background_color: str = Field(default="#1a1a2e")
+    font_family: str = Field(default=ConfigDefaults.STYLE_FONT_FAMILY)
+    primary_color: str = Field(default=ConfigDefaults.STYLE_PRIMARY_COLOR)
+    background_color: str = Field(default=ConfigDefaults.STYLE_BACKGROUND_COLOR)
 
 
 class AudioConfig(BaseModel):
     """Audio generation configuration."""
 
-    engine: str = Field(default="voicevox")
-    speaker_id: int = Field(default=3, ge=0)
-    speed_scale: float = Field(default=1.0, gt=0.0)
+    engine: str = Field(default=ConfigDefaults.AUDIO_ENGINE)
+    speaker_id: int = Field(
+        default=ConfigDefaults.AUDIO_SPEAKER_ID, ge=ConfigDefaults.AUDIO_SPEAKER_ID_MIN
+    )
+    speed_scale: float = Field(
+        default=ConfigDefaults.AUDIO_SPEED_SCALE, gt=ConfigDefaults.AUDIO_SPEED_SCALE_MIN
+    )
     enable_furigana: bool = Field(
         default=True,
         description="Enable automatic furigana generation using morphological analysis",
     )
     pronunciation_model: str = Field(
-        default="openai/gpt-4o-mini",
+        default=ConfigDefaults.AUDIO_PRONUNCIATION_MODEL,
         description="LLM model for pronunciation (furigana) generation",
     )
 
@@ -104,25 +117,25 @@ class AudioConfig(BaseModel):
 class NarrationConfig(BaseModel):
     """Narration style configuration."""
 
-    character: str = Field(default="ずんだもん")
-    style: str = Field(default="casual")
+    character: str = Field(default=ConfigDefaults.NARRATION_CHARACTER)
+    style: str = Field(default=ConfigDefaults.NARRATION_STYLE)
     initial_pause: float = Field(
-        default=1.0,
+        default=ConfigDefaults.NARRATION_INITIAL_PAUSE,
         description="Initial pause duration (seconds) before the first phrase. "
         "Useful to show the first slide before narration starts.",
     )
     slide_pause: float = Field(
-        default=1.0,
+        default=ConfigDefaults.NARRATION_SLIDE_PAUSE,
         description="Pause duration (seconds) when transitioning between slides/sections. "
         "Set to 0 to disable.",
     )
     ending_pause: float = Field(
-        default=1.0,
+        default=ConfigDefaults.NARRATION_ENDING_PAUSE,
         description="Pause duration (seconds) after the last phrase ends. "
         "Keeps the final slide visible for viewers to absorb information.",
     )
     speaker_pause: float = Field(
-        default=0.5,
+        default=ConfigDefaults.NARRATION_SPEAKER_PAUSE,
         description="Pause duration (seconds) between speaker changes in dialogue mode. "
         "Set to 0 to disable.",
     )
@@ -131,10 +144,10 @@ class NarrationConfig(BaseModel):
 class LLMConfig(BaseModel):
     """LLM provider configuration."""
 
-    provider: str = Field(default="openrouter")
-    model: str = Field(default="openai/gpt-5.2")
+    provider: str = Field(default=ConfigDefaults.LLM_PROVIDER)
+    model: str = Field(default=ConfigDefaults.LLM_MODEL)
     base_url: str = Field(
-        default="https://openrouter.ai/api/v1",
+        default=ConfigDefaults.LLM_BASE_URL,
         description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
     )
 
@@ -144,19 +157,20 @@ class ContentConfig(BaseModel):
 
     llm: LLMConfig = Field(default_factory=LLMConfig)
     languages: list[str] = Field(
-        default=["ja"], description="Languages for content generation (e.g., ['ja', 'en'])"
+        default_factory=lambda: ConfigDefaults.CONTENT_LANGUAGES_DEFAULT.copy(),
+        description="Languages for content generation (e.g., ['ja', 'en'])",
     )
 
 
 class SlidesLLMConfig(BaseModel):
     """LLM configuration for slide generation."""
 
-    provider: str = Field(default="openrouter")
+    provider: str = Field(default=ConfigDefaults.SLIDES_LLM_PROVIDER)
     # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
-    model: str = Field(default="google/gemini-3-pro-image-preview")
+    model: str = Field(default=ConfigDefaults.SLIDES_LLM_MODEL)
     base_url: str = Field(
-        default="https://openrouter.ai/api/v1",
+        default=ConfigDefaults.SLIDES_LLM_BASE_URL,
         description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
     )
 
@@ -165,18 +179,24 @@ class SlidesConfig(BaseModel):
     """Slide generation configuration."""
 
     llm: SlidesLLMConfig = Field(default_factory=SlidesLLMConfig)
-    style: str = Field(default="presentation")
+    style: str = Field(default=ConfigDefaults.SLIDES_STYLE)
 
 
 class TransitionConfig(BaseModel):
     """Transition configuration for slide changes."""
 
     type: str = Field(
-        default="fade",
+        default=ConfigDefaults.TRANSITION_TYPE,
         description="Transition type: fade, slide, wipe, flip, clockWipe, none",
     )
-    duration_frames: int = Field(default=15, ge=1, description="Transition duration in frames")
-    timing: str = Field(default="linear", description="Timing function: linear, spring")
+    duration_frames: int = Field(
+        default=ConfigDefaults.TRANSITION_DURATION_FRAMES,
+        ge=ConfigDefaults.TRANSITION_DURATION_FRAMES_MIN,
+        description="Transition duration in frames",
+    )
+    timing: str = Field(
+        default=ConfigDefaults.TRANSITION_TIMING, description="Timing function: linear, spring"
+    )
 
     def model_post_init(self, __context: Any) -> None:
         """Validate transition type."""
@@ -201,7 +221,7 @@ class BackgroundConfig(BaseModel):
     type: Literal["image", "video"] = Field(description="Background type: image or video")
     path: str = Field(description="Path to background file (relative or absolute)")
     fit: Literal["cover", "contain", "fill"] = Field(
-        default="cover",
+        default=ConfigDefaults.BACKGROUND_FIT,
         description="How to fit background: cover (fill maintaining aspect), "
         "contain (fit inside), fill (stretch)",
     )
@@ -236,13 +256,21 @@ class BgmConfig(BaseModel):
 
     path: str = Field(description="Path to BGM audio file (relative or absolute)")
     volume: float = Field(
-        default=0.3,
-        ge=0.0,
-        le=1.0,
+        default=ConfigDefaults.BGM_VOLUME_DEFAULT,
+        ge=ConfigDefaults.BGM_VOLUME_MIN,
+        le=ConfigDefaults.BGM_VOLUME_MAX,
         description="BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)",
     )
-    fade_in_seconds: float = Field(default=2.0, ge=0.0, description="Fade-in duration in seconds")
-    fade_out_seconds: float = Field(default=2.0, ge=0.0, description="Fade-out duration in seconds")
+    fade_in_seconds: float = Field(
+        default=ConfigDefaults.BGM_FADE_IN_SECONDS,
+        ge=ConfigDefaults.BGM_FADE_IN_SECONDS_MIN,
+        description="Fade-in duration in seconds",
+    )
+    fade_out_seconds: float = Field(
+        default=ConfigDefaults.BGM_FADE_OUT_SECONDS,
+        ge=ConfigDefaults.BGM_FADE_OUT_SECONDS_MIN,
+        description="Fade-out duration in seconds",
+    )
     loop: bool = Field(default=True, description="Loop BGM if shorter than video duration")
 
     def model_post_init(self, __context: Any) -> None:
@@ -267,22 +295,22 @@ class BgmConfig(BaseModel):
 class VideoConfig(BaseModel):
     """Video rendering configuration."""
 
-    renderer: str = Field(default="remotion")
-    template: str = Field(default="default")
-    output_format: str = Field(default="mp4")
+    renderer: str = Field(default=ConfigDefaults.VIDEO_RENDERER)
+    template: str = Field(default=ConfigDefaults.VIDEO_TEMPLATE)
+    output_format: str = Field(default=ConfigDefaults.VIDEO_OUTPUT_FORMAT)
     transition: TransitionConfig = Field(default_factory=TransitionConfig)
     background: BackgroundConfig | None = Field(
         default=None, description="Optional background image/video for entire video"
     )
     bgm: BgmConfig | None = Field(default=None, description="Optional background music")
     render_concurrency: int = Field(
-        default=4,
-        ge=1,
+        default=ConfigDefaults.VIDEO_RENDER_CONCURRENCY,
+        ge=ConfigDefaults.VIDEO_RENDER_CONCURRENCY_MIN,
         description="Number of concurrent frames to render (higher = faster but more memory)",
     )
     render_timeout_seconds: int = Field(
-        default=300,
-        ge=1,
+        default=ConfigDefaults.VIDEO_RENDER_TIMEOUT,
+        ge=ConfigDefaults.VIDEO_RENDER_TIMEOUT_MIN,
         description="Timeout for Remotion delayRender calls in seconds",
     )
 
@@ -291,9 +319,17 @@ class PronunciationWord(BaseModel):
     """Pronunciation dictionary entry."""
 
     reading: str = Field(description="Katakana reading")
-    accent: int = Field(default=0, ge=0, description="Accent position (0=auto)")
-    word_type: str = Field(default="PROPER_NOUN")
-    priority: int = Field(default=10, ge=1, le=10)
+    accent: int = Field(
+        default=ConfigDefaults.PRONUNCIATION_ACCENT,
+        ge=ConfigDefaults.PRONUNCIATION_ACCENT_MIN,
+        description="Accent position (0=auto)",
+    )
+    word_type: str = Field(default=ConfigDefaults.PRONUNCIATION_WORD_TYPE)
+    priority: int = Field(
+        default=ConfigDefaults.PRONUNCIATION_PRIORITY_DEFAULT,
+        ge=ConfigDefaults.PRONUNCIATION_PRIORITY_MIN,
+        le=ConfigDefaults.PRONUNCIATION_PRIORITY_MAX,
+    )
 
 
 class PronunciationConfig(BaseModel):
@@ -310,8 +346,8 @@ class PersonaPoolConfig(BaseModel):
         description="Enable random persona selection from pool",
     )
     count: int = Field(
-        default=2,
-        ge=1,
+        default=ConfigDefaults.PERSONA_POOL_COUNT,
+        ge=ConfigDefaults.PERSONA_POOL_COUNT_MIN,
         description="Number of personas to randomly select from pool",
     )
     seed: int | None = Field(
@@ -323,8 +359,8 @@ class PersonaPoolConfig(BaseModel):
 class ProjectConfig(BaseModel):
     """Project-level configuration."""
 
-    name: str = Field(default="My YouTube Channel")
-    output_dir: str = Field(default="./output")
+    name: str = Field(default=ConfigDefaults.PROJECT_NAME)
+    output_dir: str = Field(default=ConfigDefaults.PROJECT_OUTPUT_DIR)
 
 
 class Config(BaseSettings):
@@ -419,119 +455,15 @@ def merge_configs(base: Config, override: Config) -> Config:
 def generate_default_config_yaml() -> str:
     """Generate default configuration as YAML with helpful comments.
 
+    Reads the default configuration from the bundled template file.
+
     Returns:
         YAML string with inline comments explaining each field.
     """
-    yaml_lines = [
-        "# Default configuration for movie-generator",
-        "",
-        "# Project settings",
-        "project:",
-        '  name: "My YouTube Channel"  # Your channel name',
-        '  output_dir: "./output"  # Directory for generated files',
-        "",
-        "# Video style settings",
-        "style:",
-        "  resolution: [1280, 720]  # Video resolution (width, height)",
-        "  fps: 30  # Frames per second",
-        "  crf: 28  # Video quality (0-51, lower = better quality, larger file)",
-        '  font_family: "Noto Sans JP"  # Font for text overlays',
-        '  primary_color: "#FFFFFF"  # Primary text color (hex)',
-        '  background_color: "#1a1a2e"  # Background color (hex)',
-        "",
-        "# Audio generation settings",
-        "audio:",
-        '  engine: "voicevox"  # Audio synthesis engine',
-        "  speaker_id: 3  # VOICEVOX speaker ID (3 = Zundamon)",
-        "  speed_scale: 1.0  # Speech speed multiplier (1.0 = normal)",
-        "  enable_furigana: true  # Auto-generate furigana using morphological analysis",
-        '  pronunciation_model: "openai/gpt-4o-mini"  # LLM model for pronunciation generation',
-        "",
-        "# Narration style settings",
-        "narration:",
-        '  character: "ずんだもん"  # Narrator character name (used when no personas defined)',
-        '  style: "casual"  # Narration style: casual, formal, educational',
-        "",
-        "# Persona configurations for multi-speaker dialogue",
-        "# Uncomment and configure for dialogue mode",
-        "# personas:",
-        '#   - id: "zundamon"',
-        '#     name: "ずんだもん"',
-        '#     character: "元気で明るい東北の妖精"',
-        "#     synthesizer:",
-        '#       engine: "voicevox"',
-        "#       speaker_id: 3",
-        "#       speed_scale: 1.0",
-        '#     subtitle_color: "#8FCF4F"',
-        '#     character_image: "assets/characters/zundamon/base.png"  # Base character image',
-        '#     character_position: "left"  # Position: left, right, center',
-        '#     mouth_open_image: "assets/characters/zundamon/mouth_open.png"  # For lip sync',
-        '#     eye_close_image: "assets/characters/zundamon/eye_close.png"  # For blinking',
-        '#     animation_style: "sway"  # Animation style: bounce, sway, static',
-        '#   - id: "metan"',
-        '#     name: "四国めたん"',
-        '#     character: "優しくて落ち着いた四国の妖精"',
-        "#     synthesizer:",
-        '#       engine: "voicevox"',
-        "#       speaker_id: 2",
-        "#       speed_scale: 1.0",
-        '#     subtitle_color: "#FF69B4"',
-        '#     character_image: "assets/characters/metan/base.png"',
-        '#     character_position: "right"',
-        "",
-        "# Content generation settings",
-        "content:",
-        "  llm:",
-        '    provider: "openrouter"  # LLM provider for script generation',
-        '    model: "openai/gpt-5.2"  # Model to use for content generation',
-        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
-        '  languages: ["ja"]  # Languages for content generation (e.g., ["ja", "en"])',
-        "",
-        "# Slide generation settings",
-        "slides:",
-        "  llm:",
-        '    provider: "openrouter"  # LLM provider for slide generation',
-        '    model: "google/gemini-3-pro-image-preview"  # Model for slide images',
-        '    base_url: "https://openrouter.ai/api/v1"  # LLM API base URL (e.g., proxy or local endpoint)',
-        '  style: "presentation"  # Slide style: presentation, illustration, minimal',
-        "",
-        "# Video rendering settings",
-        "video:",
-        '  renderer: "remotion"  # Video rendering engine',
-        '  template: "default"  # Video template to use',
-        '  output_format: "mp4"  # Output video format',
-        "  render_concurrency: 4  # Number of concurrent frames to render (higher = faster but more memory)",
-        "  render_timeout_seconds: 300  # Timeout for Remotion delayRender calls in seconds",
-        "  transition:",
-        '    type: "fade"  # Transition type: fade, slide, wipe, flip, clockWipe, none',
-        "    duration_frames: 15  # Transition duration in frames (0.5s at 30fps)",
-        '    timing: "linear"  # Timing function: linear, spring',
-        "  background:",
-        '    type: "video"  # Background type: image or video',
-        '    path: "assets/backgrounds/default-background.mp4"  # Path to background file',
-        '    fit: "cover"  # How to fit: cover (fill), contain (fit inside), fill (stretch)',
-        "  bgm:",
-        '    path: "assets/bgm/default-bgm.mp3"  # Path to background music file',
-        "    volume: 0.3  # BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)",
-        "    fade_in_seconds: 2.0  # Fade-in duration in seconds",
-        "    fade_out_seconds: 2.0  # Fade-out duration in seconds",
-        "    loop: true  # Loop BGM if shorter than video duration",
-        "",
-        "# Pronunciation dictionary for proper nouns and technical terms",
-        "pronunciation:",
-        "  custom:",
-        '    "Bubble Tea":',
-        '      reading: "バブルティー"  # Katakana reading',
-        "      accent: 5  # Accent position (0 = auto)",
-        '      word_type: "PROPER_NOUN"  # Word type',
-        "      priority: 10  # Priority (1-10, higher = more important)",
-        '    "Ratatui":',
-        '      reading: "ラタトゥイ"',
-        "      accent: 4",
-        '      word_type: "PROPER_NOUN"',
-        "      priority: 10",
-    ]
-    return "\n".join(yaml_lines)
+    # Load template from package resources
+    template_pkg = importlib.resources.files("movie_generator.templates")
+    template_file = template_pkg / "default_config.yaml"
+    return template_file.read_text(encoding="utf-8")
 
 
 def write_config_to_file(output_path: Path, overwrite: bool = False) -> None:
@@ -548,8 +480,9 @@ def write_config_to_file(output_path: Path, overwrite: bool = False) -> None:
     if output_path.exists() and not overwrite:
         raise FileExistsError(f"File already exists: {output_path}")
 
-    # Ensure parent directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Check that parent directory exists
+    if not output_path.parent.exists():
+        raise OSError(f"Directory does not exist: {output_path.parent}")
 
     # Write config
     config_yaml = generate_default_config_yaml()
@@ -677,7 +610,8 @@ def validate_config(config_path: Path) -> ValidationResult:
 
             if not img_path.exists():
                 result.add_error(
-                    f"Character image not found for persona '{persona.id}': {persona.character_image}"
+                    f"Character image not found for persona '{persona.id}': "
+                    f"{persona.character_image}"
                 )
 
         if persona.mouth_open_image:
@@ -687,7 +621,8 @@ def validate_config(config_path: Path) -> ValidationResult:
 
             if not img_path.exists():
                 result.add_warning(
-                    f"Mouth open image not found for persona '{persona.id}': {persona.mouth_open_image}"
+                    f"Mouth open image not found for persona '{persona.id}': "
+                    f"{persona.mouth_open_image}"
                 )
 
         if persona.eye_close_image:
@@ -697,7 +632,8 @@ def validate_config(config_path: Path) -> ValidationResult:
 
             if not img_path.exists():
                 result.add_warning(
-                    f"Eye close image not found for persona '{persona.id}': {persona.eye_close_image}"
+                    f"Eye close image not found for persona '{persona.id}': "
+                    f"{persona.eye_close_image}"
                 )
 
     # Step 4: Persona ID uniqueness (already checked by Pydantic, but we verify here too)

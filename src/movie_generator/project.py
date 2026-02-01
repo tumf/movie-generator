@@ -225,10 +225,10 @@ class Project:
 
         Args:
             source_root: Root directory containing assets/ folder.
-                        Defaults to current working directory.
+                        Defaults to project root (respects DOCKER_ENV/PROJECT_ROOT).
         """
         if source_root is None:
-            source_root = Path.cwd()
+            source_root = ProjectPaths.get_project_root()
 
         source_characters = source_root / "assets" / "characters"
         if not source_characters.exists():

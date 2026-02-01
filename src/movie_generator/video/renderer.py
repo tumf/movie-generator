@@ -51,6 +51,49 @@ class CompositionData(BaseModel):
     transition: dict[str, Any] | None = None
 
 
+class CompositionConfig(BaseModel):
+    """Configuration for building composition.json.
+
+    This class consolidates all inputs needed to generate composition data,
+    centralizing default handling and backward compatibility logic.
+    """
+
+    # Required data
+    phrases: list[Phrase]
+    audio_paths: list[Path]
+    slide_paths: list[Path] | None = None
+
+    # Basic configuration
+    project_name: str = "video"
+    fps: int = 30
+    resolution: tuple[int, int] = (1280, 720)
+
+    # Optional features
+    transition: dict[str, Any] | None = None
+    personas: list[dict[str, Any]] | None = None
+    background: dict[str, Any] | None = None
+    bgm: dict[str, Any] | None = None
+    section_backgrounds: dict[int, dict[str, Any]] | None = None
+
+
+class RenderConfig(BaseModel):
+    """Configuration for Remotion video rendering execution.
+
+    This class consolidates rendering-specific parameters to reduce
+    function call complexity and improve maintainability.
+    """
+
+    # Rendering paths
+    output_path: Path
+    remotion_root: Path
+
+    # Rendering behavior
+    show_progress: bool = False
+    crf: int = 28  # Constant Rate Factor (0-51, lower = higher quality)
+    render_concurrency: int = 4
+    render_timeout_seconds: int = 300
+
+
 def create_composition(
     title: str,
     phrases: list[Phrase],

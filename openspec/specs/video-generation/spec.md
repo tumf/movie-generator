@@ -331,6 +331,8 @@ The system SHALL render subtitles with a fixed width of 80% of the video width t
 
 The system SHALL extract image information from blog HTML content for potential reuse as slide materials.
 
+The implementation SHALL split extraction into testable steps (collection, normalization, resolution, filtering) while preserving behavior.
+
 #### Scenario: Successful Image Extraction
 - **WHEN** HTML content is parsed
 - **THEN** all `<img>` elements are extracted

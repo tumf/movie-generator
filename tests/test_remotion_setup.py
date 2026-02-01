@@ -3,7 +3,7 @@
 import json
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 from subprocess import CalledProcessError
 
 import pytest
@@ -12,6 +12,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from movie_generator.project import Project
+from movie_generator.video.remotion_renderer import (
+    ensure_chrome_headless_shell,
+    ensure_pnpm_dependencies,
+    ensure_rendering_environment,
+)
 
 
 class TestRemotionSetupStages:
@@ -367,3 +372,147 @@ class TestRemotionSetupStages:
         # Execute and verify error message includes stage information
         with pytest.raises(RuntimeError, match="Remotion initialization failed"):
             mock_project.setup_remotion_project()
+
+
+class TestRenderingEnvironmentSetup:
+    """Test centralized rendering environment setup functions."""
+
+    @pytest.fixture
+    def remotion_root(self, tmp_path):
+        """Create a temporary Remotion root directory."""
+        remotion_dir = tmp_path / "remotion"
+        remotion_dir.mkdir()
+        return remotion_dir
+
+    @patch("movie_generator.video.remotion_renderer.subprocess.run")
+    def test_ensure_pnpm_dependencies_already_installed(self, mock_run, remotion_root):
+        """Test pnpm dependency check when node_modules already exists."""
+        # Create node_modules directory
+        (remotion_root / "node_modules").mkdir()
+
+        # Execute check
+        ensure_pnpm_dependencies(remotion_root)
+
+        # Verify pnpm install was NOT called
+        mock_run.assert_not_called()
+
+    @patch("movie_generator.video.remotion_renderer.subprocess.run")
+    def test_ensure_pnpm_dependencies_install_needed(self, mock_run, remotion_root):
+        """Test pnpm dependency installation when node_modules doesn't exist."""
+        # Mock successful pnpm install
+        mock_run.return_value = Mock(returncode=0, stderr="")
+
+        # Execute installation
+        ensure_pnpm_dependencies(remotion_root)
+
+        # Verify pnpm install was called
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        assert call_args[0][0] == ["pnpm", "install"]
+        assert call_args[1]["cwd"] == remotion_root
+
+    @patch("movie_generator.video.remotion_renderer.subprocess.run")
+    def test_ensure_pnpm_dependencies_install_failure(self, mock_run, remotion_root):
+        """Test pnpm dependency installation failure."""
+        # Mock pnpm install failure
+        mock_run.side_effect = CalledProcessError(1, ["pnpm", "install"], stderr="install failed")
+
+        # Execute and verify error
+        from movie_generator.exceptions import RenderingError
+
+        with pytest.raises(RenderingError, match="pnpm install failed"):
+            ensure_pnpm_dependencies(remotion_root)
+
+    @patch("movie_generator.video.remotion_renderer.ProjectPaths")
+    def test_ensure_chrome_headless_shell_already_exists(self, mock_paths, remotion_root):
+        """Test Chrome Headless Shell check when already downloaded."""
+        # Create browser path
+        browser_path = remotion_root / "node_modules" / ".remotion" / "chrome-headless-shell"
+        browser_path.parent.mkdir(parents=True)
+        browser_path.mkdir()
+
+        # Execute check
+        ensure_chrome_headless_shell(remotion_root)
+
+        # Verify no download was attempted (function returns early)
+        # If no exception is raised, the test passes
+
+    @patch("shutil.move")
+    @patch("movie_generator.video.remotion_renderer.subprocess.run")
+    @patch("movie_generator.video.remotion_renderer.ProjectPaths")
+    def test_ensure_chrome_headless_shell_download(
+        self, mock_paths, mock_run, mock_shutil_move, remotion_root, tmp_path
+    ):
+        """Test Chrome Headless Shell download process."""
+        # Mock project root
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        mock_paths.get_project_root.return_value = project_root
+
+        # Create fake browser directory that will be "downloaded"
+        temp_download_dir = project_root / ".cache" / "remotion" / "_temp_download"
+        temp_download_dir.mkdir(parents=True)
+        temp_browser = temp_download_dir / "node_modules" / ".remotion" / "chrome-headless-shell"
+        temp_browser.parent.mkdir(parents=True)
+        temp_browser.mkdir()
+
+        # Mock subprocess success
+        mock_run.return_value = Mock(returncode=0, stderr="")
+
+        # Mock shutil.move
+        def move_side_effect(src, dst):
+            # Create destination directory to simulate move
+            Path(dst).mkdir(parents=True)
+
+        mock_shutil_move.side_effect = move_side_effect
+
+        # Execute download
+        ensure_chrome_headless_shell(remotion_root)
+
+        # Verify download commands were called
+        assert mock_run.call_count >= 2  # pnpm install + remotion browser ensure
+
+    @patch("movie_generator.video.remotion_renderer.ensure_pnpm_dependencies")
+    @patch("movie_generator.video.remotion_renderer.ensure_chrome_headless_shell")
+    @patch("movie_generator.video.remotion_renderer.ProjectPaths")
+    def test_ensure_rendering_environment_full_setup(
+        self, mock_paths, mock_chrome, mock_pnpm, remotion_root, tmp_path
+    ):
+        """Test full rendering environment setup with all components."""
+        # Mock project root and assets directory
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        assets_dir = project_root / "assets"
+        assets_dir.mkdir()
+        mock_paths.get_docker_project_root.return_value = project_root
+
+        # Execute full environment setup
+        ensure_rendering_environment(remotion_root)
+
+        # Verify all setup functions were called
+        mock_pnpm.assert_called_once_with(remotion_root)
+        mock_chrome.assert_called_once_with(remotion_root)
+
+        # Verify assets symlink was created
+        job_dir = remotion_root.parent
+        assets_symlink = job_dir / "assets"
+        assert assets_symlink.exists() or assets_symlink.is_symlink()
+
+    @patch("movie_generator.video.remotion_renderer.ensure_pnpm_dependencies")
+    @patch("movie_generator.video.remotion_renderer.ensure_chrome_headless_shell")
+    @patch("movie_generator.video.remotion_renderer.ProjectPaths")
+    def test_ensure_rendering_environment_assets_already_exist(
+        self, mock_paths, mock_chrome, mock_pnpm, remotion_root, tmp_path
+    ):
+        """Test environment setup when assets symlink already exists."""
+        # Create existing assets symlink
+        job_dir = remotion_root.parent
+        assets_symlink = job_dir / "assets"
+        assets_symlink.mkdir()
+
+        # Execute environment setup
+        ensure_rendering_environment(remotion_root)
+
+        # Verify setup functions were called but no new symlink created
+        mock_pnpm.assert_called_once()
+        mock_chrome.assert_called_once()

@@ -40,6 +40,7 @@ from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
 from .utils.scene_range import parse_scene_range
 from .video.remotion_renderer import render_video_with_remotion
+from .video.renderer import CompositionConfig, RenderConfig
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -136,17 +137,21 @@ def _fetch_and_generate_script(
         progress.update(task, completed=True)
         console.print(f"✓ Fetched: {parsed.metadata.title}")
 
-    # Prepare images metadata
+    # Prepare images metadata (filter to candidates only)
     images_metadata = None
     if parsed.images:
+        candidate_images = [img for img in parsed.images if img.is_candidate]
         images_metadata = [
             img.model_dump(
                 include={"src", "alt", "title", "aria_describedby"},
                 exclude_none=True,
             )
-            for img in parsed.images
+            for img in candidate_images
         ]
-        console.print(f"  Found {len(parsed.images)} usable images in content")
+        console.print(
+            f"  Found {len(candidate_images)} candidate images "
+            f"({len(parsed.images)} total) in content"
+        )
 
     task = progress.add_task("Generating script...", total=None)
 
@@ -286,6 +291,14 @@ def generate(
     if quiet:
         console.quiet = True  # type: ignore
 
+    # Configure logging level
+    if verbose:
+        import logging
+
+        logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+        logger = logging.getLogger("movie_generator")
+        logger.setLevel(logging.DEBUG)
+
     # Load configuration
     cfg = load_config(config) if config else Config()
 
@@ -309,6 +322,7 @@ def generate(
         url_or_script=url_or_script,
         config=cfg,
         output_dir=output_dir,
+        output_dir_explicit=output is not None,  # Track if --output was explicitly specified
         api_key=api_key,
         mcp_config=mcp_config,
         scenes=scenes,
@@ -316,6 +330,10 @@ def generate(
         persona_pool_count=persona_pool_count,
         persona_pool_seed=persona_pool_seed,
         strict=strict,
+        force=force,
+        quiet=quiet,
+        verbose=verbose,
+        dry_run=dry_run,
     )
 
     with Progress(
@@ -378,7 +396,7 @@ def script() -> None:
     "--output",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for script.yaml (default: current directory)",
+    help="Output directory for script.yaml (default: ./output)",
 )
 @click.option(
     "--config",
@@ -451,7 +469,7 @@ def create(
     if model:
         cfg.content.llm.model = model
 
-    output_dir = Path(output) if output else Path.cwd()
+    output_dir = Path(output) if output else Path("output")
     script_path = output_dir / "script.yaml"
 
     # Check for existing script file
@@ -1486,24 +1504,32 @@ def render_video_cmd(
                 for p in cfg.personas
             ]
 
-        render_video_with_remotion(
+        composition_config = CompositionConfig(
             phrases=all_phrases,
             audio_paths=audio_paths,
             slide_paths=slide_paths,
-            output_path=video_path,
-            remotion_root=remotion_dir,
             project_name=project_name,
-            show_progress=show_progress,
+            fps=cfg.style.fps,
+            resolution=cfg.style.resolution,
             transition=transition_config,
             personas=personas_for_render,
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+        )
+
+        render_config = RenderConfig(
+            output_path=video_path,
+            remotion_root=remotion_dir,
+            show_progress=show_progress,
             crf=cfg.style.crf,
             render_concurrency=cfg.video.render_concurrency,
             render_timeout_seconds=cfg.video.render_timeout_seconds,
-            fps=cfg.style.fps,
-            resolution=cfg.style.resolution,
+        )
+
+        render_video_with_remotion(
+            composition_config=composition_config,
+            render_config=render_config,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")

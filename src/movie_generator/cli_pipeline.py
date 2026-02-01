@@ -27,6 +27,7 @@ from .script.phrases import Phrase, calculate_phrase_timings
 from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
 from .video.remotion_renderer import render_video_with_remotion
+from .video.renderer import CompositionConfig, RenderConfig
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 class PipelineParams:
     """Parameters passed between pipeline stages."""
 
-    # Input parameters
+    # Input parameters (required)
     url_or_script: str | None
     config: Config
     output_dir: Path
@@ -46,6 +47,12 @@ class PipelineParams:
     persona_pool_count: int | None
     persona_pool_seed: int | None
     strict: bool
+    # Input parameters (optional with defaults)
+    output_dir_explicit: bool = False  # True if --output was explicitly specified
+    force: bool = False
+    quiet: bool = False
+    verbose: bool = False
+    dry_run: bool = False
 
     # Working data (populated during pipeline execution)
     script_path: Path | None = None
@@ -168,7 +175,9 @@ def stage_script_resolution(
         potential_script = Path(params.url_or_script)
         if potential_script.exists() and potential_script.suffix in [".yaml", ".yml"]:
             script_path_input = potential_script
-            params.output_dir = potential_script.parent
+            # Only override output_dir if --output was not explicitly specified
+            if not params.output_dir_explicit:
+                params.output_dir = potential_script.parent
         else:
             url = params.url_or_script
 
@@ -184,8 +193,11 @@ def stage_script_resolution(
             params.language_id = potential_lang
 
     # Load existing script or generate new one
-    if params.script_path.exists():
+    if params.script_path.exists() and not params.force:
         console.print(f"[yellow]⊙ Script already exists, loading: {params.script_path}[/yellow]")
+        if params.dry_run:
+            console.print("[dim]  (dry-run: would load existing script)[/dim]")
+            # Still need to load for dry-run to show what happens next
         try:
             with open(params.script_path, encoding="utf-8") as f:
                 script_dict = yaml.safe_load(f)
@@ -249,39 +261,72 @@ def stage_script_resolution(
                 input_info=str(params.script_path),
             )
     else:
-        # Need URL to generate new script
+        # Generate new script if it doesn't exist or --force is specified
+        # Force regeneration or no existing script
+        if params.force and params.script_path.exists():
+            console.print("[yellow]⊙ Script exists but --force specified, will regenerate[/yellow]")
+
+        # Need URL to generate script
         if not url:
-            raise PipelineError(
-                stage="script_resolution",
-                message="No script.yaml found and no URL provided. "
-                "Please provide a URL or path to existing script.yaml",
-                input_info=None,
-            )
+            if params.force:
+                raise PipelineError(
+                    stage="script_resolution",
+                    message="--force specified but no URL provided to regenerate script",
+                    input_info=None,
+                )
+            else:
+                raise PipelineError(
+                    stage="script_resolution",
+                    message="No script.yaml found and no URL provided. "
+                    "Please provide a URL or path to existing script.yaml",
+                    input_info=None,
+                )
 
         console.print(f"[bold]Generating video from URL:[/bold] {url}")
+        if params.dry_run:
+            console.print("[dim]  (dry-run: would fetch content and generate script)[/dim]")
+            # For dry-run, create a minimal script to continue pipeline
+            dummy_script = VideoScript(
+                title="[Dry-run] Sample Script",
+                description="This is a placeholder for dry-run mode",
+                sections=[
+                    ScriptSection(
+                        title="Sample Section",
+                        narrations=[Narration(text="Sample narration", reading="Sample narration")],
+                        slide_prompt="Sample slide",
+                    )
+                ],
+            )
+            return dummy_script
 
         # Fetch content
         parsed = _fetch_content_from_url(url, params.mcp_config, progress, console)
 
-        # Prepare images metadata
+        # Prepare images metadata (filter to candidates only)
         images_metadata = None
         if parsed.images:
+            candidate_images = [img for img in parsed.images if img.is_candidate]
             images_metadata = [
                 img.model_dump(
                     include={"src", "alt", "title", "aria_describedby"},
                     exclude_none=True,
                 )
-                for img in parsed.images
+                for img in candidate_images
             ]
-            console.print(f"  Found {len(parsed.images)} usable images in content")
+            console.print(
+                f"  Found {len(candidate_images)} candidate images "
+                f"({len(parsed.images)} total) in content"
+            )
 
         # Generate script
         task = progress.add_task("Generating script...", total=None)
 
         try:
             # Prepare personas if defined
+            # - For 1 persona: enables persona_id assignment in single-speaker mode
+            # - For 2+ personas: enables multi-speaker dialogue mode
             personas_for_script = None
-            if params.config.personas:
+            if params.config.personas and len(params.config.personas) >= 1:
                 personas_for_script = [
                     p.model_dump(include={"id", "name", "character"})
                     for p in params.config.personas
@@ -406,7 +451,8 @@ def stage_audio_generation(
             else:
                 raise PipelineError(
                     stage="audio_generation",
-                    message="No phrases found in script. Please check that sections have narrations.",
+                    message="No phrases found in script. "
+                    "Please check that sections have narrations.",
                     input_info=str(params.script_path),
                 )
 
@@ -426,6 +472,12 @@ def stage_audio_generation(
     try:
         audio_dir = params.output_dir / "audio"
         audio_dir.mkdir(parents=True, exist_ok=True)
+
+        if params.dry_run:
+            console.print(f"[dim]  (dry-run: would generate {len(all_phrases)} audio files)[/dim]")
+            progress.update(task, completed=True)
+            # Return empty paths for dry-run
+            return all_phrases, []
 
         # Check if multi-speaker mode is enabled
         has_personas = hasattr(params.config, "personas") and len(params.config.personas) > 0
@@ -676,6 +728,11 @@ def stage_slides_generation(
         slide_dir = params.output_dir / "slides"
         slide_dir.mkdir(parents=True, exist_ok=True)
 
+        if params.dry_run:
+            console.print(f"[dim]  (dry-run: would generate {len(slide_prompts)} slides)[/dim]")
+            progress.update(task, completed=True)
+            return []
+
         # Count existing slides
         lang_slide_dir = slide_dir / params.language_id
         existing_slide_count = sum(
@@ -778,6 +835,10 @@ def stage_video_rendering(
     else:
         video_path = params.output_dir / f"output_{params.language_id}.mp4"
 
+    if params.dry_run:
+        console.print(f"[dim]  (dry-run: would render video to {video_path})[/dim]")
+        return video_path
+
     # Create/load project
     project_name = params.output_dir.name
     project = Project(project_name, params.output_dir.parent)
@@ -850,24 +911,32 @@ def stage_video_rendering(
                 for p in params.config.personas
             ]
 
-        render_video_with_remotion(
+        composition_config = CompositionConfig(
             phrases=all_phrases,
             audio_paths=audio_paths,
             slide_paths=slide_paths,
-            output_path=video_path,
-            remotion_root=remotion_dir,
             project_name=project_name,
-            show_progress=params.show_progress,
+            fps=params.config.style.fps,
+            resolution=params.config.style.resolution,
             transition=transition_config,
             personas=personas_for_render,
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+        )
+
+        render_config = RenderConfig(
+            output_path=video_path,
+            remotion_root=remotion_dir,
+            show_progress=params.show_progress,
             crf=params.config.style.crf,
-            fps=params.config.style.fps,
-            resolution=params.config.style.resolution,
             render_concurrency=params.config.video.render_concurrency,
             render_timeout_seconds=params.config.video.render_timeout_seconds,
+        )
+
+        render_video_with_remotion(
+            composition_config=composition_config,
+            render_config=render_config,
         )
 
         progress.update(task, completed=True)
