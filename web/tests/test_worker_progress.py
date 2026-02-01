@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from web.worker.main import MovieGeneratorWrapper
+from worker.generator import MovieGeneratorWrapper
+from worker.settings import WorkerSettings
 
 
 class TestProgressMonitoring:
@@ -20,7 +21,8 @@ class TestProgressMonitoring:
     @pytest.fixture
     def wrapper(self, temp_job_dir: Path) -> MovieGeneratorWrapper:
         """Create MovieGeneratorWrapper instance."""
-        return MovieGeneratorWrapper(job_data_dir=temp_job_dir.parent)
+        config = WorkerSettings()
+        return MovieGeneratorWrapper(job_data_dir=temp_job_dir.parent, config=config)
 
     def test_count_script_items(self, wrapper: MovieGeneratorWrapper, tmp_path: Path) -> None:
         """Test counting phrases and slides from script.yaml."""
