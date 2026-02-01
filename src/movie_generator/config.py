@@ -445,8 +445,9 @@ def write_config_to_file(output_path: Path, overwrite: bool = False) -> None:
     if output_path.exists() and not overwrite:
         raise FileExistsError(f"File already exists: {output_path}")
 
-    # Ensure parent directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Check that parent directory exists
+    if not output_path.parent.exists():
+        raise OSError(f"Directory does not exist: {output_path.parent}")
 
     # Write config
     config_yaml = generate_default_config_yaml()

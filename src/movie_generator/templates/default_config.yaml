@@ -81,27 +81,30 @@ video:
     type: "fade"  # Transition type: fade, slide, wipe, flip, clockWipe, none
     duration_frames: 15  # Transition duration in frames (0.5s at 30fps)
     timing: "linear"  # Timing function: linear, spring
-  background:
-    type: "video"  # Background type: image or video
-    path: "assets/backgrounds/default-background.mp4"  # Path to background file
-    fit: "cover"  # How to fit: cover (fill), contain (fit inside), fill (stretch)
-  bgm:
-    path: "assets/bgm/default-bgm.mp3"  # Path to background music file
-    volume: 0.3  # BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)
-    fade_in_seconds: 2.0  # Fade-in duration in seconds
-    fade_out_seconds: 2.0  # Fade-out duration in seconds
-    loop: true  # Loop BGM if shorter than video duration
+  # Optional background image/video for entire video
+  # background:
+  #   type: "video"  # Background type: image or video
+  #   path: "assets/backgrounds/default-background.mp4"  # Path to background file
+  #   fit: "cover"  # How to fit: cover (fill), contain (fit inside), fill (stretch)
+  # Optional background music
+  # bgm:
+  #   path: "assets/bgm/default-bgm.mp3"  # Path to background music file
+  #   volume: 0.3  # BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)
+  #   fade_in_seconds: 2.0  # Fade-in duration in seconds
+  #   fade_out_seconds: 2.0  # Fade-out duration in seconds
+  #   loop: true  # Loop BGM if shorter than video duration
 
 # Pronunciation dictionary for proper nouns and technical terms
 pronunciation:
-  custom:
-    "Bubble Tea":
-      reading: "バブルティー"  # Katakana reading
-      accent: 5  # Accent position (0 = auto)
-      word_type: "PROPER_NOUN"  # Word type
-      priority: 10  # Priority (1-10, higher = more important)
-    "Ratatui":
-      reading: "ラタトゥイ"
-      accent: 4
-      word_type: "PROPER_NOUN"
-      priority: 10
+  custom: {}  # Add custom pronunciations here
+  # Example:
+  # "Bubble Tea":
+  #   reading: "バブルティー"  # Katakana reading
+  #   accent: 5  # Accent position (0 = auto)
+  #   word_type: "PROPER_NOUN"  # Word type
+  #   priority: 10  # Priority (1-10, higher = more important)
+  # "Ratatui":
+  #   reading: "ラタトゥイ"
+  #   accent: 4
+  #   word_type: "PROPER_NOUN"
+  #   priority: 10
