@@ -10,6 +10,7 @@ import httpx
 from pydantic import BaseModel
 
 from ..constants import TimeoutConstants
+from .phrases import split_into_phrases
 
 
 class Narration(BaseModel):
@@ -844,7 +845,8 @@ def _build_prompt(
     Returns:
         Formatted prompt string.
     """
-    if personas:
+    if personas and len(personas) >= 2:
+        # Multi-speaker dialogue mode: use dialogue prompt
         prompt_template = SCRIPT_GENERATION_PROMPTS_DIALOGUE.get(
             language, SCRIPT_GENERATION_PROMPT_DIALOGUE_JA
         )
@@ -863,6 +865,7 @@ def _build_prompt(
             images_section=images_section,
         )
     else:
+        # Single-speaker mode: use traditional single-speaker prompt
         prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
         prompt = prompt_template.format(
             character=character,
@@ -936,13 +939,17 @@ def _parse_script_response(
                 )
         elif "narration" in section:
             # Legacy single narration format (backward compatibility)
-            narrations.append(
-                Narration(
-                    text=section["narration"],
-                    reading=section["narration"],
-                    persona_id=default_persona_id,
+            # Split into phrases per spec requirement
+            narration_text = section["narration"]
+            phrases = split_into_phrases(narration_text)
+            for phrase in phrases:
+                narrations.append(
+                    Narration(
+                        text=phrase.text,
+                        reading=phrase.text,  # Use phrase text as reading
+                        persona_id=default_persona_id,
+                    )
                 )
-            )
 
         sections.append(
             ScriptSection(
