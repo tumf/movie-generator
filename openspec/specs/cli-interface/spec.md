@@ -85,6 +85,8 @@ The command SHALL accept the following options:
 - `--language, -l <lang>`: Language for slides (default: "ja")
 - `--max-concurrent <n>`: Maximum concurrent API requests (default: 2)
 
+The implementation SHALL separate task planning (which slides to generate/skip) from task execution for maintainability.
+
 #### Scenario: Generate slides from script
 - **GIVEN** a valid `script.yaml` file with slide prompts
 - **WHEN** user runs `movie-generator slides generate ./output/script.yaml`
