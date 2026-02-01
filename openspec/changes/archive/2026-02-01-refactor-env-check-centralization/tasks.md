@@ -6,3 +6,6 @@
 
 ## 3. Verification
 - [x] 3.1 全テストが通る（検証: `uv run pytest`）
+
+## Acceptance #1 Failure Follow-up
+- [x] src/movie_generator/project.py:222-231 uses Path.cwd() as the default project root in copy_character_assets(); src/movie_generator/cli.py:1460 and src/movie_generator/cli_pipeline.py:797 call copy_character_assets() without ProjectPaths.get_project_root(), so DOCKER_ENV/PROJECT_ROOT centralization is bypassed
