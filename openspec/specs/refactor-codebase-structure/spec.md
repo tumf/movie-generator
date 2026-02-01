@@ -1,75 +1,76 @@
-# Change: Codebase Structure Refactoring
+# Codebase Structure Refactoring
 
-<!-- Original Japanese proposal: openspec-archive/changes/refactor-codebase-structure/proposal.md -->
+## Purpose
 
-## Why
+Refactor the Movie Generator codebase to improve maintainability, testability, and code reusability by eliminating code duplication, reducing function complexity, standardizing error handling, consolidating constants, and enhancing type safety.
+## Requirements
+### Requirement: Utility Module Organization
+The system SHALL provide reusable utility modules for common operations including file system operations, retry logic, subprocess execution, and text processing.
 
-Analysis of the entire codebase identified the following issues:
+#### Scenario: File system utilities are available
+- **WHEN** code needs to check file existence or perform path operations
+- **THEN** utilities from `src/movie_generator/utils/filesystem.py` SHALL be used
 
-1. **Code Duplication** - File existence checks, retry logic, and subprocess execution patterns are duplicated across multiple locations
-2. **Overly Long Functions** - `cli.py::generate()` is 409 lines with excessive responsibilities
-3. **Inconsistent Error Handling** - Bare except clauses, mixed exception types
-4. **Magic Numbers/Strings** - FPS value 30, directory names, etc. are hardcoded
-5. **Lack of Type Safety** - 9 instances of `type: ignore`, absence of TypedDict
+#### Scenario: Retry logic is standardized
+- **WHEN** code needs to retry operations
+- **THEN** utilities from `src/movie_generator/utils/retry.py` SHALL be used with exponential backoff
 
-These issues impact maintainability, testability, and code reusability.
+#### Scenario: Subprocess execution is standardized
+- **WHEN** code needs to execute external commands
+- **THEN** utilities from `src/movie_generator/utils/subprocess.py` SHALL be used
 
-## What Changes
+### Requirement: Constants Consolidation
+The system SHALL define all magic numbers and strings as named constants in a centralized location.
 
-### Phase 1: Create Utility Modules
-- New `src/movie_generator/utils/` package
-  - `filesystem.py` - File existence checks, path operations
-  - `retry.py` - Retry logic with exponential backoff
-  - `subprocess.py` - Subprocess execution helpers
-  - `text.py` - Text processing utilities
+#### Scenario: Video constants are centralized
+- **WHEN** code needs FPS or resolution values
+- **THEN** constants from `VideoConstants` in `src/movie_generator/constants.py` SHALL be used
 
-### Phase 2: Consolidate Constants
-- New `src/movie_generator/constants.py`
-  - `VideoConstants` - FPS, resolution
-  - `FileExtensions` - Supported file extensions
-  - `ProjectPaths` - Standard directory names
-  - `RetryConfig` - Retry parameters
+#### Scenario: Project paths are standardized
+- **WHEN** code needs to reference standard directory names
+- **THEN** constants from `ProjectPaths` SHALL be used
 
-### Phase 3: Organize Exception Hierarchy
-- New `src/movie_generator/exceptions.py`
-  - `MovieGeneratorError` - Base exception
-  - `ConfigurationError` - Configuration-related errors
-  - `RenderingError` - Rendering errors
-  - `MCPError` - MCP communication errors
+### Requirement: Exception Hierarchy
+The system SHALL provide a structured exception hierarchy for clear error categorization and handling.
 
-### Phase 4: Split CLI Functions
-- Split `cli.py::generate()` into smaller functions
-- Split `cli.py::parse_scene_range()` into sub-functions
+#### Scenario: Base exception is available
+- **WHEN** raising Movie Generator-specific errors
+- **THEN** exceptions SHALL inherit from `MovieGeneratorError` base class
 
-### Phase 5: Remove Dead Code
-- Remove unreachable code in `video/remotion_renderer.py:109-122`
-- Remove unused functions or add warnings
+#### Scenario: Configuration errors are distinct
+- **WHEN** configuration-related errors occur
+- **THEN** `ConfigurationError` SHALL be raised
 
-### Phase 6: Improve Type Safety
-- Introduce TypedDict (CompositionData, PhraseDict)
-- Reduce `type: ignore` annotations
+#### Scenario: Rendering errors are distinct
+- **WHEN** rendering operations fail
+- **THEN** `RenderingError` SHALL be raised
 
-## Impact
+### Requirement: Function Decomposition
+The system SHALL decompose overly long functions into smaller, focused functions with single responsibilities.
 
-- Affected specs: None (internal refactoring only)
-- Affected code:
-  - `src/movie_generator/cli.py`
-  - `src/movie_generator/slides/generator.py`
-  - `src/movie_generator/audio/voicevox.py`
-  - `src/movie_generator/video/remotion_renderer.py`
-  - `src/movie_generator/project.py`
-  - `src/movie_generator/assets/downloader.py`
-  - `src/movie_generator/mcp/client.py`
+#### Scenario: CLI generate function is decomposed
+- **WHEN** the generate command is executed
+- **THEN** implementation SHALL use multiple focused functions instead of a single 400+ line function
 
-## Risk
+#### Scenario: Scene range parsing is decomposed
+- **WHEN** scene range arguments are parsed
+- **THEN** implementation SHALL use sub-functions for different range formats
 
-- **Low Risk**: Maintains backward compatibility
-- All changes can be implemented incrementally
-- Validation via test suite execution after each phase
+### Requirement: Type Safety
+The system SHALL use proper type annotations and reduce type checking suppressions.
 
-## Success Criteria
+#### Scenario: TypedDict is used for structured data
+- **WHEN** passing composition or phrase data
+- **THEN** TypedDict types SHALL be used instead of plain dict
 
-- `uv run pytest` all tests pass
-- `uv run mypy src/` no errors
-- `uv run ruff check .` no warnings
-- Code coverage maintained or improved
+#### Scenario: Type ignore annotations are minimized
+- **WHEN** code requires type hints
+- **THEN** proper types SHALL be defined instead of using `type: ignore`
+
+### Requirement: Docker Compose Environment Variable Uniqueness
+The system SHALL maintain unique environment variable definitions in `web/docker-compose.yml` and eliminate duplicate keys.
+
+#### Scenario: PocketBase environment variables have no duplicates
+- **WHEN** `docker-compose config` is executed
+- **THEN** PocketBase environment variables SHALL have no duplicate keys
+
