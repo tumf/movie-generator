@@ -15,6 +15,14 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from .audio.core import validate_persona_ids
 from .audio.voicevox import create_synthesizer_from_config
+from .cli_pipeline import (
+    PipelineError,
+    PipelineParams,
+    stage_audio_generation,
+    stage_script_resolution,
+    stage_slides_generation,
+    stage_video_rendering,
+)
 from .config import (
     Config,
     load_config,
@@ -32,6 +40,7 @@ from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
 from .utils.scene_range import parse_scene_range
 from .video.remotion_renderer import render_video_with_remotion
+from .video.renderer import CompositionConfig, RenderConfig
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -234,6 +243,7 @@ def cli() -> None:
     default=False,
     help="Enable strict persona validation (fail if persona_id mismatch)",
 )
+@common_options
 def generate(
     url_or_script: str | None,
     config: Path | None,
@@ -245,6 +255,10 @@ def generate(
     persona_pool_count: int | None,
     persona_pool_seed: int | None,
     strict: bool,
+    force: bool,
+    quiet: bool,
+    verbose: bool,
+    dry_run: bool,
 ) -> None:
     """Generate video from URL or existing script.yaml.
 
@@ -259,565 +273,98 @@ def generate(
         persona_pool_count: Override persona pool count from config.
         persona_pool_seed: Random seed for reproducible persona selection.
         strict: Enable strict persona validation (fail if persona_id mismatch).
+        force: Force overwrite existing files without confirmation.
+        quiet: Suppress progress output, only show final result.
+        verbose: Show detailed debug information.
+        dry_run: Show what would be done without actually executing.
     """
+    # Validate mutually exclusive options
+    if quiet and verbose:
+        console.print("[red]Error: --quiet and --verbose are mutually exclusive[/red]")
+        raise click.Abort()
+
+    # Configure console output based on flags
+    if quiet:
+        console.quiet = True  # type: ignore
+
     # Load configuration
     cfg = load_config(config) if config else Config()
 
-    # Determine if input is a script file or URL
-    script_path_input = None
-    url = None
-
+    # Determine output directory
     if url_or_script:
         potential_script = Path(url_or_script)
         if potential_script.exists() and potential_script.suffix in [".yaml", ".yml"]:
-            script_path_input = potential_script
-            # Extract output directory from script path if not specified
-            if not output:
-                output_dir = potential_script.parent
-            else:
-                output_dir = Path(output)
+            # Script file provided - use its parent as output directory
+            output_dir = potential_script.parent if not output else Path(output)
         else:
-            url = url_or_script
+            # URL provided
             output_dir = Path(output) if output else Path(cfg.project.output_dir)
     else:
         output_dir = Path(output) if output else Path(cfg.project.output_dir)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    script_path = script_path_input if script_path_input else (output_dir / "script.yaml")
-
-    # Extract language ID from script filename (e.g., "script_ja.yaml" -> "ja")
-    language_id = "ja"  # Default language
-    if script_path.stem.startswith("script_"):
-        # Extract language code from filename like "script_ja" or "script_en"
-        potential_lang = script_path.stem.replace("script_", "")
-        if potential_lang:  # Ensure we got a language code
-            language_id = potential_lang
-
     console.print(f"[bold]Output directory:[/bold] {output_dir}")
+
+    # Create pipeline parameters
+    params = PipelineParams(
+        url_or_script=url_or_script,
+        config=cfg,
+        output_dir=output_dir,
+        api_key=api_key,
+        mcp_config=mcp_config,
+        scenes=scenes,
+        show_progress=show_progress,
+        persona_pool_count=persona_pool_count,
+        persona_pool_seed=persona_pool_seed,
+        strict=strict,
+    )
 
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        # Step 1: Fetch content (only if URL provided and script doesn't exist)
-        if script_path.exists():
-            console.print(f"[yellow]⊙ Script already exists, loading: {script_path}[/yellow]")
-            with open(script_path, encoding="utf-8") as f:
-                script_dict = yaml.safe_load(f)
-            from .script.generator import (
-                Narration,
-                ScriptSection,
-                VideoScript,
-            )
+        try:
+            # Stage 1: Script resolution
+            script = stage_script_resolution(params, progress, console)
 
-            # Parse sections with unified narrations format
-            sections = []
-            for section in script_dict["sections"]:
-                narrations: list[Narration] = []
-
-                if "narrations" in section and section["narrations"]:
-                    # New unified format
-                    for n in section["narrations"]:
-                        if isinstance(n, str):
-                            # Legacy string format - use text as reading
-                            narrations.append(Narration(text=n, reading=n))
-                        else:
-                            # Object format - use reading field or fallback to text
-                            reading = n.get("reading", n["text"])
-                            narrations.append(
-                                Narration(
-                                    text=n["text"], reading=reading, persona_id=n.get("persona_id")
-                                )
-                            )
-                elif "dialogues" in section and section["dialogues"]:
-                    # Legacy dialogue format
-                    for d in section["dialogues"]:
-                        reading = d.get("reading", d["narration"])
-                        narrations.append(
-                            Narration(
-                                text=d["narration"], reading=reading, persona_id=d["persona_id"]
-                            )
-                        )
-                elif "narration" in section:
-                    # Legacy single narration format
-                    narrations.append(
-                        Narration(text=section["narration"], reading=section["narration"])
-                    )
-
-                sections.append(
-                    ScriptSection(
-                        title=section["title"],
-                        narrations=narrations,
-                        slide_prompt=section.get("slide_prompt"),
-                        source_image_url=section.get("source_image_url"),
-                        background=section.get("background"),
-                    )
-                )
-
-            script = VideoScript(
-                title=script_dict["title"],
-                description=script_dict["description"],
-                sections=sections,
-            )
-        else:
-            # Need URL to generate new script
-            if not url:
-                console.print("[red]Error: No script.yaml found and no URL provided[/red]")
-                console.print("[yellow]Usage:[/yellow]")
-                console.print("  movie-generator generate <URL>              # Generate from URL")
-                console.print(
-                    "  movie-generator generate <script.yaml>      # Generate from existing script"
-                )
-                raise click.Abort()
-
-            console.print(f"[bold]Generating video from URL:[/bold] {url}")
-
-            # Fetch content and generate script using common function
-            script = _fetch_and_generate_script(
-                url=url,
-                cfg=cfg,
-                api_key=api_key,
-                mcp_config=mcp_config,
-                persona_pool_count=persona_pool_count,
-                persona_pool_seed=persona_pool_seed,
-                progress=progress,
-                console=console,
-            )
-
-            # Save script to YAML using Pydantic's model_dump()
-            # This ensures all fields are included automatically
-            script_dict = script.model_dump(exclude_none=True)
-            with open(script_path, "w", encoding="utf-8") as f:
-                yaml.dump(script_dict, f, allow_unicode=True, sort_keys=False)
-            console.print(f"✓ Script saved: {script_path}")
-
-        # Step 3: Parse scene range if specified
-        scene_start: int | None = None
-        scene_end: int | None = None
-        if scenes:
-            scene_start, scene_end = parse_scene_range(scenes)
-            # Display scene range info
-            if scene_start is not None and scene_end is not None:
-                console.print(f"[cyan]Filtering to scenes {scene_start + 1}-{scene_end + 1}[/cyan]")
-            elif scene_start is not None:
-                console.print(f"[cyan]Filtering to scenes {scene_start + 1} onwards[/cyan]")
-            elif scene_end is not None:
-                console.print(f"[cyan]Filtering to scenes 1-{scene_end + 1}[/cyan]")
-
-        # Step 4: Convert narrations to phrases (pre-split by LLM)
-        task = progress.add_task("Converting narrations to phrases...", total=None)
-
-        # First pass: generate all phrases to determine original_index
-        all_sections_phrases = []
-        for section_idx, section in enumerate(script.sections):
-            section_phrases = []
-            for narration in section.narrations:
-                # Each narration is already split by LLM (~40 chars)
-                phrase = Phrase(text=narration.text, reading=narration.reading)
-                phrase.section_index = section_idx
-                if narration.persona_id:
-                    phrase.persona_id = narration.persona_id
-                    # Look up persona name from config
-                    if cfg.personas:
-                        for p in cfg.personas:
-                            if p.id == narration.persona_id:
-                                phrase.persona_name = p.name
-                                break
-                section_phrases.append(phrase)
-            all_sections_phrases.append((section_idx, section_phrases))
-
-        # Set original_index for all phrases globally
-        global_index = 0
-        for section_idx, phrases in all_sections_phrases:
-            for phrase in phrases:
-                phrase.original_index = global_index
-                global_index += 1
-
-        # Second pass: filter by scene range if specified
-        all_phrases = []
-        for section_idx, phrases in all_sections_phrases:
-            # Skip sections outside scene range
-            if scene_start is not None and section_idx < scene_start:
-                continue
-            if scene_end is not None and section_idx > scene_end:
-                continue
-            all_phrases.extend(phrases)
-
-        progress.update(task, completed=True)
-        console.print(f"✓ Converted {len(all_phrases)} phrases")
-
-        # Validate that we have phrases to process
-        if len(all_phrases) == 0:
-            total_sections = len(script.sections)
+            # Parse scene range if specified
             if scenes:
-                raise click.ClickException(
-                    f"No phrases found for scene range '{scenes}'. "
-                    f"Script has {total_sections} sections (use --scenes 1-{total_sections})."
-                )
-            else:
-                raise click.ClickException(
-                    "No phrases found in script. Please check that sections have narrations."
-                )
-
-        # Step 4: Generate audio
-        task = progress.add_task("Generating audio...", total=None)
-
-        # Check if multi-speaker mode is enabled
-        has_personas = hasattr(cfg, "personas") and len(cfg.personas) > 0
-        if has_personas:
-            # Multi-speaker mode: create synthesizer per persona
-            from .audio.voicevox import VoicevoxSynthesizer
-
-            synthesizers: dict[str, Any] = {}
-            for persona_config in cfg.personas:
-                synthesizer = VoicevoxSynthesizer(
-                    speaker_id=persona_config.synthesizer.speaker_id,
-                    speed_scale=persona_config.synthesizer.speed_scale,
-                    dictionary=None,  # Will be set below
-                )
-                synthesizers[persona_config.id] = synthesizer
-
-            # Initialize VOICEVOX for all synthesizers
-            import os
-
-            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
-
-            if not dict_dir_str or not model_path_str:
-                raise click.ClickException(
-                    "VOICEVOX environment variables not set.\n"
-                    "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
-                    "See docs/VOICEVOX_SETUP.md for instructions."
-                )
-
-            for persona_synthesizer in synthesizers.values():
-                persona_synthesizer.initialize(
-                    dict_dir=Path(dict_dir_str),
-                    model_path=Path(model_path_str),
-                    onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
-                )
-
-            # Debug: Log available synthesizers
-            logger.debug(f"Available synthesizers: {list(synthesizers.keys())}")
-
-            # Validate persona_ids before synthesis (strict mode for strict persona enforcement)
-            validate_persona_ids(all_phrases, synthesizers, strict=strict)
-
-            # Synthesize audio per persona
-            audio_dir = output_dir / "audio"
-            audio_paths = []
-            metadata_list: list[Any] = []
-            existing_audio_count = 0
-
-            for phrase in all_phrases:
-                audio_file = audio_dir / ProjectPaths.PHRASE_FILENAME_FORMAT.format(
-                    index=phrase.original_index
-                )
-                persona_id = getattr(phrase, "persona_id", None)
-
-                # Count existing audio files and read their duration
-                if audio_file.exists() and audio_file.stat().st_size > 0:
-                    existing_audio_count += 1
-                    audio_paths.append(audio_file)
-                    # Read duration from existing file
-                    try:
-                        import wave
-
-                        with wave.open(str(audio_file), "rb") as wf:
-                            frames = wf.getnframes()
-                            rate = wf.getframerate()
-                            duration = frames / float(rate)
-                        phrase.duration = duration
-                    except Exception:
-                        # If file is corrupt, will be regenerated below
-                        pass
-                    else:
-                        metadata_list.append(None)  # Placeholder for existing files
-                        continue
-
-                # Get appropriate synthesizer
-                if persona_id and persona_id in synthesizers:
-                    persona_synthesizer = synthesizers[persona_id]
-                    logger.debug(f"Using synthesizer for persona_id: {persona_id}")
-                else:
-                    fallback_id = next(iter(synthesizers.keys()))
-                    persona_synthesizer = synthesizers[fallback_id]
-                    if persona_id:
-                        logger.warning(
-                            f"persona_id '{persona_id}' not found in synthesizers. "
-                            f"Falling back to '{fallback_id}'. "
-                            f"Available: {list(synthesizers.keys())}"
-                        )
-                    else:
-                        logger.debug(f"No persona_id specified, using fallback: {fallback_id}")
-
-                # Synthesize single phrase
-                phrase_paths, phrase_metadata = persona_synthesizer.synthesize_phrases(
-                    [phrase], audio_dir
-                )
-                audio_paths.extend(phrase_paths)
-                metadata_list.extend(phrase_metadata)
-
-            calculate_phrase_timings(
-                all_phrases,
-                initial_pause=cfg.narration.initial_pause,
-                speaker_pause=cfg.narration.speaker_pause,
-                slide_pause=cfg.narration.slide_pause,
-            )
-            progress.update(task, completed=True)
-            new_audio_count = len(audio_paths) - existing_audio_count
-            if existing_audio_count > 0:
-                console.print(
-                    f"✓ Audio: {new_audio_count} generated, {existing_audio_count} reused "
-                    f"({len(synthesizers)} personas)"
-                )
-            else:
-                console.print(
-                    f"✓ Generated {len(audio_paths)} audio files ({len(synthesizers)} personas)"
-                )
-
-        else:
-            # Single-speaker mode (backward compatible)
-            synthesizer = create_synthesizer_from_config(cfg)
-
-            # Initialize VOICEVOX
-            import os
-
-            dict_dir_str = os.getenv("VOICEVOX_DICT_DIR")
-            model_path_str = os.getenv("VOICEVOX_MODEL_PATH")
-            onnxruntime_path_str = os.getenv("VOICEVOX_ONNXRUNTIME_PATH")
-
-            if not dict_dir_str or not model_path_str:
-                raise click.ClickException(
-                    "VOICEVOX environment variables not set.\n"
-                    "Please set VOICEVOX_DICT_DIR and VOICEVOX_MODEL_PATH.\n"
-                    "See docs/VOICEVOX_SETUP.md for instructions."
-                )
-
-            synthesizer.initialize(
-                dict_dir=Path(dict_dir_str),
-                model_path=Path(model_path_str),
-                onnxruntime_path=Path(onnxruntime_path_str) if onnxruntime_path_str else None,
-            )
-
-            audio_dir = output_dir / "audio"
-            # Count existing audio files before generation (use original_index)
-            existing_audio_count = sum(
-                1
-                for phrase in all_phrases
-                if (
-                    audio_dir
-                    / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
-                ).exists()
-                and (
-                    audio_dir
-                    / ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)
-                )
-                .stat()
-                .st_size
-                > 0
-            )
-            audio_paths, metadata_list = synthesizer.synthesize_phrases(all_phrases, audio_dir)
-            calculate_phrase_timings(
-                all_phrases,
-                initial_pause=cfg.narration.initial_pause,
-                speaker_pause=cfg.narration.speaker_pause,
-                slide_pause=cfg.narration.slide_pause,
-            )
-            progress.update(task, completed=True)
-            new_audio_count = len(audio_paths) - existing_audio_count
-            if existing_audio_count > 0:
-                console.print(
-                    f"✓ Audio: {new_audio_count} generated, {existing_audio_count} reused"
-                )
-            else:
-                console.print(f"✓ Generated {len(audio_paths)} audio files")
-
-        # Step 5: Generate slides
-        if api_key:
-            task = progress.add_task("Generating slides...", total=None)
-            # Filter slide prompts based on scene range and track original indices
-            slide_prompts = []
-            slide_indices = []  # Track original section indices for correct file naming
-            for section_idx, section in enumerate(script.sections):
-                # Skip sections outside scene range
-                if scene_start is not None and section_idx < scene_start:
-                    continue
-                if scene_end is not None and section_idx > scene_end:
-                    continue
-                slide_prompts.append(
-                    (section.title, section.slide_prompt or section.title, section.source_image_url)
-                )
-                slide_indices.append(section_idx)
-            slide_dir = output_dir / "slides"
-            # Count existing slides before generation (use original indices)
-            # Check in language subdirectory (ja by default) or root
-            lang_slide_dir = slide_dir / "ja"
-            existing_slide_count = sum(
-                1
-                for idx in slide_indices
-                if (
-                    (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
-                    and (lang_slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
-                    .stat()
-                    .st_size
-                    > 0
-                )
-                or (
-                    (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx)).exists()
-                    and (slide_dir / ProjectPaths.SLIDE_FILENAME_FORMAT.format(index=idx))
-                    .stat()
-                    .st_size
-                    > 0
-                )
-            )
-
-            try:
-                slide_paths = asyncio.run(
-                    generate_slides_for_sections(
-                        sections=slide_prompts,
-                        output_dir=slide_dir,
-                        api_key=api_key,
-                        model=cfg.slides.llm.model,
-                        base_url=cfg.slides.llm.base_url,
-                        max_concurrent=2,  # Conservative to avoid rate limits
-                        section_indices=slide_indices,
-                    )
-                )
-                progress.update(task, completed=True)
-
-                # Count successful slides
-                successful_count = sum(1 for p in slide_paths if is_valid_file(p))
-                failed_count = len(slide_paths) - successful_count
-                new_slide_count = successful_count - existing_slide_count
-
-                if existing_slide_count > 0:
+                params.scene_start, params.scene_end = parse_scene_range(scenes)
+                # Display scene range info
+                if params.scene_start is not None and params.scene_end is not None:
                     console.print(
-                        f"✓ Slides: {new_slide_count} generated, {existing_slide_count} reused"
+                        f"[cyan]Filtering to scenes {params.scene_start + 1}-"
+                        f"{params.scene_end + 1}[/cyan]"
                     )
-                else:
-                    console.print(f"✓ Generated {successful_count} slides")
-
-                if failed_count > 0:
+                elif params.scene_start is not None:
                     console.print(
-                        f"[yellow]⚠ Warning: {failed_count} slides failed to generate[/yellow]"
+                        f"[cyan]Filtering to scenes {params.scene_start + 1} onwards[/cyan]"
                     )
-                    console.print(
-                        f"[dim]  Run 'find {slide_dir} -size 0 -delete' "
-                        "to remove failed slides and retry[/dim]"
-                    )
-            except Exception as e:
-                progress.update(task, completed=True)
-                console.print(f"[red]✗ Error generating slides: {e}[/red]")
-                slide_paths = []
-        else:
-            console.print("[yellow]⚠ Skipping slides (no API key provided)[/yellow]")
-            slide_paths = []
+                elif params.scene_end is not None:
+                    console.print(f"[cyan]Filtering to scenes 1-{params.scene_end + 1}[/cyan]")
 
-        # Step 6: Prepare transition, background, and BGM config for Remotion
-        transition_config = cfg.video.transition.model_dump()
+            # Stage 2: Audio generation
+            all_phrases, audio_paths = stage_audio_generation(params, script, progress, console)
 
-        # Prepare background config
-        background_config = None
-        if cfg.video.background:
-            background_config = cfg.video.background.model_dump()
+            # Stage 3: Slides generation
+            slide_paths = stage_slides_generation(params, script, progress, console)
 
-        # Prepare BGM config
-        bgm_config = None
-        if cfg.video.bgm:
-            bgm_config = cfg.video.bgm.model_dump()
+            # Stage 4: Video rendering
+            stage_video_rendering(
+                params, script, all_phrases, audio_paths, slide_paths, progress, console
+            )
 
-        # Prepare section-level background overrides
-        section_backgrounds: dict[int, dict[str, Any]] = {}
-        for i, section in enumerate(script.sections):
-            if section.background:
-                section_backgrounds[i] = section.background
+            console.print("\n[bold green]✓ Video generation complete![/bold green]")
 
-        # Step 7: Setup Remotion project and render video
-        # Generate output filename based on scene range and language
-        if scenes:
-            # Convert None values to actual scene numbers for filename
-            start_num = 1 if scene_start is None else scene_start + 1
-            end_num = len(script.sections) if scene_end is None else scene_end + 1
-
-            if start_num == end_num:
-                # Single scene with language: "output_ja_2.mp4"
-                video_filename = f"output_{language_id}_{start_num}.mp4"
-            else:
-                # Range with language: "output_ja_1-3.mp4"
-                video_filename = f"output_{language_id}_{start_num}-{end_num}.mp4"
-            video_path = output_dir / video_filename
-        else:
-            # Full video with language: "output_ja.mp4"
-            video_path = output_dir / f"output_{language_id}.mp4"
-        # Create/load project
-        project_name = output_dir.name
-        project = Project(project_name, output_dir.parent)
-
-        # Setup Remotion project (creates or updates templates)
-        remotion_dir = output_dir / "remotion"
-        task = progress.add_task("Setting up Remotion project...", total=None)
-        # Temporarily override project_dir for setup_remotion_project
-        original_project_dir = project.project_dir
-        project.project_dir = output_dir
-        project.audio_dir = output_dir / "audio"
-        project.slides_dir = output_dir / "slides"
-        project.characters_dir = output_dir / "assets" / "characters"
-
-        # Copy character assets from project root to output
-        project.copy_character_assets()
-
-        project.setup_remotion_project()
-        project.project_dir = original_project_dir
-        progress.update(task, completed=True)
-
-        # Render video with Remotion
-        task = progress.add_task("Rendering video with Remotion...", total=None)
-        # Prepare personas for Remotion if defined
-        personas_for_render = None
-        if cfg.personas:
-            personas_for_render = [
-                p.model_dump(
-                    include={
-                        "id",
-                        "name",
-                        "subtitle_color",
-                        "character_image",
-                        "character_position",
-                        "mouth_open_image",
-                        "eye_close_image",
-                        "animation_style",
-                    },
-                    exclude_none=True,
-                )
-                for p in cfg.personas
-            ]
-
-        render_video_with_remotion(
-            phrases=all_phrases,
-            audio_paths=audio_paths,
-            slide_paths=slide_paths,
-            output_path=video_path,
-            remotion_root=remotion_dir,
-            project_name=project_name,
-            show_progress=show_progress,
-            transition=transition_config,
-            personas=personas_for_render,
-            background=background_config,
-            bgm=bgm_config,
-            section_backgrounds=section_backgrounds,
-            crf=cfg.style.crf,
-            fps=cfg.style.fps,
-            resolution=cfg.style.resolution,
-            render_concurrency=cfg.video.render_concurrency,
-            render_timeout_seconds=cfg.video.render_timeout_seconds,
-        )
-        progress.update(task, completed=True)
-        console.print(f"✓ Video ready: {video_path}")
-
-    console.print("\n[bold green]✓ Video generation complete![/bold green]")
+        except PipelineError as e:
+            console.print(f"\n[red]✗ Pipeline failed at stage '{e.stage}': {e.message}[/red]")
+            if e.input_info:
+                console.print(f"[dim]  Input: {e.input_info}[/dim]")
+            raise click.Abort()
+        except Exception as e:
+            console.print(f"\n[red]✗ Unexpected error: {e}[/red]")
+            raise
 
 
 @cli.group()
@@ -1940,24 +1487,32 @@ def render_video_cmd(
                 for p in cfg.personas
             ]
 
-        render_video_with_remotion(
+        composition_config = CompositionConfig(
             phrases=all_phrases,
             audio_paths=audio_paths,
             slide_paths=slide_paths,
-            output_path=video_path,
-            remotion_root=remotion_dir,
             project_name=project_name,
-            show_progress=show_progress,
+            fps=cfg.style.fps,
+            resolution=cfg.style.resolution,
             transition=transition_config,
             personas=personas_for_render,
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+        )
+
+        render_config = RenderConfig(
+            output_path=video_path,
+            remotion_root=remotion_dir,
+            show_progress=show_progress,
             crf=cfg.style.crf,
             render_concurrency=cfg.video.render_concurrency,
             render_timeout_seconds=cfg.video.render_timeout_seconds,
-            fps=cfg.style.fps,
-            resolution=cfg.style.resolution,
+        )
+
+        render_video_with_remotion(
+            composition_config=composition_config,
+            render_config=render_config,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")

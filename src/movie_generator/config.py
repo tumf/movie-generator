@@ -10,16 +10,20 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
-from .constants import SubtitleConstants
+from .constants import ConfigDefaults, SubtitleConstants, VideoConstants
 from .exceptions import ConfigurationError
 
 
 class VoicevoxSynthesizerConfig(BaseModel):
     """VOICEVOX synthesizer configuration."""
 
-    engine: Literal["voicevox"] = "voicevox"
+    engine: Literal["voicevox"] = ConfigDefaults.AUDIO_ENGINE
     speaker_id: int = Field(ge=0, description="VOICEVOX speaker ID")
-    speed_scale: float = Field(default=1.0, gt=0.0, description="Speech speed multiplier")
+    speed_scale: float = Field(
+        default=ConfigDefaults.AUDIO_SPEED_SCALE,
+        gt=ConfigDefaults.AUDIO_SPEED_SCALE_MIN,
+        description="Speech speed multiplier",
+    )
 
 
 class PersonaConfig(BaseModel):
@@ -54,7 +58,7 @@ class PersonaConfig(BaseModel):
         default=None, description="Path to character image with eyes closed (for blinking)"
     )
     animation_style: Literal["bounce", "sway", "static"] = Field(
-        default="sway", description="Character animation style"
+        default=ConfigDefaults.PERSONA_ANIMATION_STYLE, description="Character animation style"
     )
 
     @model_validator(mode="before")
@@ -71,32 +75,36 @@ class PersonaConfig(BaseModel):
 class StyleConfig(BaseModel):
     """Visual style configuration."""
 
-    resolution: tuple[int, int] = Field(default=(1280, 720))
-    fps: int = Field(default=30, ge=1)
+    resolution: tuple[int, int] = Field(
+        default=(VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
+    )
+    fps: int = Field(default=VideoConstants.DEFAULT_FPS, ge=1)
     crf: int = Field(
-        default=28,
-        ge=0,
-        le=51,
+        default=ConfigDefaults.VIDEO_CRF_DEFAULT,
+        ge=ConfigDefaults.VIDEO_CRF_MIN,
+        le=ConfigDefaults.VIDEO_CRF_MAX,
         description="Constant Rate Factor for video encoding. Lower = better quality, larger file. "
         "Typical range: 18 (near lossless) to 28 (good compression).",
     )
-    font_family: str = Field(default="Noto Sans JP")
-    primary_color: str = Field(default="#FFFFFF")
-    background_color: str = Field(default="#1a1a2e")
+    font_family: str = Field(default=ConfigDefaults.STYLE_FONT_FAMILY)
+    primary_color: str = Field(default=ConfigDefaults.STYLE_PRIMARY_COLOR)
+    background_color: str = Field(default=ConfigDefaults.STYLE_BACKGROUND_COLOR)
 
 
 class AudioConfig(BaseModel):
     """Audio generation configuration."""
 
-    engine: str = Field(default="voicevox")
-    speaker_id: int = Field(default=3, ge=0)
-    speed_scale: float = Field(default=1.0, gt=0.0)
+    engine: str = Field(default=ConfigDefaults.AUDIO_ENGINE)
+    speaker_id: int = Field(default=ConfigDefaults.AUDIO_SPEAKER_ID, ge=0)
+    speed_scale: float = Field(
+        default=ConfigDefaults.AUDIO_SPEED_SCALE, gt=ConfigDefaults.AUDIO_SPEED_SCALE_MIN
+    )
     enable_furigana: bool = Field(
         default=True,
         description="Enable automatic furigana generation using morphological analysis",
     )
     pronunciation_model: str = Field(
-        default="openai/gpt-4o-mini",
+        default=ConfigDefaults.AUDIO_PRONUNCIATION_MODEL,
         description="LLM model for pronunciation (furigana) generation",
     )
 
@@ -104,25 +112,25 @@ class AudioConfig(BaseModel):
 class NarrationConfig(BaseModel):
     """Narration style configuration."""
 
-    character: str = Field(default="ずんだもん")
-    style: str = Field(default="casual")
+    character: str = Field(default=ConfigDefaults.NARRATION_CHARACTER)
+    style: str = Field(default=ConfigDefaults.NARRATION_STYLE)
     initial_pause: float = Field(
-        default=1.0,
+        default=ConfigDefaults.NARRATION_INITIAL_PAUSE,
         description="Initial pause duration (seconds) before the first phrase. "
         "Useful to show the first slide before narration starts.",
     )
     slide_pause: float = Field(
-        default=1.0,
+        default=ConfigDefaults.NARRATION_SLIDE_PAUSE,
         description="Pause duration (seconds) when transitioning between slides/sections. "
         "Set to 0 to disable.",
     )
     ending_pause: float = Field(
-        default=1.0,
+        default=ConfigDefaults.NARRATION_ENDING_PAUSE,
         description="Pause duration (seconds) after the last phrase ends. "
         "Keeps the final slide visible for viewers to absorb information.",
     )
     speaker_pause: float = Field(
-        default=0.5,
+        default=ConfigDefaults.NARRATION_SPEAKER_PAUSE,
         description="Pause duration (seconds) between speaker changes in dialogue mode. "
         "Set to 0 to disable.",
     )
@@ -131,10 +139,10 @@ class NarrationConfig(BaseModel):
 class LLMConfig(BaseModel):
     """LLM provider configuration."""
 
-    provider: str = Field(default="openrouter")
-    model: str = Field(default="openai/gpt-5.2")
+    provider: str = Field(default=ConfigDefaults.LLM_PROVIDER)
+    model: str = Field(default=ConfigDefaults.LLM_MODEL)
     base_url: str = Field(
-        default="https://openrouter.ai/api/v1",
+        default=ConfigDefaults.LLM_BASE_URL,
         description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
     )
 
@@ -144,19 +152,20 @@ class ContentConfig(BaseModel):
 
     llm: LLMConfig = Field(default_factory=LLMConfig)
     languages: list[str] = Field(
-        default=["ja"], description="Languages for content generation (e.g., ['ja', 'en'])"
+        default_factory=lambda: ConfigDefaults.CONTENT_LANGUAGES_DEFAULT.copy(),
+        description="Languages for content generation (e.g., ['ja', 'en'])",
     )
 
 
 class SlidesLLMConfig(BaseModel):
     """LLM configuration for slide generation."""
 
-    provider: str = Field(default="openrouter")
+    provider: str = Field(default=ConfigDefaults.SLIDES_LLM_PROVIDER)
     # NOTE: DO NOT change this model. gemini-3-pro-image-preview is the correct model.
     # Do NOT use gemini-2.5-flash-image-preview or any other model.
-    model: str = Field(default="google/gemini-3-pro-image-preview")
+    model: str = Field(default=ConfigDefaults.SLIDES_LLM_MODEL)
     base_url: str = Field(
-        default="https://openrouter.ai/api/v1",
+        default=ConfigDefaults.SLIDES_LLM_BASE_URL,
         description="Base URL for LLM API endpoint (e.g., proxy or local endpoint)",
     )
 
@@ -165,18 +174,24 @@ class SlidesConfig(BaseModel):
     """Slide generation configuration."""
 
     llm: SlidesLLMConfig = Field(default_factory=SlidesLLMConfig)
-    style: str = Field(default="presentation")
+    style: str = Field(default=ConfigDefaults.SLIDES_STYLE)
 
 
 class TransitionConfig(BaseModel):
     """Transition configuration for slide changes."""
 
     type: str = Field(
-        default="fade",
+        default=ConfigDefaults.TRANSITION_TYPE,
         description="Transition type: fade, slide, wipe, flip, clockWipe, none",
     )
-    duration_frames: int = Field(default=15, ge=1, description="Transition duration in frames")
-    timing: str = Field(default="linear", description="Timing function: linear, spring")
+    duration_frames: int = Field(
+        default=ConfigDefaults.TRANSITION_DURATION_FRAMES,
+        ge=1,
+        description="Transition duration in frames",
+    )
+    timing: str = Field(
+        default=ConfigDefaults.TRANSITION_TIMING, description="Timing function: linear, spring"
+    )
 
     def model_post_init(self, __context: Any) -> None:
         """Validate transition type."""
@@ -201,7 +216,7 @@ class BackgroundConfig(BaseModel):
     type: Literal["image", "video"] = Field(description="Background type: image or video")
     path: str = Field(description="Path to background file (relative or absolute)")
     fit: Literal["cover", "contain", "fill"] = Field(
-        default="cover",
+        default=ConfigDefaults.BACKGROUND_FIT,
         description="How to fit background: cover (fill maintaining aspect), "
         "contain (fit inside), fill (stretch)",
     )
@@ -236,13 +251,21 @@ class BgmConfig(BaseModel):
 
     path: str = Field(description="Path to BGM audio file (relative or absolute)")
     volume: float = Field(
-        default=0.3,
-        ge=0.0,
-        le=1.0,
+        default=ConfigDefaults.BGM_VOLUME_DEFAULT,
+        ge=ConfigDefaults.BGM_VOLUME_MIN,
+        le=ConfigDefaults.BGM_VOLUME_MAX,
         description="BGM volume (0.0-1.0, default 0.3 to avoid overpowering narration)",
     )
-    fade_in_seconds: float = Field(default=2.0, ge=0.0, description="Fade-in duration in seconds")
-    fade_out_seconds: float = Field(default=2.0, ge=0.0, description="Fade-out duration in seconds")
+    fade_in_seconds: float = Field(
+        default=ConfigDefaults.BGM_FADE_IN_SECONDS,
+        ge=0.0,
+        description="Fade-in duration in seconds",
+    )
+    fade_out_seconds: float = Field(
+        default=ConfigDefaults.BGM_FADE_OUT_SECONDS,
+        ge=0.0,
+        description="Fade-out duration in seconds",
+    )
     loop: bool = Field(default=True, description="Loop BGM if shorter than video duration")
 
     def model_post_init(self, __context: Any) -> None:
@@ -267,21 +290,21 @@ class BgmConfig(BaseModel):
 class VideoConfig(BaseModel):
     """Video rendering configuration."""
 
-    renderer: str = Field(default="remotion")
-    template: str = Field(default="default")
-    output_format: str = Field(default="mp4")
+    renderer: str = Field(default=ConfigDefaults.VIDEO_RENDERER)
+    template: str = Field(default=ConfigDefaults.VIDEO_TEMPLATE)
+    output_format: str = Field(default=ConfigDefaults.VIDEO_OUTPUT_FORMAT)
     transition: TransitionConfig = Field(default_factory=TransitionConfig)
     background: BackgroundConfig | None = Field(
         default=None, description="Optional background image/video for entire video"
     )
     bgm: BgmConfig | None = Field(default=None, description="Optional background music")
     render_concurrency: int = Field(
-        default=4,
+        default=ConfigDefaults.VIDEO_RENDER_CONCURRENCY,
         ge=1,
         description="Number of concurrent frames to render (higher = faster but more memory)",
     )
     render_timeout_seconds: int = Field(
-        default=300,
+        default=ConfigDefaults.VIDEO_RENDER_TIMEOUT,
         ge=1,
         description="Timeout for Remotion delayRender calls in seconds",
     )
@@ -291,9 +314,15 @@ class PronunciationWord(BaseModel):
     """Pronunciation dictionary entry."""
 
     reading: str = Field(description="Katakana reading")
-    accent: int = Field(default=0, ge=0, description="Accent position (0=auto)")
-    word_type: str = Field(default="PROPER_NOUN")
-    priority: int = Field(default=10, ge=1, le=10)
+    accent: int = Field(
+        default=ConfigDefaults.PRONUNCIATION_ACCENT, ge=0, description="Accent position (0=auto)"
+    )
+    word_type: str = Field(default=ConfigDefaults.PRONUNCIATION_WORD_TYPE)
+    priority: int = Field(
+        default=ConfigDefaults.PRONUNCIATION_PRIORITY_DEFAULT,
+        ge=ConfigDefaults.PRONUNCIATION_PRIORITY_MIN,
+        le=ConfigDefaults.PRONUNCIATION_PRIORITY_MAX,
+    )
 
 
 class PronunciationConfig(BaseModel):
@@ -310,7 +339,7 @@ class PersonaPoolConfig(BaseModel):
         description="Enable random persona selection from pool",
     )
     count: int = Field(
-        default=2,
+        default=ConfigDefaults.PERSONA_POOL_COUNT,
         ge=1,
         description="Number of personas to randomly select from pool",
     )
@@ -323,8 +352,8 @@ class PersonaPoolConfig(BaseModel):
 class ProjectConfig(BaseModel):
     """Project-level configuration."""
 
-    name: str = Field(default="My YouTube Channel")
-    output_dir: str = Field(default="./output")
+    name: str = Field(default=ConfigDefaults.PROJECT_NAME)
+    output_dir: str = Field(default=ConfigDefaults.PROJECT_OUTPUT_DIR)
 
 
 class Config(BaseSettings):

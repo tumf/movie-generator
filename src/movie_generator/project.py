@@ -275,6 +275,212 @@ class Project:
         if self.phrases_file.exists():
             shutil.copy2(self.phrases_file, remotion_public / "metadata.json")
 
+    def _initialize_remotion_project(self, remotion_dir: Path) -> None:
+        """Initialize Remotion project with package.json and dependencies.
+
+        Args:
+            remotion_dir: Target Remotion project directory.
+
+        Raises:
+            RuntimeError: If initialization fails with stage information.
+        """
+        stage = "Remotion initialization"
+        try:
+            # Import here to avoid circular dependency
+            from . import video
+
+            # Create remotion directory
+            remotion_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create package.json
+            console.print("[cyan]Creating package.json...[/cyan]")
+            package_json_path = remotion_dir / "package.json"
+            package_data = video.templates.get_package_json(self.name)
+            with package_json_path.open("w", encoding="utf-8") as f:
+                json.dump(package_data, f, indent=2)
+
+            # Install Remotion packages
+            console.print("[cyan]Installing Remotion packages...[/cyan]")
+            subprocess.run(
+                ["pnpm", "install"],
+                cwd=remotion_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            console.print("[green]✓ Remotion project initialized[/green]")
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"{stage} failed: {e.stderr if e.stderr else str(e)}") from e
+        except Exception as e:
+            raise RuntimeError(f"{stage} failed: {str(e)}") from e
+
+    def _generate_typescript_components(self, remotion_dir: Path) -> None:
+        """Generate TypeScript components from templates.
+
+        Args:
+            remotion_dir: Remotion project directory.
+
+        Raises:
+            RuntimeError: If TypeScript generation fails with stage information.
+        """
+        stage = "TypeScript component generation"
+        try:
+            # Import here to avoid circular dependency
+            from . import video
+
+            # Create src directory
+            src_dir = remotion_dir / "src"
+            src_dir.mkdir(exist_ok=True)
+
+            console.print("[cyan]Generating TypeScript components...[/cyan]")
+
+            # VideoGenerator.tsx
+            (src_dir / "VideoGenerator.tsx").write_text(
+                video.templates.get_video_generator_tsx(), encoding="utf-8"
+            )
+
+            # Root.tsx
+            (src_dir / "Root.tsx").write_text(video.templates.get_root_tsx(), encoding="utf-8")
+
+            # index.ts
+            (src_dir / "index.ts").write_text(video.templates.get_index_ts(), encoding="utf-8")
+
+            # remotion.config.ts
+            (remotion_dir / "remotion.config.ts").write_text(
+                video.templates.get_remotion_config_ts(), encoding="utf-8"
+            )
+
+            # tsconfig.json
+            tsconfig_path = remotion_dir / "tsconfig.json"
+            with tsconfig_path.open("w", encoding="utf-8") as f:
+                json.dump(video.templates.get_tsconfig_json(), f, indent=2)
+
+            console.print("[green]✓ TypeScript components generated[/green]")
+        except Exception as e:
+            raise RuntimeError(f"{stage} failed: {str(e)}") from e
+
+    def _setup_asset_symlinks(self, remotion_dir: Path) -> None:
+        """Setup symbolic links to project assets.
+
+        Args:
+            remotion_dir: Remotion project directory.
+
+        Raises:
+            RuntimeError: If symlink creation fails with stage information.
+        """
+        stage = "Asset symlink setup"
+        try:
+            # Create public directory and symlinks to assets
+            public_dir = remotion_dir / "public"
+            public_dir.mkdir(exist_ok=True)
+
+            console.print("[cyan]Setting up asset symlinks...[/cyan]")
+
+            # Create symbolic links to audio, slides, and characters
+            _create_symlink_safe(self.audio_dir, public_dir / "audio")
+            _create_symlink_safe(self.slides_dir, public_dir / "slides")
+            _create_symlink_safe(self.characters_dir, public_dir / "characters")
+
+            # Create directories for backgrounds and BGM (assets will be copied when needed)
+            backgrounds_dir = self.project_dir / "assets" / "backgrounds"
+            backgrounds_dir.mkdir(parents=True, exist_ok=True)
+            _create_symlink_safe(backgrounds_dir, public_dir / "backgrounds")
+
+            bgm_dir = self.project_dir / "assets" / "bgm"
+            bgm_dir.mkdir(parents=True, exist_ok=True)
+            _create_symlink_safe(bgm_dir, public_dir / "bgm")
+
+            console.print("[green]✓ Asset symlinks created[/green]")
+        except Exception as e:
+            raise RuntimeError(f"{stage} failed: {str(e)}") from e
+
+    def _update_workspace_configuration(self, remotion_dir: Path) -> None:
+        """Update pnpm workspace configuration to include Remotion project.
+
+        Args:
+            remotion_dir: Remotion project directory.
+
+        Raises:
+            RuntimeError: If workspace update fails with stage information.
+        """
+        stage = "Workspace configuration update"
+        try:
+            console.print("[cyan]Updating pnpm workspace...[/cyan]")
+
+            # Check if pnpm-workspace.yaml exists at project root
+            workspace_file = Path.cwd() / "pnpm-workspace.yaml"
+            if not workspace_file.exists():
+                console.print(
+                    "[yellow]Warning: pnpm-workspace.yaml not found at project root[/yellow]"
+                )
+                return
+
+            # Verify the project is included in workspace patterns
+            with workspace_file.open("r", encoding="utf-8") as f:
+                workspace_config = yaml.safe_load(f)
+
+            if "packages" not in workspace_config:
+                raise RuntimeError("Invalid pnpm-workspace.yaml: missing 'packages' field")
+
+            # Check if our pattern is already included
+            expected_pattern = "projects/*/remotion"
+            if expected_pattern not in workspace_config["packages"]:
+                console.print(f"[yellow]Adding {expected_pattern} to workspace[/yellow]")
+                workspace_config["packages"].append(expected_pattern)
+                with workspace_file.open("w", encoding="utf-8") as f:
+                    yaml.dump(workspace_config, f, allow_unicode=True, sort_keys=False)
+
+            console.print("[green]✓ Workspace configuration updated[/green]")
+        except Exception as e:
+            raise RuntimeError(f"{stage} failed: {str(e)}") from e
+
+    def _create_composition_file(self, remotion_dir: Path) -> None:
+        """Create placeholder composition.json file.
+
+        Args:
+            remotion_dir: Remotion project directory.
+
+        Raises:
+            RuntimeError: If composition file creation fails with stage information.
+        """
+        stage = "Composition file creation"
+        try:
+            # Load project config to get transition settings and resolution
+            try:
+                project_config = self.load_config()
+                transition_config = project_config.video.transition.model_dump()
+                resolution = project_config.style.resolution
+                fps = project_config.style.fps
+            except Exception:
+                # Fallback to defaults if config loading fails
+                from .config import TransitionConfig
+                from .constants import VideoConstants
+
+                transition_config = TransitionConfig(
+                    type="fade", duration_frames=15, timing="linear"
+                ).model_dump()
+                resolution = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
+                fps = VideoConstants.DEFAULT_FPS
+
+            console.print("[cyan]Creating composition file...[/cyan]")
+
+            # Create placeholder composition.json
+            composition_data = {
+                "title": self.name,
+                "fps": fps,
+                "width": resolution[0],
+                "height": resolution[1],
+                "phrases": [],
+                "transition": transition_config,
+            }
+            composition_path = remotion_dir / "composition.json"
+            with composition_path.open("w", encoding="utf-8") as f:
+                json.dump(composition_data, f, indent=2)
+
+            console.print("[green]✓ Composition file created[/green]")
+        except Exception as e:
+            raise RuntimeError(f"{stage} failed: {str(e)}") from e
+
     def setup_remotion_project(self) -> Path:
         """Setup per-project Remotion instance.
 
@@ -288,7 +494,7 @@ class Project:
             Path to the created Remotion project directory.
 
         Raises:
-            RuntimeError: If pnpm or Node.js is not available.
+            RuntimeError: If pnpm or Node.js is not available, or any setup stage fails.
             subprocess.CalledProcessError: If Remotion initialization fails.
         """
         # Import here to avoid circular dependency
@@ -353,106 +559,12 @@ class Project:
 
         console.print(f"[cyan]Creating Remotion project for {self.name}...[/cyan]")
 
-        # Create remotion directory
-        remotion_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create package.json
-        console.print("[cyan]Creating package.json...[/cyan]")
-        package_json_path = remotion_dir / "package.json"
-        package_data = video.templates.get_package_json(self.name)
-        with package_json_path.open("w", encoding="utf-8") as f:
-            json.dump(package_data, f, indent=2)
-
-        # Install Remotion packages
-        console.print("[cyan]Installing Remotion packages...[/cyan]")
-        try:
-            subprocess.run(
-                ["pnpm", "install"],
-                cwd=remotion_dir,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except subprocess.CalledProcessError as e:
-            console.print("[red]Failed to install Remotion packages:[/red]")
-            console.print(f"[red]{e.stderr}[/red]")
-            raise
-
-        # Create src directory
-        src_dir = remotion_dir / "src"
-        src_dir.mkdir(exist_ok=True)
-
-        # Generate TypeScript components
-        console.print("[cyan]Generating TypeScript components...[/cyan]")
-
-        # VideoGenerator.tsx
-        (src_dir / "VideoGenerator.tsx").write_text(
-            video.templates.get_video_generator_tsx(), encoding="utf-8"
-        )
-
-        # Root.tsx
-        (src_dir / "Root.tsx").write_text(video.templates.get_root_tsx(), encoding="utf-8")
-
-        # index.ts
-        (src_dir / "index.ts").write_text(video.templates.get_index_ts(), encoding="utf-8")
-
-        # remotion.config.ts
-        (remotion_dir / "remotion.config.ts").write_text(
-            video.templates.get_remotion_config_ts(), encoding="utf-8"
-        )
-
-        # tsconfig.json
-        tsconfig_path = remotion_dir / "tsconfig.json"
-        with tsconfig_path.open("w", encoding="utf-8") as f:
-            json.dump(video.templates.get_tsconfig_json(), f, indent=2)
-
-        # Create public directory and symlinks to assets
-        public_dir = remotion_dir / "public"
-        public_dir.mkdir(exist_ok=True)
-
-        # Create symbolic links to audio, slides, and characters
-        _create_symlink_safe(self.audio_dir, public_dir / "audio")
-        _create_symlink_safe(self.slides_dir, public_dir / "slides")
-        _create_symlink_safe(self.characters_dir, public_dir / "characters")
-
-        # Create directories for backgrounds and BGM (assets will be copied when needed)
-        backgrounds_dir = self.project_dir / "assets" / "backgrounds"
-        backgrounds_dir.mkdir(parents=True, exist_ok=True)
-        _create_symlink_safe(backgrounds_dir, public_dir / "backgrounds")
-
-        bgm_dir = self.project_dir / "assets" / "bgm"
-        bgm_dir.mkdir(parents=True, exist_ok=True)
-        _create_symlink_safe(bgm_dir, public_dir / "bgm")
-
-        # Load project config to get transition settings and resolution
-        try:
-            project_config = self.load_config()
-            transition_config = project_config.video.transition.model_dump()
-            resolution = project_config.style.resolution
-            fps = project_config.style.fps
-        except Exception:
-            # Fallback to defaults if config loading fails
-            from .config import TransitionConfig
-            from .constants import VideoConstants
-
-            transition_config = TransitionConfig(
-                type="fade", duration_frames=15, timing="linear"
-            ).model_dump()
-            resolution = (VideoConstants.DEFAULT_WIDTH, VideoConstants.DEFAULT_HEIGHT)
-            fps = VideoConstants.DEFAULT_FPS
-
-        # Create placeholder composition.json
-        composition_data = {
-            "title": self.name,
-            "fps": fps,
-            "width": resolution[0],
-            "height": resolution[1],
-            "phrases": [],
-            "transition": transition_config,
-        }
-        composition_path = remotion_dir / "composition.json"
-        with composition_path.open("w", encoding="utf-8") as f:
-            json.dump(composition_data, f, indent=2)
+        # Execute setup stages in order
+        self._initialize_remotion_project(remotion_dir)
+        self._generate_typescript_components(remotion_dir)
+        self._update_workspace_configuration(remotion_dir)
+        self._setup_asset_symlinks(remotion_dir)
+        self._create_composition_file(remotion_dir)
 
         console.print(f"[green]✓ Remotion project created at {remotion_dir}[/green]")
         return remotion_dir
