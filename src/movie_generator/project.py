@@ -572,9 +572,9 @@ class Project:
     def update_composition_json(self, phrases: list[dict[str, Any]], language: str = "ja") -> None:
         """Update composition.json with phrase data.
 
-        This method now uses the centralized composition builder to ensure
-        consistent defaulting and schema mapping across all composition.json
-        generation paths.
+        This is a test helper method that uses the centralized composition builder
+        to ensure consistent defaulting and schema mapping. For production CLI flows,
+        use render_video_with_remotion() directly from the video.remotion_renderer module.
 
         Args:
             phrases: List of phrase dictionaries with text, duration, etc.
@@ -650,7 +650,8 @@ class Project:
         )
 
         console.print(
-            f"[green]✓ Updated composition.json with {len(phrases)} phrases (language: {language})[/green]"
+            f"[green]✓ Updated composition.json with {len(phrases)} phrases "
+            f"(language: {language})[/green]"
         )
 
 

@@ -313,12 +313,23 @@ def build_composition_data(
             )
             bg_override = bg_dict
 
+        # Determine audio file path:
+        # Use audio_paths if available and index is in range, else fallback to default format
+        if config.audio_paths and phrase.original_index < len(config.audio_paths):
+            audio_path = config.audio_paths[phrase.original_index]
+            audio_file = f"audio/{audio_path.name}"
+        else:
+            # Fallback to default format
+            audio_file = (
+                f"audio/{ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)}"
+            )
+
         composition_phrases.append(
             CompositionPhrase(
                 text=phrase.get_subtitle_text(),
                 duration=phrase.duration,
                 start_time=phrase.start_time,
-                audioFile=f"audio/{ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)}",
+                audioFile=audio_file,
                 slideFile=slide_map.get(phrase.section_index),
                 persona_id=persona_fields.get("personaId"),
                 persona_name=persona_fields.get("personaName"),
