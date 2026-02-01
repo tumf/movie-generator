@@ -1,85 +1,91 @@
-# Spec: Codebase Structure Refactoring
-
-<!-- Original Japanese proposal: openspec-archive/changes/refactor-codebase-structure/proposal.md -->
+# Codebase Structure Refactoring
 
 ## Purpose
 
-Establish a well-organized codebase structure with reusable utilities, consolidated constants, clear exception hierarchy, and improved type safety to enhance maintainability, testability, and code reusability.
+Refactor the Movie Generator codebase to improve maintainability, testability, and code reusability by eliminating code duplication, reducing function complexity, standardizing error handling, consolidating constants, and enhancing type safety.
 ## Requirements
-### Requirement: Utility Modules Organization
-The system SHALL provide dedicated utility modules for common operations including filesystem operations, retry logic, subprocess execution, and text processing.
+### Requirement: Utility Module Organization
+The system SHALL provide reusable utility modules for common operations including file system operations, retry logic, subprocess execution, and text processing.
 
-#### Scenario: File operations through utilities
+#### Scenario: File system utilities are available
 - **WHEN** code needs to check file existence or perform path operations
-- **THEN** it uses functions from `utils/filesystem.py`
+- **THEN** utilities from `src/movie_generator/utils/filesystem.py` SHALL be used
 
-#### Scenario: Retry with exponential backoff
-- **WHEN** code needs to retry an operation
-- **THEN** it uses retry utilities from `utils/retry.py` with configurable backoff
+#### Scenario: Retry logic is standardized
+- **WHEN** code needs to retry operations
+- **THEN** utilities from `src/movie_generator/utils/retry.py` SHALL be used with exponential backoff
 
-#### Scenario: Subprocess execution
+#### Scenario: Subprocess execution is standardized
 - **WHEN** code needs to execute external commands
-- **THEN** it uses helpers from `utils/subprocess.py`
+- **THEN** utilities from `src/movie_generator/utils/subprocess.py` SHALL be used
 
 ### Requirement: Constants Consolidation
-The system SHALL consolidate magic numbers and strings into typed constant classes covering video parameters, file extensions, project paths, and retry configuration.
+The system SHALL define all magic numbers and strings as named constants in a centralized location.
 
-#### Scenario: Video rendering with standard FPS
-- **WHEN** video rendering is performed
-- **THEN** it uses `VideoConstants.FPS` instead of hardcoded value 30
+#### Scenario: Video constants are centralized
+- **WHEN** code needs FPS or resolution values
+- **THEN** constants from `VideoConstants` in `src/movie_generator/constants.py` SHALL be used
 
-#### Scenario: File extension validation
-- **WHEN** code validates file types
-- **THEN** it uses `FileExtensions` constants
+#### Scenario: Project paths are standardized
+- **WHEN** code needs to reference standard directory names
+- **THEN** constants from `ProjectPaths` SHALL be used
 
 ### Requirement: Exception Hierarchy
-The system SHALL define a clear exception hierarchy with `MovieGeneratorError` as base class and specific exceptions for configuration, rendering, and MCP errors.
+The system SHALL provide a structured exception hierarchy for clear error categorization and handling.
 
-#### Scenario: Configuration error handling
-- **WHEN** configuration is invalid
-- **THEN** `ConfigurationError` is raised with descriptive message
+#### Scenario: Base exception is available
+- **WHEN** raising Movie Generator-specific errors
+- **THEN** exceptions SHALL inherit from `MovieGeneratorError` base class
 
-#### Scenario: Rendering failure
-- **WHEN** video rendering fails
-- **THEN** `RenderingError` is raised
+#### Scenario: Configuration errors are distinct
+- **WHEN** configuration-related errors occur
+- **THEN** `ConfigurationError` SHALL be raised
 
-### Requirement: CLI Function Decomposition
-The system SHALL decompose oversized CLI functions into smaller, focused functions with single responsibilities.
+#### Scenario: Rendering errors are distinct
+- **WHEN** rendering operations fail
+- **THEN** `RenderingError` SHALL be raised
 
-#### Scenario: Generate command broken into steps
-- **WHEN** `generate()` command is executed
-- **THEN** it delegates to separate functions for each phase (content fetch, script generation, audio synthesis, video rendering)
+### Requirement: Function Decomposition
+The system SHALL decompose overly long functions into smaller, focused functions with single responsibilities.
 
-### Requirement: Dead Code Removal
-The system SHALL remove unreachable code and unused functions to maintain codebase clarity.
+#### Scenario: CLI generate function is decomposed
+- **WHEN** the generate command is executed
+- **THEN** implementation SHALL use multiple focused functions instead of a single 400+ line function
 
-#### Scenario: Unreachable code blocks removed
-- **WHEN** code analysis identifies unreachable code
-- **THEN** it is removed from the codebase
+#### Scenario: Scene range parsing is decomposed
+- **WHEN** scene range arguments are parsed
+- **THEN** implementation SHALL use sub-functions for different range formats
 
-### Requirement: Type Safety Improvements
-The system SHALL use TypedDict for structured data and reduce use of type ignore annotations to improve type checking.
+### Requirement: Type Safety
+The system SHALL use proper type annotations and reduce type checking suppressions.
 
-#### Scenario: Composition data with TypedDict
-- **WHEN** composition data is structured
-- **THEN** it uses TypedDict definitions for type safety
+#### Scenario: TypedDict is used for structured data
+- **WHEN** passing composition or phrase data
+- **THEN** TypedDict types SHALL be used instead of plain dict
 
-#### Scenario: Reduced type ignores
-- **WHEN** code is type-checked
-- **THEN** the number of `type: ignore` annotations is minimized
+#### Scenario: Type ignore annotations are minimized
+- **WHEN** code requires type hints
+- **THEN** proper types SHALL be defined instead of using `type: ignore`
 
-### Requirement: Web APIユーティリティの共通化
-システムは、Web APIルートで共通のリクエストユーティリティ（IP取得）と日時処理ユーティリティを再利用可能なモジュールに分割し、応答内容を変えずに保守性を向上させなければならない（SHALL）。
+### Requirement: Docker Compose Environment Variable Uniqueness
+The system SHALL maintain unique environment variable definitions in `web/docker-compose.yml` and eliminate duplicate keys.
 
-#### Scenario: ルート間で同一のユーティリティを使用する
-- **WHEN** `api_routes.py` と `web_routes.py` がリクエスト処理を行う
-- **THEN** IP取得と日時処理は共通ユーティリティを経由する
-- **AND** レスポンスの内容は変更されない
+#### Scenario: PocketBase environment variables have no duplicates
+- **WHEN** `docker-compose config` is executed
+- **THEN** PocketBase environment variables SHALL have no duplicate keys
 
-### Requirement: Pydantic v2 バリデーションの維持
-システムは、`JobResponse` の日時フィールドに対する空文字→`None` 変換を、Pydantic v2 のバリデータAPIで維持しなければならない（SHALL）。
+### Requirement: Web API Utility Consolidation
+The system SHALL consolidate common request utilities (IP retrieval) and datetime processing utilities used in Web API routes into reusable modules, improving maintainability without changing response content.
 
-#### Scenario: 空文字の日時を `None` に正規化する
-- **WHEN** `JobResponse` に空文字の日時フィールドが渡される
-- **THEN** そのフィールドは `None` に変換される
+#### Scenario: Same utilities used across routes
+- **WHEN** `api_routes.py` and `web_routes.py` perform request processing
+- **THEN** IP retrieval and datetime processing SHALL use common utilities
+- **AND** response content SHALL remain unchanged
+
+### Requirement: Pydantic v2 Validation Maintenance
+The system SHALL maintain empty string to `None` conversion for datetime fields in `JobResponse` using Pydantic v2 validator API.
+
+#### Scenario: Empty datetime normalized to None
+- **WHEN** `JobResponse` receives empty string datetime fields
+- **THEN** those fields SHALL be converted to `None`
 
