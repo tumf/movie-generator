@@ -15,3 +15,7 @@
 ## Acceptance #2 Failure Follow-up
 - [x] src/movie_generator/project.py:572-654 Project.update_composition_json remains unused by the CLI render flow (cli.py:1489 -> remotion_renderer.render_video_with_remotion -> remotion_renderer.update_composition_json). Integrate Project.update_composition_json into the CLI flow or remove/replace it to eliminate dead code.
 - [x] src/movie_generator/project.py:627-631 collects phrase_dict["audio_file"] into audio_paths, but src/movie_generator/video/remotion_renderer.py:321 hardcodes audioFile using ProjectPaths.PHRASE_FILENAME_FORMAT, dropping provided audio_file values. Use audio_paths in build_composition_data or align update_composition_json input contract.
+
+## Acceptance #3 Failure Follow-up
+- [x] 3.3.1 Remove Project.update_composition_json from src/movie_generator/project.py:572
+- [x] 3.3.2 Update tests/test_transition_integration.py to use remotion_renderer.update_composition_json directly

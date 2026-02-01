@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from movie_generator.config import Config
 from movie_generator.project import Project
+from movie_generator.script.phrases import Phrase
+from movie_generator.video.remotion_renderer import update_composition_json
 
 
 def test_composition_json_includes_transition_config(tmp_path: Path) -> None:
@@ -48,28 +50,39 @@ def test_update_composition_json_preserves_transition_config(tmp_path: Path) -> 
 
     project = Project("test_project", root_dir=tmp_path)
     project.create(config)
-    project.setup_remotion_project()
+    remotion_dir = project.setup_remotion_project()
 
-    # Update with phrases
-    phrases = [
-        {
-            "text": "Hello",
-            "audio_file": "hello.wav",
-            "slide_file": "slide1.png",
-            "duration": 1.5,
-        },
-        {
-            "text": "World",
-            "audio_file": "world.wav",
-            "slide_file": "slide2.png",
-            "duration": 1.2,
-        },
+    # Create phrase objects
+    phrase_objs = [
+        Phrase(text="Hello", duration=1.5, start_time=0.0, section_index=0, original_index=0),
+        Phrase(text="World", duration=1.2, start_time=1.5, section_index=0, original_index=1),
     ]
 
-    project.update_composition_json(phrases)
+    # Create audio and slide paths
+    audio_paths = [
+        project.project_dir / "audio" / "hello.wav",
+        project.project_dir / "audio" / "world.wav",
+    ]
+    slide_paths = [
+        project.project_dir / "slides" / "ja" / "slide1.png",
+        project.project_dir / "slides" / "ja" / "slide2.png",
+    ]
+
+    # Update composition.json using centralized function
+    transition_config = config.video.transition.model_dump()
+    update_composition_json(
+        remotion_root=remotion_dir,
+        phrases=phrase_objs,
+        audio_paths=audio_paths,
+        slide_paths=slide_paths,
+        project_name=project.name,
+        transition=transition_config,
+        fps=config.style.fps,
+        resolution=config.style.resolution,
+    )
 
     # Check composition.json
-    composition_path = project.project_dir / "remotion" / "composition.json"
+    composition_path = remotion_dir / "composition.json"
     with composition_path.open("r") as f:
         composition_data = json.load(f)
 
