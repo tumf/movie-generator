@@ -744,45 +744,13 @@ The system SHALL support specific file formats for background and BGM.
 
 ### Requirement: LLM Base URL Configuration
 
-The system SHALL allow specifying the base URL for LLM API calls in the configuration file.
+The system SHALL allow specification of LLM base URL in configuration.
 
 #### Scenario: Specify Base URL
 
 - **GIVEN** `content.llm.base_url` and `slides.llm.base_url` are configured
-- **WHEN** LLM API calls are made
-- **THEN** the specified base URL is used
-
-#### Scenario: Default Base URL
-
-- **GIVEN** `content.llm.base_url` or `slides.llm.base_url` is not specified
-- **WHEN** LLM API calls are made
-- **THEN** the default OpenRouter API URL (`https://openrouter.ai/api/v1`) is used
-
-#### Scenario: Configure for OpenRouter
-
-- **GIVEN** the configuration includes:
-  ```yaml
-  content:
-    llm:
-      base_url: "https://openrouter.ai/api/v1"
-  slides:
-    llm:
-      base_url: "https://openrouter.ai/api/v1"
-  ```
-- **WHEN** the configuration is loaded
-- **THEN** `content.llm.base_url` is `"https://openrouter.ai/api/v1"`
-- **AND** `slides.llm.base_url` is `"https://openrouter.ai/api/v1"`
-
-#### Scenario: Configure for Local LLM Server
-
-- **GIVEN** the configuration includes:
-  ```yaml
-  content:
-    llm:
-      base_url: "http://localhost:8080/v1"
-  ```
-- **WHEN** the configuration is loaded
-- **THEN** script generation uses the local server endpoint
+- **WHEN** LLM calls are executed
+- **THEN** specified base URLs are used
 
 ### Requirement: Unified Slide Generation Retry Configuration
 
@@ -849,6 +817,8 @@ The system SHALL define filename formats for generated assets as common constant
 
 The system SHALL manage minimum resolution standards and Docker environment project root as common values.
 
+The implementation SHALL centralize environment checks and project root resolution so modules do not duplicate the logic.
+
 #### Scenario: Apply Minimum Resolution and Project Root
 
 - **GIVEN** `PROJECT_ROOT` environment variable is set
@@ -863,3 +833,4 @@ The system SHALL consolidate default timeout values for external calls and rende
 
 - **WHEN** modules require timeout values
 - **THEN** reference common timeout constants
+
