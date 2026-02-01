@@ -291,6 +291,14 @@ def generate(
     if quiet:
         console.quiet = True  # type: ignore
 
+    # Configure logging level
+    if verbose:
+        import logging
+
+        logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+        logger = logging.getLogger("movie_generator")
+        logger.setLevel(logging.DEBUG)
+
     # Load configuration
     cfg = load_config(config) if config else Config()
 
@@ -314,6 +322,7 @@ def generate(
         url_or_script=url_or_script,
         config=cfg,
         output_dir=output_dir,
+        output_dir_explicit=output is not None,  # Track if --output was explicitly specified
         api_key=api_key,
         mcp_config=mcp_config,
         scenes=scenes,
@@ -321,6 +330,10 @@ def generate(
         persona_pool_count=persona_pool_count,
         persona_pool_seed=persona_pool_seed,
         strict=strict,
+        force=force,
+        quiet=quiet,
+        verbose=verbose,
+        dry_run=dry_run,
     )
 
     with Progress(
