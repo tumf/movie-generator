@@ -53,6 +53,8 @@ The system SHALL be able to generate dialogue-style scripts with multiple person
 
 The system SHALL continue to support the traditional single-speaker mode.
 
+The implementation SHALL separate prompt building, LLM calling, and response parsing into testable units while preserving behavior.
+
 #### Scenario: Generate Single-Speaker Script
 - **GIVEN** `narration.mode: "single"` is configured
 - **AND** only one persona is defined
@@ -624,3 +626,4 @@ reading フィールドの品質はシステムの成否を左右します。以
   - [ ] すべてのreadingフィールドで促音が正しく使われているか？（「ツッテ」×、「ッテ」○）
   - [ ] 長い文にスペースが適切に挿入されているか？
   - [ ] 助詞の発音ルールが適用されているか？
+
