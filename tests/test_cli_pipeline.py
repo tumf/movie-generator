@@ -170,3 +170,103 @@ sections:
         assert callable(stage_audio_generation)
         assert callable(stage_slides_generation)
         assert callable(stage_video_rendering)
+
+    def test_force_flag_regenerates_existing_script(
+        self,
+        mock_params: PipelineParams,
+        mock_progress: Progress,
+        mock_console: Console,
+        tmp_path: Path,
+    ) -> None:
+        """Test that --force flag regenerates script even when it exists."""
+        # Create existing script file
+        script_path = tmp_path / "script.yaml"
+        script_content = """
+title: Old Script
+description: Test
+sections:
+  - title: Section 1
+    narrations:
+      - text: Old
+        reading: オールド
+    slide_prompt: Test
+"""
+        script_path.write_text(script_content)
+
+        # Update params with force=True and URL
+        mock_params.url_or_script = "https://example.com"
+        mock_params.output_dir = tmp_path
+        mock_params.force = True
+        mock_params.api_key = "test-key"
+
+        # Mock fetch and generation
+        with (
+            patch("movie_generator.cli_pipeline.fetch_url_sync") as mock_fetch,
+            patch("movie_generator.cli_pipeline.parse_html") as mock_parse,
+            patch("movie_generator.cli_pipeline.generate_script") as mock_generate,
+        ):
+            mock_fetch.return_value = "<html>Test</html>"
+            mock_metadata = Mock(url="https://example.com", published_date=None, author=None)
+            mock_parse.return_value = Mock(
+                title="New Title",
+                description="New Desc",
+                text_content="New content",
+                metadata=mock_metadata,
+                images=[],
+            )
+            new_script = VideoScript(
+                title="New Script",
+                description="New",
+                sections=[
+                    ScriptSection(
+                        title="New Section",
+                        narrations=[Narration(text="New", reading="ニュー")],
+                        slide_prompt="New",
+                    )
+                ],
+            )
+            mock_generate.return_value = new_script
+
+            # Execute stage
+            script = stage_script_resolution(mock_params, mock_progress, mock_console)
+
+            # Verify new script was generated
+            assert script.title == "New Script"
+            mock_fetch.assert_called_once()
+            mock_generate.assert_called_once()
+
+    def test_dry_run_skips_execution(
+        self,
+        mock_params: PipelineParams,
+        mock_progress: Progress,
+        mock_console: Console,
+        tmp_path: Path,
+    ) -> None:
+        """Test that --dry-run skips actual execution."""
+        from movie_generator.cli_pipeline import stage_audio_generation
+
+        # Update params with dry_run=True
+        mock_params.dry_run = True
+        mock_params.output_dir = tmp_path
+
+        # Create a minimal script
+        script = VideoScript(
+            title="Test",
+            description="Test",
+            sections=[
+                ScriptSection(
+                    title="Section 1",
+                    narrations=[Narration(text="Test", reading="テスト")],
+                    slide_prompt="Test",
+                )
+            ],
+        )
+
+        # Execute audio generation stage (should skip actual generation)
+        phrases, audio_paths = stage_audio_generation(
+            mock_params, script, mock_progress, mock_console
+        )
+
+        # Verify that execution was skipped (no audio files created)
+        assert len(phrases) > 0  # Phrases are still created
+        assert len(audio_paths) == 0  # But no audio is generated

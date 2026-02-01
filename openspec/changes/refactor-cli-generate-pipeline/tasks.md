@@ -17,3 +17,7 @@
 
 ## Acceptance #3 Failure Follow-up
 - [x] Commit auto-formatting changes from ruff in 22 files: scripts/inspect_psd.py, tests/test_character_animation.py, tests/test_cli_subcommands.py, tests/test_config_validate.py, tests/test_furigana.py, tests/test_mcp_client.py, tests/test_mcp_config.py, tests/test_mcp_integration.py, tests/test_multi_speaker.py, tests/test_script_validate.py, tests/test_script_with_mcp.py, tests/test_subtitle_color.py, tests/test_video_e2e.py, tests/test_voicevox.py, tests/test_worker_config.py, web/api/firecrawl_client.py, web/api/main.py, web/api/routes/api_routes.py, web/demo_progress.py, web/tests/conftest.py, web/tests/test_worker.py, web/worker/main.py (import organization and blank line removal)
+
+## Acceptance #4 Failure Follow-up
+- [x] Implement `--force` handling in `generate()` pipeline so existing script/output can be regenerated when requested (evidence: `src/movie_generator/cli.py:325-399` passes `force` but never uses it; `src/movie_generator/cli_pipeline.py:186-244` always loads existing script without a `force` override).
+- [x] Implement `--dry-run`/`--verbose` behavior for `generate()` pipeline (evidence: `src/movie_generator/cli.py:325-399` accepts `dry_run`/`verbose` but no conditional flow or logging; `src/movie_generator/cli.py:400-434` always executes stage functions).
