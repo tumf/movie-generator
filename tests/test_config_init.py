@@ -164,11 +164,9 @@ class TestConfigGeneration:
         assert config.narration.character == "ずんだもん"
 
     def test_generated_config_matches_defaults(self, tmp_path):
-        """Test that generated config loads successfully and has core defaults.
+        """Test that generated config loads successfully and matches all defaults.
 
-        Note: The generated YAML includes example background/bgm settings,
-        while the default Config has these as None. This is intentional -
-        the generated config serves as a documented example.
+        Per spec requirement: all fields must match default values.
         """
         output_file = tmp_path / "test-config.yaml"
         write_config_to_file(output_file, overwrite=False)
@@ -176,27 +174,15 @@ class TestConfigGeneration:
         loaded_config = load_config(output_file)
         default_config = load_config(None)
 
-        # Compare core fields that should match
+        # All fields should match defaults
         assert loaded_config.project == default_config.project
         assert loaded_config.style == default_config.style
         assert loaded_config.audio == default_config.audio
         assert loaded_config.narration == default_config.narration
         assert loaded_config.content == default_config.content
         assert loaded_config.slides == default_config.slides
-
-        # Video config: compare core fields only
-        # (generated YAML includes example background/bgm)
-        assert loaded_config.video.renderer == default_config.video.renderer
-        assert loaded_config.video.template == default_config.video.template
-        assert loaded_config.video.output_format == default_config.video.output_format
-        assert loaded_config.video.transition == default_config.video.transition
-
-        # Verify example background/bgm are present in generated config
-        assert loaded_config.video.background is not None
-        assert loaded_config.video.background.type == "video"
-        assert loaded_config.video.background.path == "assets/backgrounds/default-background.mp4"
-        assert loaded_config.video.bgm is not None
-        assert loaded_config.video.bgm.path == "assets/bgm/default-bgm.mp3"
+        assert loaded_config.video == default_config.video
+        assert loaded_config.pronunciation == default_config.pronunciation
 
     def test_write_config_to_file(self, tmp_path):
         """Test write_config_to_file function."""
@@ -226,11 +212,9 @@ class TestConfigGeneration:
         assert "# Default configuration for movie-generator" in content
         assert "existing content" not in content
 
-    def test_write_config_creates_parent_directories(self, tmp_path):
-        """Test write_config_to_file creates parent directories if needed."""
-        output_file = tmp_path / "nested" / "dir" / "config.yaml"
+    def test_write_config_invalid_directory(self, tmp_path):
+        """Test write_config_to_file raises error when parent directory does not exist."""
+        output_file = tmp_path / "nonexistent" / "dir" / "config.yaml"
 
-        write_config_to_file(output_file, overwrite=False)
-
-        assert output_file.exists()
-        assert output_file.parent.exists()
+        with pytest.raises(OSError, match="Directory does not exist"):
+            write_config_to_file(output_file, overwrite=False)

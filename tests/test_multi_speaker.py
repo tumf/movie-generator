@@ -1,7 +1,6 @@
 """Tests for multi-speaker dialogue functionality."""
 
 import pytest
-from pydantic import ValidationError
 
 from movie_generator.config import Config, NarrationConfig, PersonaConfig, VoicevoxSynthesizerConfig
 from movie_generator.script.phrases import Phrase

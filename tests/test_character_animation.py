@@ -2,9 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
-from movie_generator.config import Config, PersonaConfig, VoicevoxSynthesizerConfig
+from movie_generator.config import PersonaConfig, VoicevoxSynthesizerConfig
 from movie_generator.script.phrases import Phrase
 from movie_generator.video.renderer import CompositionPhrase
 

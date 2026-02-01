@@ -17,6 +17,7 @@ from ..project import Project
 from ..script.generator import Narration, ScriptSection, VideoScript
 from ..script.phrases import Phrase, calculate_phrase_timings
 from .remotion_renderer import render_video_with_remotion
+from .renderer import CompositionConfig, RenderConfig
 
 
 def render_video_for_script(
@@ -292,16 +293,8 @@ def render_video_for_script(
     project.characters_dir = output_dir / "assets" / "characters"
 
     # Copy character assets
-    # In Docker, source_root is PROJECT_ROOT env var (default: /app) where assets/characters is located
-    # In local dev, source_root is Path.cwd() which defaults to project root
-    import os
-
-    if os.getenv("DOCKER_ENV"):
-        # Docker container: assets are at {project_root}/assets/characters
-        source_root = ProjectPaths.get_docker_project_root()
-    else:
-        # Local development: assets are at project root
-        source_root = Path.cwd()
+    # Get project root based on environment (Docker or local)
+    source_root = ProjectPaths.get_project_root()
     project.copy_character_assets(source_root=source_root)
     project.setup_remotion_project()
     project.project_dir = original_project_dir
@@ -336,24 +329,32 @@ def render_video_for_script(
         ]
 
     # Render video
-    render_video_with_remotion(
+    composition_config = CompositionConfig(
         phrases=all_phrases,
         audio_paths=audio_paths,
         slide_paths=slide_paths,
-        output_path=output_path,
-        remotion_root=remotion_dir,
         project_name=project_name,
-        show_progress=show_progress,
+        fps=cfg.style.fps,
+        resolution=cfg.style.resolution,
         transition=transition_config,
         personas=personas_for_render,
         background=background_config,
         bgm=bgm_config,
         section_backgrounds=section_backgrounds,
+    )
+
+    render_config = RenderConfig(
+        output_path=output_path,
+        remotion_root=remotion_dir,
+        show_progress=show_progress,
         crf=cfg.style.crf,
-        fps=cfg.style.fps,
-        resolution=cfg.style.resolution,
         render_concurrency=cfg.video.render_concurrency,
         render_timeout_seconds=cfg.video.render_timeout_seconds,
+    )
+
+    render_video_with_remotion(
+        composition_config=composition_config,
+        render_config=render_config,
     )
 
     if progress_callback:
