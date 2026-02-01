@@ -28,7 +28,6 @@ class ScriptSection(BaseModel):
     slide_prompt: str | None = None
     source_image_url: str | None = None
     background: dict[str, Any] | None = None  # Optional section-level background override
-    background: dict[str, Any] | None = None  # Optional section-level background override
 
 
 class RoleAssignment(BaseModel):
@@ -46,6 +45,227 @@ class VideoScript(BaseModel):
     description: str
     sections: list[ScriptSection]
     role_assignments: list[RoleAssignment] | None = None
+
+
+# Shared prompt components for consistent output format across all variants
+def get_output_format_json_example(language: str, is_dialogue: bool) -> str:
+    """Get JSON output format example.
+
+    Args:
+        language: Language code ('ja' or 'en').
+        is_dialogue: Whether dialogue mode is used.
+
+    Returns:
+        JSON format example string.
+    """
+    if language == "ja":
+        if is_dialogue:
+            return """{{
+  "title": "動画タイトル",
+  "description": "動画の説明",
+  "role_assignments": [
+    {{
+      "persona_id": "キャラクターID（例: zundamon, metan）",
+      "role": "役割（例: 解説役、質問役）",
+      "description": "役割の詳細説明"
+    }}
+  ],
+  "sections": [
+    {{
+      "title": "セクションタイトル",
+      "narrations": [
+        {{
+          "persona_id": "キャラクターID（例: zundamon, metan）",
+          "text": "セリフ",
+          "reading": "セリフ ノ カタカナ ヨミ"
+        }}
+      ],
+      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
+      "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
+    }}
+  ]
+}}"""
+        else:
+            return """{{
+  "title": "動画タイトル",
+  "description": "動画の説明",
+  "sections": [
+    {{
+      "title": "セクションタイトル",
+      "narrations": [
+        {{
+          "text": "ナレーション文",
+          "reading": "ナレーションブン"
+        }}
+      ],
+      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
+      "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
+    }}
+  ]
+}}"""
+    else:  # English
+        if is_dialogue:
+            return """{{
+  "title": "Video Title",
+  "description": "Video Description",
+  "role_assignments": [
+    {{
+      "persona_id": "Character ID (e.g., zundamon, metan)",
+      "role": "Role (e.g., explainer, questioner)",
+      "description": "Detailed role description"
+    }}
+  ],
+  "sections": [
+    {{
+      "title": "Section Title",
+      "narrations": [
+        {{
+          "persona_id": "Character ID (e.g., zundamon, metan)",
+          "text": "Dialogue line",
+          "reading": "Katakana reading (REQUIRED)"
+        }}
+      ],
+      "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
+      "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
+    }}
+  ]
+}}"""
+        else:
+            return """{{
+  "title": "Video Title",
+  "description": "Video Description",
+  "sections": [
+    {{
+      "title": "Section Title",
+      "narrations": [
+        {{
+          "text": "Narration text",
+          "reading": "Narration text"
+        }}
+      ],
+      "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)",
+      "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
+    }}
+  ]
+}}"""
+
+
+def get_reading_field_instructions(language: str) -> str:
+    """Get reading field instructions.
+
+    Args:
+        language: Language code ('ja' or 'en').
+
+    Returns:
+        Reading field instruction string.
+    """
+    if language == "ja":
+        return """【reading フィールドについて - CRITICAL】
+- **必須フィールド**: 各ナレーションには必ず reading フィールドを含めてください
+- **カタカナ形式**: すべてカタカナで記述してください（ひらがな不可）
+
+**助詞の発音ルール**:
+  - 「は」→「ワ」（例: 「これは」→「コレワ」）
+  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
+
+**アルファベット略語の音引き**:
+英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
+  - 「ESP」→「イーエスピー」（×イーエスピージ）
+  - 「API」→「エーピーアイ」
+  - 「CPU」→「シーピーユー」
+  - 「USB」→「ユーエスビー」
+
+**促音の表記（CRITICAL - 最重要）**:
+小さい「ッ」を正しく使用してください。「ツッテ」は誤りです。
+  ✅ 正しい例:
+    - 「って」→「ッテ」
+      - 「聞いたって」→「キイタッテ」
+      - 「APIって何？」→「エーピーアイッテナニ？」
+      - 「Web3って難しい」→「ウェブスリーッテムズカシイ」
+    - 「った」→「ッタ」
+      - 「言った」→「イッタ」
+      - 「使った」→「ツカッタ」
+    - 「っぱ」→「ッパ」
+      - 「やっぱり」→「ヤッパリ」
+    - 「っと」→「ット」
+      - 「ちょっと」→「チョット」
+    - 「っか」→「ッカ」
+      - 「せっかく」→「セッカク」
+    - 「っこ」→「ッコ」
+      - 「びっくり」→「ビックリ」
+    - 「っち」→「ッチ」
+      - 「もっと」→「モット」
+    - 「っぷ」→「ップ」
+      - 「アップ」→「アップ」
+    - 「っき」→「ッキ」
+      - 「すっきり」→「スッキリ」
+  ❌ 誤った例:
+    - 「って」→「ツッテ」（×「ツ」が大きい）
+    - 「って」→「テ」（×促音なし）
+
+**スペース**: スペースは入れないでください。すべて詰めて書いてください。
+
+**数字の表記**: アラビア数字はそのまま残してください（カタカナに変換しない）
+
+**例**:
+  - text: "明日は晴れです" → reading: "アシタワハレデス"
+  - text: "97個あります" → reading: "97コアリマス"
+  - text: "2026年はヤバい" → reading: "2026ネンワヤバイ"
+  - text: "ESPが次の章" → reading: "イーエスピーガツギノショウ"
+  - text: "APIって何？" → reading: "エーピーアイッテナニ？"
+  - text: "Web3って難しいのに。操作できるの！？" → reading: "ウェブ3ッテムズカシイノニ。ソウサデキルノ！？"
+"""
+    else:  # English
+        return """[Reading Field - CRITICAL]
+- **Required field**: Each narration MUST include a reading field
+- For English narration, simply copy the text field to reading field (no special pronunciation rules)
+- Example: text: "Hello world" → reading: "Hello world"
+"""
+
+
+def get_slide_image_instructions(language: str) -> str:
+    """Get slide image selection instructions.
+
+    Args:
+        language: Language code ('ja' or 'en').
+
+    Returns:
+        Slide image instruction string.
+    """
+    if language == "ja":
+        return """【スライド画像について - 重要な選択基準】
+- 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
+- source_image_url: 元記事の画像リストから適切な画像を選択する場合に使用
+- slide_prompt: AI生成する場合に使用
+
+**画像採用の判断基準（必ず従ってください）:**
+- 画像リストに含まれる各画像の「Alt」「Title」「Description」を**総合的に判断**してください
+- **採用すべき場合**: 画像の説明テキストが、そのセクションで説明する内容と**直接的に関連**している場合のみ
+  - 例: セクションが「助成金の実績」を説明 → 画像altが「2024年の助成金配分グラフ」→ 採用OK
+  - 例: セクションが「Commit-Boost」を説明 → 画像altが「Commit-Boost architecture diagram」→ 採用OK
+- **採用すべきでない場合**:
+  - 画像の説明が「背景」「バナー」「ロゴ」「アイコン」「装飾」などの汎用的・装飾的な内容
+  - 画像の説明がセクション内容と無関係または曖昧
+  - 例: セクションが「ESPの概要」を説明 → 画像altが「ETH上部背景開始画像」→ 採用NG（AI生成を使用）
+- **迷った場合はAI生成を優先**: 関連性が不明確な場合は、source_image_urlを指定せずslide_promptでAI生成してください
+"""
+    else:  # English
+        return """[About Slide Images - Critical Selection Criteria]
+- For each section, specify either source_image_url OR slide_prompt (not both)
+- source_image_url: Use when selecting an appropriate image from the blog's image list
+- slide_prompt: Use when generating a new slide with AI
+
+**Image Adoption Criteria (MUST follow):**
+- Evaluate each image's "Alt", "Title", and "Description" **holistically**
+- **ADOPT only when**: The image description is **directly relevant** to what the section is explaining
+  - Example: Section explains "grant achievements" → Image alt is "2024 grant allocation chart" → ADOPT
+  - Example: Section explains "Commit-Boost" → Image alt is "Commit-Boost architecture diagram" → ADOPT
+- **DO NOT ADOPT when**:
+  - Image description contains generic/decorative terms like "background", "banner", "logo", "icon", "decoration"
+  - Image description is unrelated or ambiguous to the section content
+  - Example: Section explains "ESP overview" → Image alt is "ETH top background start image" → DO NOT ADOPT (use AI generation)
+- **When in doubt, prefer AI generation**: If relevance is unclear, do NOT set source_image_url and use slide_prompt instead
+"""
 
 
 SCRIPT_GENERATION_PROMPT_JA = """
@@ -132,94 +352,11 @@ reading フィールドの品質はシステムの成否を左右します。以
 
 【出力形式】
 JSON形式で以下を出力してください：
-{{
-  "title": "動画タイトル",
-  "description": "動画の説明",
-  "sections": [
-    {{
-      "title": "セクションタイトル",
-      "narrations": [
-        {{
-          "text": "ナレーション文",
-          "reading": "ナレーションブン"
-        }}
-      ],
-      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
-      "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
-    }}
-  ]
-}}
+{output_format}
 
-【reading フィールドについて - CRITICAL】
-- **必須フィールド**: 各ナレーションには必ず reading フィールドを含めてください
-- **カタカナ形式**: すべてカタカナで記述してください（ひらがな不可）
+{reading_instructions}
 
-**助詞の発音ルール**:
-  - 「は」→「ワ」（例: 「これは」→「コレワ」）
-  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
-
-**アルファベット略語の音引き**:
-英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
-  - 「ESP」→「イーエスピー」（×イーエスピージ）
-  - 「API」→「エーピーアイ」
-  - 「CPU」→「シーピーユー」
-  - 「USB」→「ユーエスビー」
-
-**促音の表記（CRITICAL - 最重要）**:
-小さい「ッ」を正しく使用してください。「ツッテ」は誤りです。
-  ✅ 正しい例:
-    - 「って」→「ッテ」
-      - 「聞いたって」→「キイタッテ」
-      - 「APIって何？」→「エーピーアイッテナニ？」
-      - 「Web3って難しい」→「ウェブスリーッテムズカシイ」
-    - 「った」→「ッタ」
-      - 「言った」→「イッタ」
-      - 「使った」→「ツカッタ」
-    - 「っぱ」→「ッパ」
-      - 「やっぱり」→「ヤッパリ」
-    - 「っと」→「ット」
-      - 「ちょっと」→「チョット」
-    - 「っか」→「ッカ」
-      - 「せっかく」→「セッカク」
-    - 「っこ」→「ッコ」
-      - 「びっくり」→「ビックリ」
-    - 「っち」→「ッチ」
-      - 「もっと」→「モット」
-    - 「っぷ」→「ップ」
-      - 「アップ」→「アップ」
-    - 「っき」→「ッキ」
-      - 「すっきり」→「スッキリ」
-  ❌ 誤った例:
-    - 「って」→「ツッテ」（×「ツ」が大きい）
-    - 「って」→「テ」（×促音なし）
-
-**スペース**: スペースは入れないでください。すべて詰めて書いてください。
-
-**数字の表記**: アラビア数字はそのまま残してください（カタカナに変換しない）
-
-**例**:
-  - text: "明日は晴れです" → reading: "アシタワハレデス"
-  - text: "97個あります" → reading: "97コアリマス"
-  - text: "2026年はヤバい" → reading: "2026ネンワヤバイ"
-  - text: "ESPが次の章" → reading: "イーエスピーガツギノショウ"
-  - text: "APIって何？" → reading: "エーピーアイッテナニ？"
-  - text: "Web3って難しいのに。操作できるの！？" → reading: "ウェブ3ッテムズカシイノニ。ソウサデキルノ！？"
-
-【スライド画像について - 重要な選択基準】
-- 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
-- source_image_url: 元記事の画像リストから適切な画像を選択する場合に使用
-- slide_prompt: AI生成する場合に使用
-
-**画像採用の判断基準（必ず従ってください）:**
-- 画像リストに含まれる各画像の「Alt」「Title」「Description」を**総合的に判断**してください
-- **採用すべき場合**: 画像の説明テキストが、そのセクションで説明する内容と**直接的に関連**している場合のみ
-  - 例: セクションが「助成金の実績」を説明 → 画像altが「2024年の助成金配分グラフ」→ 採用OK
-  - 例: セクションが「Commit-Boost」を説明 → 画像altが「Commit-Boost architecture diagram」→ 採用OK
-- **採用すべきでない場合**:
-  - 画像の説明が「背景」「バナー」「ロゴ」「アイコン」「装飾」などの汎用的・装飾的な内容
-  - 画像の説明がセクション内容と無関係または曖昧
-  - 例: セクションが「ESPの概要」を説明 → 画像altが「ETH上部背景開始画像」→ 採用NG（AI生成を使用）
-- **迷った場合はAI生成を優先**: 関連性が不明確な場合は、source_image_urlを指定せずslide_promptでAI生成してください
+{slide_instructions}
 """
 
 SCRIPT_GENERATION_PROMPT_EN = """
@@ -303,44 +440,11 @@ Failure to include reading fields will cause audio synthesis to fail.
 
 [Output Format]
 Output in JSON format:
-{{
-  "title": "Video Title",
-  "description": "Video Description",
-  "sections": [
-    {{
-      "title": "Section Title",
-      "narrations": [
-        {{
-          "text": "Narration text",
-          "reading": "Narration text"
-        }}
-      ],
-      "slide_prompt": "Slide image generation prompt for this section (write in English, but text to display on slide should be in English)",
-      "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
-    }}
-  ]
-}}
+{output_format}
 
-[Reading Field - CRITICAL]
-- **Required field**: Each narration MUST include a reading field
-- For English narration, simply copy the text field to reading field (no special pronunciation rules)
-- Example: text: "Hello world" → reading: "Hello world"
+{reading_instructions}
 
-[About Slide Images - Critical Selection Criteria]
-- For each section, specify either source_image_url OR slide_prompt (not both)
-- source_image_url: Use when selecting an appropriate image from the blog's image list
-- slide_prompt: Use when generating a new slide with AI
-
-**Image Adoption Criteria (MUST follow):**
-- Evaluate each image's "Alt", "Title", and "Description" **holistically**
-- **ADOPT only when**: The image description is **directly relevant** to what the section is explaining
-  - Example: Section explains "grant achievements" → Image alt is "2024 grant allocation chart" → ADOPT
-  - Example: Section explains "Commit-Boost" → Image alt is "Commit-Boost architecture diagram" → ADOPT
-- **DO NOT ADOPT when**:
-  - Image description contains generic/decorative terms like "background", "banner", "logo", "icon", "decoration"
-  - Image description is unrelated or ambiguous to the section content
-  - Example: Section explains "ESP overview" → Image alt is "ETH top background start image" → DO NOT ADOPT (use AI generation)
-- **When in doubt, prefer AI generation**: If relevance is unclear, do NOT set source_image_url and use slide_prompt instead
+{slide_instructions}
 """
 
 SCRIPT_GENERATION_PROMPT_DIALOGUE_JA = """
@@ -457,105 +561,11 @@ reading フィールドの品質はシステムの成否を左右します。以
 
 【出力形式】
 JSON形式で以下を出力してください。**必ず各ナレーションに reading フィールドを含めること**：
-{{
-  "title": "動画タイトル",
-  "description": "動画の説明",
-  "role_assignments": [
-    {{
-      "persona_id": "キャラクターID（例: zundamon, metan）",
-      "role": "役割（例: 解説役、質問役）",
-      "description": "役割の詳細説明"
-    }}
-  ],
-  "sections": [
-    {{
-      "title": "セクションタイトル",
-      "narrations": [
-        {{
-          "persona_id": "キャラクターID（例: zundamon, metan）",
-          "text": "セリフ",
-          "reading": "セリフ ノ カタカナ ヨミ"
-        }}
-      ],
-      "slide_prompt": "このセクションのスライド画像生成用プロンプト（英語で記述、ただしスライド内の表示テキストは日本語で指定）",
-      "source_image_url": "元記事の画像URL（該当する場合のみ。画像リストから選択）"
-    }}
-  ]
-}}
+{output_format}
 
-【reading フィールドについて - CRITICAL】
-各ナレーションには必ず reading フィールドを含めてください。これは音声合成で正しい発音を実現するために必須です。
+{reading_instructions}
 
-- **必須フィールド**: 各セリフには必ず reading フィールドを含める
-- **カタカナ形式**: すべてカタカナで記述（ひらがな不可）
-
-**助詞の発音ルール**:
-  - 「は」→「ワ」（例: 「これは」→「コレワ」）
-  - 「へ」→「エ」（例: 「東京へ」→「トウキョウエ」）
-
-**アルファベット略語の音引き**:
-英字1文字ごとにカタカナで表記し、最後に長音「ー」を付けます
-  - 「ESP」→「イーエスピー」（×イーエスピージ）
-  - 「API」→「エーピーアイ」
-  - 「CPU」→「シーピーユー」
-  - 「USB」→「ユーエスビー」
-
-**促音の表記（CRITICAL - 最重要）**:
-小さい「ッ」を正しく使用してください。「ツッテ」は誤りです。
-  ✅ 正しい例:
-    - 「って」→「ッテ」
-      - 「聞いたって」→「キイタッテ」
-      - 「RAGって何？」→「ラグッテナニ？」
-      - 「APIって何？」→「エーピーアイッテナニ？」
-    - 「った」→「ッタ」
-      - 「言った」→「イッタ」
-      - 「使った」→「ツカッタ」
-    - 「っぱ」→「ッパ」
-      - 「やっぱり」→「ヤッパリ」
-    - 「っと」→「ット」
-      - 「ちょっと」→「チョット」
-    - 「っか」→「ッカ」
-      - 「せっかく」→「セッカク」
-    - 「っこ」→「ッコ」
-      - 「びっくり」→「ビックリ」
-    - 「っち」→「ッチ」
-      - 「もっと」→「モット」
-    - 「っぷ」→「ップ」
-      - 「アップ」→「アップ」
-    - 「っき」→「ッキ」
-      - 「すっきり」→「スッキリ」
-  ❌ 誤った例:
-    - 「って」→「ツッテ」（×「ツ」が大きい）
-    - 「って」→「テ」（×促音なし）
-
-**スペース**: スペースは入れないでください。すべて詰めて書いてください。
-
-**数字の表記**: アラビア数字はそのまま残してください（カタカナに変換しない）
-
-**例**:
-  - text: "ねえねえ！" → reading: "ネエネエ！"
-  - text: "これは便利だね" → reading: "コレワベンリダネ"
-  - text: "東京へ行こう" → reading: "トウキョウエイコウ"
-  - text: "2026年はヤバい" → reading: "2026ネンワヤバイ"
-  - text: "ESPが次の章って聞いた！" → reading: "イーエスピーガツギノショウッテキイタ！"
-  - text: "RAGって何？" → reading: "ラグッテナニ？"
-  - text: "97%削減！" → reading: "97パーセントサクゲン！"
-
-【スライド画像について - 重要な選択基準】
-- 各セクションには、source_image_urlまたはslide_promptのどちらか一方を指定してください
-- source_image_url: 元記事の画像リストから適切な画像を選択する場合に使用
-- slide_prompt: AI生成する場合に使用
-
-**画像採用の判断基準（必ず従ってください）:**
-- 画像リストに含まれる各画像の「Alt」「Title」「Description」を**総合的に判断**してください
-- **採用すべき場合**: 画像の説明テキストが、そのセクションで説明する内容と**直接的に関連**している場合のみ
-  - 例: セクションが「助成金の実績」を説明 → 画像altが「2024年の助成金配分グラフ」→ 採用OK
-  - 例: セクションが「Commit-Boost」を説明 → 画像altが「Commit-Boost architecture diagram」→ 採用OK
-- **採用すべきでない場合**:
-  - 画像の説明が「背景」「バナー」「ロゴ」「アイコン」「装飾」などの汎用的・装飾的な内容
-  - 画像の説明がセクション内容と無関係または曖昧
-  - 例: セクションが「ESPの概要」を説明 → 画像altが「ETH上部背景開始画像」→ 採用NG（AI生成を使用）
-- **迷った場合はAI生成を優先**: 関連性が不明確な場合は、source_image_urlを指定せずslide_promptでAI生成してください
+{slide_instructions}
 """
 
 SCRIPT_GENERATION_PROMPT_DIALOGUE_EN = """
@@ -671,61 +681,11 @@ Failure to include reading fields will cause audio synthesis to fail.
 
 [Output Format]
 Output in JSON format. **MUST include reading field for each narration**:
-{{
-  "title": "Video Title",
-  "description": "Video Description",
-  "role_assignments": [
-    {{
-      "persona_id": "Character ID (e.g., zundamon, metan)",
-      "role": "Role (e.g., explainer, questioner)",
-      "description": "Detailed role description"
-    }}
-  ],
-  "sections": [
-    {{
-      "title": "Section Title",
-      "narrations": [
-        {{
-          "persona_id": "Character ID (e.g., zundamon, metan)",
-          "text": "Dialogue line",
-          "reading": "Katakana reading (REQUIRED)"
-        }}
-      ],
-      "slide_prompt": "Slide image generation prompt for this section (write in English, text on slide should be in English)",
-      "source_image_url": "Source image URL from blog content (if applicable, select from image list)"
-    }}
-  ]
-}}
+{output_format}
 
-[Reading Field - CRITICAL]
-Each narration MUST include a reading field. This is essential for accurate audio synthesis.
+{reading_instructions}
 
-- **Required field**: Every dialogue line must have a reading field
-- **Katakana format**: Write in katakana (not hiragana or romaji)
-- **Particle pronunciation**: Convert particles to their spoken form:
-  - "は" → "ワ" (e.g., "これは" → "コレワ")
-  - "へ" → "エ" (e.g., "東京へ" → "トウキョウエ")
-- **Examples**:
-  - text: "Hello there!" → reading: "ハローゼアー！"
-  - text: "Let's go to Tokyo" → reading: "レッツゴートゥートウキョウ"
-  - text: "What is RAG?" → reading: "ホワットイズラグ？"
-  - text: "97% reduction!" → reading: "ナインティセブンパーセントリダクション！"
-
-[About Slide Images - Critical Selection Criteria]
-- For each section, specify either source_image_url OR slide_prompt (not both)
-- source_image_url: Use when selecting an appropriate image from the blog's image list
-- slide_prompt: Use when generating a new slide with AI
-
-**Image Adoption Criteria (MUST follow):**
-- Evaluate each image's "Alt", "Title", and "Description" **holistically**
-- **ADOPT only when**: The image description is **directly relevant** to what the section is explaining
-  - Example: Section explains "grant achievements" → Image alt is "2024 grant allocation chart" → ADOPT
-  - Example: Section explains "Commit-Boost" → Image alt is "Commit-Boost architecture diagram" → ADOPT
-- **DO NOT ADOPT when**:
-  - Image description contains generic/decorative terms like "background", "banner", "logo", "icon", "decoration"
-  - Image description is unrelated or ambiguous to the section content
-  - Example: Section explains "ESP overview" → Image alt is "ETH top background start image" → DO NOT ADOPT (use AI generation)
-- **When in doubt, prefer AI generation**: If relevance is unclear, do NOT set source_image_url and use slide_prompt instead
+{slide_instructions}
 """
 
 SCRIPT_GENERATION_PROMPTS = {
@@ -784,21 +744,53 @@ def select_personas_from_pool(
     return selected
 
 
-async def generate_script(
+def _format_images_section(images: list[dict[str, str]] | None, language: str) -> str:
+    """Format images section for prompt.
+
+    Args:
+        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
+        language: Language code ('ja' or 'en').
+
+    Returns:
+        Formatted images section string.
+    """
+    if not images:
+        return ""
+
+    if language == "ja":
+        section = "【利用可能な画像】\n以下の画像がブログ記事内で利用可能です。適切なセクションに割り当ててください：\n"
+    else:
+        section = "[Available Images]\nThe following images are available from the blog content. Assign them to appropriate sections:\n"
+
+    for idx, img in enumerate(images, 1):
+        alt_text = img.get("alt", "")
+        title_text = img.get("title", "")
+        aria_text = img.get("aria_describedby", "")
+        description_parts = []
+        if alt_text:
+            description_parts.append(f"Alt: {alt_text}")
+        if title_text:
+            description_parts.append(f"Title: {title_text}")
+        if aria_text:
+            description_parts.append(f"Description: {aria_text}")
+        description = ", ".join(description_parts) if description_parts else "No description"
+
+        section += f"{idx}. URL: {img['src']}\n   {description}\n"
+
+    return section
+
+
+def _build_prompt(
     content: str,
-    model: str,
-    title: str | None = None,
-    description: str | None = None,
-    character: str = "ずんだもん",
-    style: str = "casual",
-    language: str = "ja",
-    api_key: str | None = None,
-    base_url: str = "https://openrouter.ai/api/v1",
-    images: list[dict[str, str]] | None = None,
-    personas: list[dict[str, str]] | None = None,
-    pool_config: dict[str, Any] | None = None,
-) -> VideoScript:
-    """Generate video script from content using LLM.
+    title: str | None,
+    description: str | None,
+    character: str,
+    style: str,
+    language: str,
+    images_section: str,
+    personas: list[dict[str, str]] | None,
+) -> str:
+    """Build prompt for LLM script generation.
 
     Args:
         content: Source content (markdown or text).
@@ -807,67 +799,30 @@ async def generate_script(
         character: Character name for narration (used when no personas defined).
         style: Narration style (casual, formal, educational).
         language: Language code for script generation (ja, en).
-        api_key: OpenRouter API key.
-        model: Model identifier.
-        base_url: API base URL.
-        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
+        images_section: Formatted images section string.
         personas: List of persona dicts with 'id', 'name', 'character' keys.
-                  If provided, multi-speaker dialogue mode is used.
-        pool_config: PersonaPoolConfig dict for random persona selection.
-                     If enabled, randomly selects subset of personas.
 
     Returns:
-        Generated video script.
-
-    Raises:
-        httpx.HTTPError: If API request fails.
-        ValueError: If response parsing fails.
+        Formatted prompt string.
     """
-    # Apply persona pool selection if configured
-    if personas and pool_config:
-        import logging
-
-        logger = logging.getLogger(__name__)
-        original_count = len(personas)
-        personas = select_personas_from_pool(personas, pool_config)
-        selected_ids = [p["id"] for p in personas]
-        ids_str = ", ".join(selected_ids)
-        logger.info(f"Persona pool: selected {len(personas)}/{original_count} personas: {ids_str}")
-    # Format images section for prompt
-    images_section = ""
-    if images:
-        if language == "ja":
-            images_section = "【利用可能な画像】\n以下の画像がブログ記事内で利用可能です。適切なセクションに割り当ててください：\n"
-        else:
-            images_section = "[Available Images]\nThe following images are available from the blog content. Assign them to appropriate sections:\n"
-
-        for idx, img in enumerate(images, 1):
-            alt_text = img.get("alt", "")
-            title_text = img.get("title", "")
-            aria_text = img.get("aria_describedby", "")
-            description_parts = []
-            if alt_text:
-                description_parts.append(f"Alt: {alt_text}")
-            if title_text:
-                description_parts.append(f"Title: {title_text}")
-            if aria_text:
-                description_parts.append(f"Description: {aria_text}")
-            description = ", ".join(description_parts) if description_parts else "No description"
-
-            images_section += f"{idx}. URL: {img['src']}\n   {description}\n"
-
     # Select prompt template based on personas presence
+    is_dialogue = bool(personas)
+
+    # Get shared components
+    output_format = get_output_format_json_example(language, is_dialogue)
+    reading_instructions = get_reading_field_instructions(language)
+    slide_instructions = get_slide_image_instructions(language)
+
     if personas:
         prompt_template = SCRIPT_GENERATION_PROMPTS_DIALOGUE.get(
             language, SCRIPT_GENERATION_PROMPT_DIALOGUE_JA
         )
         # Format personas description
         personas_description = ""
-        if personas:
-            for persona in personas:
-                personas_description += (
-                    f"- {persona['name']} (ID: {persona['id']}): {persona.get('character', '')}\n"
-                )
+        for persona in personas:
+            personas_description += (
+                f"- {persona['name']} (ID: {persona['id']}): {persona.get('character', '')}\n"
+            )
         prompt = prompt_template.format(
             personas_description=personas_description,
             style=style,
@@ -875,9 +830,10 @@ async def generate_script(
             description=description or "",
             content=content,
             images_section=images_section,
+            output_format=output_format,
+            reading_instructions=reading_instructions,
+            slide_instructions=slide_instructions,
         )
-        # Add critical reminder at the end
-        prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
     else:
         prompt_template = SCRIPT_GENERATION_PROMPTS.get(language, SCRIPT_GENERATION_PROMPT_JA)
         prompt = prompt_template.format(
@@ -887,51 +843,28 @@ async def generate_script(
             description=description or "",
             content=content,
             images_section=images_section,
+            output_format=output_format,
+            reading_instructions=reading_instructions,
+            slide_instructions=slide_instructions,
         )
-        # Add critical reminder at the end
-        prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+    # Add critical reminder at the end
+    prompt += "\n\n**CRITICAL REMINDER**: Ensure EVERY narration has both 'text' and 'reading' fields. Do not skip the 'reading' field for any narration."
+    return prompt
 
-    # System prompt to enforce reading field generation
-    system_prompt = (
-        "You are a script generator for video narration. "
-        "CRITICAL REQUIREMENT: Every single narration MUST include a 'reading' field in katakana. "
-        "This is not optional. Missing 'reading' field will cause system failure. "
-        "Always generate both 'text' and 'reading' for each narration."
-    )
 
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
-        ],
-        "response_format": {"type": "json_object"},
-        "max_tokens": 16000,  # Ensure sufficient output for complete scripts
-    }
+def _parse_script_response(script_data: dict[str, Any]) -> VideoScript:
+    """Parse LLM response into VideoScript.
 
-    async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_EXTENDED) as client:
-        url = f"{base_url}/chat/completions"
-        response = await client.post(url, headers=headers, json=payload)
-        if response.status_code != 200:
-            error_detail = response.text[:500] if response.text else "No response body"
-            raise RuntimeError(
-                f"LLM API request failed: {response.status_code} for {url}\n"
-                f"Model: {model}\n"
-                f"Response: {error_detail}"
-            )
-        data = response.json()
+    Args:
+        script_data: Parsed JSON response from LLM.
 
-    # Parse response
-    import json
+    Returns:
+        VideoScript object.
 
-    message_content = data["choices"][0]["message"]["content"]
-    script_data = json.loads(message_content)
-
+    Raises:
+        ValueError: If response format is invalid or missing required fields.
+    """
     # Parse sections - unified format with narrations list
     sections = []
     for section in script_data["sections"]:
@@ -992,21 +925,170 @@ async def generate_script(
             for entry in script_data["role_assignments"]
         ]
 
-    # Validate script completeness
-    if not sections:
-        raise ValueError("Script generation failed: no sections were generated")
-    if not sections[-1].narrations:
-        raise ValueError(
-            f"Script generation incomplete: last section '{sections[-1].title}' has no narrations. "
-            "The LLM response may have been truncated. Try regenerating the script."
-        )
-
     return VideoScript(
         title=script_data["title"],
         description=script_data["description"],
         sections=sections,
         role_assignments=role_assignments,
     )
+
+
+def _validate_script_completeness(script: VideoScript) -> None:
+    """Validate script completeness.
+
+    Args:
+        script: VideoScript to validate.
+
+    Raises:
+        ValueError: If script is incomplete.
+    """
+    if not script.sections:
+        raise ValueError("Script generation failed: no sections were generated")
+    if not script.sections[-1].narrations:
+        raise ValueError(
+            f"Script generation incomplete: last section '{script.sections[-1].title}' has no narrations. "
+            "The LLM response may have been truncated. Try regenerating the script."
+        )
+
+
+async def _call_llm_api(prompt: str, model: str, api_key: str, base_url: str) -> dict[str, Any]:
+    """Call LLM API for script generation.
+
+    Args:
+        prompt: Formatted prompt string.
+        model: Model identifier.
+        api_key: API key for authentication.
+        base_url: API base URL.
+
+    Returns:
+        Parsed JSON response from LLM.
+
+    Raises:
+        RuntimeError: If API request fails.
+        ValueError: If response format is invalid.
+    """
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    # System prompt to enforce reading field generation
+    system_prompt = (
+        "You are a script generator for video narration. "
+        "CRITICAL REQUIREMENT: Every single narration MUST include a 'reading' field in katakana. "
+        "This is not optional. Missing 'reading' field will cause system failure. "
+        "Always generate both 'text' and 'reading' for each narration."
+    )
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+        "response_format": {"type": "json_object"},
+        "max_tokens": 16000,  # Ensure sufficient output for complete scripts
+    }
+
+    async with httpx.AsyncClient(timeout=TimeoutConstants.HTTP_EXTENDED) as client:
+        url = f"{base_url}/chat/completions"
+        response = await client.post(url, headers=headers, json=payload)
+        if response.status_code != 200:
+            error_detail = response.text[:500] if response.text else "No response body"
+            raise RuntimeError(
+                f"LLM API request failed: {response.status_code} for {url}\n"
+                f"Model: {model}\n"
+                f"Response: {error_detail}"
+            )
+        data = response.json()
+
+    # Parse response
+    import json
+
+    message_content = data["choices"][0]["message"]["content"]
+    return json.loads(message_content)
+
+
+async def generate_script(
+    content: str,
+    model: str,
+    title: str | None = None,
+    description: str | None = None,
+    character: str = "ずんだもん",
+    style: str = "casual",
+    language: str = "ja",
+    api_key: str | None = None,
+    base_url: str = "https://openrouter.ai/api/v1",
+    images: list[dict[str, str]] | None = None,
+    personas: list[dict[str, str]] | None = None,
+    pool_config: dict[str, Any] | None = None,
+) -> VideoScript:
+    """Generate video script from content using LLM.
+
+    Args:
+        content: Source content (markdown or text).
+        title: Content title.
+        description: Content description.
+        character: Character name for narration (used when no personas defined).
+        style: Narration style (casual, formal, educational).
+        language: Language code for script generation (ja, en).
+        api_key: OpenRouter API key.
+        model: Model identifier.
+        base_url: API base URL.
+        images: List of image metadata dicts with 'src', 'alt', 'title' keys.
+        personas: List of persona dicts with 'id', 'name', 'character' keys.
+                  If provided, multi-speaker dialogue mode is used.
+        pool_config: PersonaPoolConfig dict for random persona selection.
+                     If enabled, randomly selects subset of personas.
+
+    Returns:
+        Generated video script.
+
+    Raises:
+        httpx.HTTPError: If API request fails.
+        ValueError: If response parsing fails.
+    """
+    # Apply persona pool selection if configured
+    if personas and pool_config:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        original_count = len(personas)
+        personas = select_personas_from_pool(personas, pool_config)
+        selected_ids = [p["id"] for p in personas]
+        ids_str = ", ".join(selected_ids)
+        logger.info(f"Persona pool: selected {len(personas)}/{original_count} personas: {ids_str}")
+
+    # Format images section for prompt
+    images_section = _format_images_section(images, language)
+
+    # Build prompt
+    prompt = _build_prompt(
+        content=content,
+        title=title,
+        description=description,
+        character=character,
+        style=style,
+        language=language,
+        images_section=images_section,
+        personas=personas,
+    )
+
+    # Call LLM API
+    script_data = await _call_llm_api(
+        prompt=prompt,
+        model=model,
+        api_key=api_key or "",
+        base_url=base_url,
+    )
+
+    # Parse response
+    script = _parse_script_response(script_data)
+
+    # Validate completeness
+    _validate_script_completeness(script)
+
+    return script
 
 
 class ScriptValidationResult:

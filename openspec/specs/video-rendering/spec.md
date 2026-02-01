@@ -776,6 +776,8 @@ The system SHALL place background and BGM assets in paths accessible to Remotion
 
 The system SHALL work with composition.json files that lack background and BGM information.
 
+The implementation SHALL centralize rendering execution parameters and environment checks to avoid duplicated logic.
+
 #### Scenario: composition.json Without Background or BGM
 
 - **GIVEN** composition.json does not include `background` and `bgm` fields
@@ -783,3 +785,4 @@ The system SHALL work with composition.json files that lack background and BGM i
 - **THEN** the video is generated with a black background
 - **AND** no BGM is played
 - **AND** no error occurs
+

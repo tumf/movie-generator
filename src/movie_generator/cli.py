@@ -40,6 +40,7 @@ from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
 from .utils.scene_range import parse_scene_range
 from .video.remotion_renderer import render_video_with_remotion
+from .video.renderer import CompositionConfig, RenderConfig
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -382,7 +383,7 @@ def script() -> None:
     "--output",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for script.yaml (default: current directory)",
+    help="Output directory for script.yaml (default: ./output)",
 )
 @click.option(
     "--config",
@@ -455,7 +456,7 @@ def create(
     if model:
         cfg.content.llm.model = model
 
-    output_dir = Path(output) if output else Path.cwd()
+    output_dir = Path(output) if output else Path("output")
     script_path = output_dir / "script.yaml"
 
     # Check for existing script file
@@ -1490,24 +1491,32 @@ def render_video_cmd(
                 for p in cfg.personas
             ]
 
-        render_video_with_remotion(
+        composition_config = CompositionConfig(
             phrases=all_phrases,
             audio_paths=audio_paths,
             slide_paths=slide_paths,
-            output_path=video_path,
-            remotion_root=remotion_dir,
             project_name=project_name,
-            show_progress=show_progress,
+            fps=cfg.style.fps,
+            resolution=cfg.style.resolution,
             transition=transition_config,
             personas=personas_for_render,
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+        )
+
+        render_config = RenderConfig(
+            output_path=video_path,
+            remotion_root=remotion_dir,
+            show_progress=show_progress,
             crf=cfg.style.crf,
             render_concurrency=cfg.video.render_concurrency,
             render_timeout_seconds=cfg.video.render_timeout_seconds,
-            fps=cfg.style.fps,
-            resolution=cfg.style.resolution,
+        )
+
+        render_video_with_remotion(
+            composition_config=composition_config,
+            render_config=render_config,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")
