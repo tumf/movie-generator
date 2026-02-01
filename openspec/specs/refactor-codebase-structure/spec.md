@@ -82,3 +82,26 @@ The system SHALL maintain unique environment variable definitions in `web/docker
 - **THEN** 外部APIキーなしでテストが完了する
 - **AND** script/audio/slides/video の進捗が想定範囲内で更新される
 
+### Requirement: Web API Utility Consolidation
+The system SHALL consolidate common request utilities (IP retrieval) and datetime processing utilities used in Web API routes into reusable modules, improving maintainability without changing response content.
+
+#### Scenario: Same utilities used across routes
+- **WHEN** `api_routes.py` and `web_routes.py` perform request processing
+- **THEN** IP retrieval and datetime processing SHALL use common utilities
+- **AND** response content SHALL remain unchanged
+
+### Requirement: Pydantic v2 Validation Maintenance
+The system SHALL maintain empty string to `None` conversion for datetime fields in `JobResponse` using Pydantic v2 validator API.
+
+#### Scenario: Empty datetime normalized to None
+- **WHEN** `JobResponse` receives empty string datetime fields
+- **THEN** those fields SHALL be converted to `None`
+
+### Requirement: Web Worker Module Separation
+The system SHALL separate web worker configuration, PocketBase client, generation wrapper, and worker loop into dedicated modules while maintaining existing startup paths and behavior.
+
+#### Scenario: Existing startup method is maintained
+- **WHEN** `python web/worker/main.py` is executed
+- **THEN** configuration SHALL be loaded using the same environment variable names as before
+- **AND** the worker SHALL start and begin job polling
+

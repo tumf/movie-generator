@@ -1,16 +1,13 @@
 """Tests for worker progress monitoring."""
 
 import asyncio
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-# Add worker directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "worker"))
-
-from main import Config, MovieGeneratorWrapper
+from worker.generator import MovieGeneratorWrapper
+from worker.settings import WorkerSettings
 
 
 class TestProgressMonitoring:
@@ -22,16 +19,16 @@ class TestProgressMonitoring:
         return tmp_path / "test_job"
 
     @pytest.fixture
-    def mock_config(self, tmp_path: Path) -> Config:
-        """Create mock Config instance."""
-        config = Config()
+    def mock_config(self, tmp_path: Path) -> WorkerSettings:
+        """Create mock WorkerSettings instance."""
+        config = WorkerSettings()
         config.job_data_dir = tmp_path
         config.config_path = None
         config.mcp_config_path = None
         return config
 
     @pytest.fixture
-    def wrapper(self, tmp_path: Path, mock_config: Config) -> MovieGeneratorWrapper:
+    def wrapper(self, tmp_path: Path, mock_config: WorkerSettings) -> MovieGeneratorWrapper:
         """Create MovieGeneratorWrapper instance."""
         return MovieGeneratorWrapper(job_data_dir=tmp_path, config=mock_config)
 
