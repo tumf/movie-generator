@@ -10,19 +10,11 @@ from models import JobCreate, JobResponse, JobStatus, JobStatusResponse
 from pocketbase_client import PocketBaseClient
 
 from config import settings
+from .request_utils import get_client_ip
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def get_client_ip(request: Request) -> str:
-    """Get client IP address from request."""
-    # Check for X-Forwarded-For header (behind proxy/Traefik)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 
 @router.post("/jobs", response_model=JobResponse)
