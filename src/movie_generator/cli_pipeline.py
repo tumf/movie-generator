@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class PipelineParams:
     """Parameters passed between pipeline stages."""
 
-    # Input parameters
+    # Input parameters (required)
     url_or_script: str | None
     config: Config
     output_dir: Path
@@ -46,6 +46,8 @@ class PipelineParams:
     persona_pool_count: int | None
     persona_pool_seed: int | None
     strict: bool
+    # Input parameters (optional with defaults)
+    output_dir_explicit: bool = False  # True if --output was explicitly specified
     force: bool = False
     quiet: bool = False
     verbose: bool = False
@@ -172,7 +174,9 @@ def stage_script_resolution(
         potential_script = Path(params.url_or_script)
         if potential_script.exists() and potential_script.suffix in [".yaml", ".yml"]:
             script_path_input = potential_script
-            params.output_dir = potential_script.parent
+            # Only override output_dir if --output was not explicitly specified
+            if not params.output_dir_explicit:
+                params.output_dir = potential_script.parent
         else:
             url = params.url_or_script
 

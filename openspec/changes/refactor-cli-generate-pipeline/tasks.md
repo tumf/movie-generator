@@ -21,3 +21,10 @@
 ## Acceptance #4 Failure Follow-up
 - [x] Implement `--force` handling in `generate()` pipeline so existing script/output can be regenerated when requested (evidence: `src/movie_generator/cli.py:325-399` passes `force` but never uses it; `src/movie_generator/cli_pipeline.py:186-244` always loads existing script without a `force` override).
 - [x] Implement `--dry-run`/`--verbose` behavior for `generate()` pipeline (evidence: `src/movie_generator/cli.py:325-399` accepts `dry_run`/`verbose` but no conditional flow or logging; `src/movie_generator/cli.py:400-434` always executes stage functions).
+
+## Acceptance #5 Failure Follow-up
+- [x] `src/movie_generator/cli_pipeline.py:171-176` の `stage_script_resolution()` が `params.output_dir` を常に `script.yaml` の親に上書きしており、`src/movie_generator/cli.py:379-385` で `--output` を反映して設定した出力先が無視される。`--output` 指定時は上書きしないように修正する。
+  - `PipelineParams` に `output_dir_explicit` フィールドを追加
+  - `cli.py` で `--output` 明示的指定を `output_dir_explicit=True` で伝達
+  - `cli_pipeline.py` で `output_dir_explicit=False` の場合のみ上書き
+  - テストケース追加: `test_explicit_output_dir_overrides_script_parent` と `test_implicit_output_dir_uses_script_parent`

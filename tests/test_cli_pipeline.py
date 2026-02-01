@@ -270,3 +270,82 @@ sections:
         # Verify that execution was skipped (no audio files created)
         assert len(phrases) > 0  # Phrases are still created
         assert len(audio_paths) == 0  # But no audio is generated
+
+    def test_explicit_output_dir_overrides_script_parent(
+        self,
+        mock_params: PipelineParams,
+        mock_progress: Progress,
+        mock_console: Console,
+        tmp_path: Path,
+    ) -> None:
+        """Test that explicit --output overrides script.yaml parent directory."""
+        # Create script file in a subdirectory
+        script_dir = tmp_path / "script_location"
+        script_dir.mkdir()
+        script_path = script_dir / "script.yaml"
+        script_content = """
+title: Test Script
+description: Test
+sections:
+  - title: Section 1
+    narrations:
+      - text: Test
+        reading: テスト
+    slide_prompt: Test
+"""
+        script_path.write_text(script_content)
+
+        # Create a different output directory
+        explicit_output_dir = tmp_path / "custom_output"
+        explicit_output_dir.mkdir()
+
+        # Update params with script path and explicit output_dir
+        mock_params.url_or_script = str(script_path)
+        mock_params.output_dir = explicit_output_dir
+        mock_params.output_dir_explicit = True  # Simulate --output flag
+
+        # Execute stage
+        script = stage_script_resolution(mock_params, mock_progress, mock_console)
+
+        # Verify output_dir was NOT overridden
+        assert mock_params.output_dir == explicit_output_dir
+        assert mock_params.output_dir != script_path.parent
+
+        # Also verify script was loaded correctly
+        assert script.title == "Test Script"
+
+    def test_implicit_output_dir_uses_script_parent(
+        self,
+        mock_params: PipelineParams,
+        mock_progress: Progress,
+        mock_console: Console,
+        tmp_path: Path,
+    ) -> None:
+        """Test that implicit output_dir uses script.yaml parent directory."""
+        # Create script file
+        script_path = tmp_path / "script.yaml"
+        script_content = """
+title: Test Script
+description: Test
+sections:
+  - title: Section 1
+    narrations:
+      - text: Test
+        reading: テスト
+    slide_prompt: Test
+"""
+        script_path.write_text(script_content)
+
+        # Update params with script path but no explicit output_dir
+        mock_params.url_or_script = str(script_path)
+        mock_params.output_dir = tmp_path / "initial_dir"  # Will be overridden
+        mock_params.output_dir_explicit = False  # No --output flag
+
+        # Execute stage
+        script = stage_script_resolution(mock_params, mock_progress, mock_console)
+
+        # Verify output_dir was overridden to script parent
+        assert mock_params.output_dir == script_path.parent
+
+        # Also verify script was loaded correctly
+        assert script.title == "Test Script"

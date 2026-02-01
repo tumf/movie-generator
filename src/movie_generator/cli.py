@@ -396,6 +396,7 @@ def generate(
         url_or_script=url_or_script,
         config=cfg,
         output_dir=output_dir,
+        output_dir_explicit=output is not None,  # Track if --output was explicitly specified
         api_key=api_key,
         mcp_config=mcp_config,
         scenes=scenes,
