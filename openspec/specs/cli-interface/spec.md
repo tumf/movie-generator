@@ -44,6 +44,8 @@ The command SHALL accept the following options:
 - `--speaker-id <id>`: VOICEVOX speaker ID
 - `--allow-placeholder`: Generate placeholder audio without VOICEVOX
 
+The implementation SHALL reuse the same script loading and phrase preparation logic as `generate` to avoid drift.
+
 Scene range parsing and validation SHALL be shared across commands and report consistent errors.
 
 #### Scenario: Generate audio from script
