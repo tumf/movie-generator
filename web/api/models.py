@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, HttpUrl, validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 class JobStatus(str, Enum):
@@ -41,7 +41,7 @@ class JobResponse(BaseModel):
     completed_at: datetime | None = None
     expires_at: datetime
 
-    @validator("started_at", "completed_at", "created", "updated", pre=True)
+    @field_validator("started_at", "completed_at", "created", "updated", mode="before")
     @classmethod
     def empty_str_to_none(cls, v: Any) -> Any:
         """Convert empty string to None for optional datetime fields."""

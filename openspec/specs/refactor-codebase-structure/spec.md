@@ -2,132 +2,98 @@
 
 ## Purpose
 
-Maintain a well-structured, modular codebase that minimizes duplication, promotes reusability, and ensures type safety for the movie generator application.
+Refactor the Movie Generator codebase to improve maintainability, testability, and code reusability by eliminating code duplication, reducing function complexity, standardizing error handling, consolidating constants, and enhancing type safety.
 ## Requirements
 ### Requirement: Utility Module Organization
+The system SHALL provide reusable utility modules for common operations including file system operations, retry logic, subprocess execution, and text processing.
 
-The codebase SHALL organize common utility functions into dedicated modules under `src/movie_generator/utils/`.
+#### Scenario: File system utilities are available
+- **WHEN** code needs to check file existence or perform path operations
+- **THEN** utilities from `src/movie_generator/utils/filesystem.py` SHALL be used
 
-#### Scenario: File operations utility
+#### Scenario: Retry logic is standardized
+- **WHEN** code needs to retry operations
+- **THEN** utilities from `src/movie_generator/utils/retry.py` SHALL be used with exponential backoff
 
-- **WHEN** developers need to perform file existence checks or path operations
-- **THEN** they SHALL use functions from `utils/filesystem.py`
+#### Scenario: Subprocess execution is standardized
+- **WHEN** code needs to execute external commands
+- **THEN** utilities from `src/movie_generator/utils/subprocess.py` SHALL be used
 
-#### Scenario: Retry logic utility
+### Requirement: Constants Consolidation
+The system SHALL define all magic numbers and strings as named constants in a centralized location.
 
-- **WHEN** developers need retry logic with exponential backoff
-- **THEN** they SHALL use functions from `utils/retry.py`
+#### Scenario: Video constants are centralized
+- **WHEN** code needs FPS or resolution values
+- **THEN** constants from `VideoConstants` in `src/movie_generator/constants.py` SHALL be used
 
-#### Scenario: Subprocess execution utility
-
-- **WHEN** developers need to execute subprocesses
-- **THEN** they SHALL use helpers from `utils/subprocess.py`
-
-#### Scenario: Text processing utility
-
-- **WHEN** developers need text processing operations
-- **THEN** they SHALL use functions from `utils/text.py`
-
-### Requirement: Centralized Constants
-
-The codebase SHALL consolidate all magic numbers and configuration values into `src/movie_generator/constants.py`.
-
-#### Scenario: Video configuration constants
-
-- **WHEN** code requires video-related configuration (FPS, resolution)
-- **THEN** it SHALL reference `VideoConstants` from `constants.py`
-
-#### Scenario: File extension constants
-
-- **WHEN** code needs to validate or work with file extensions
-- **THEN** it SHALL reference `FileExtensions` from `constants.py`
-
-#### Scenario: Project path constants
-
-- **WHEN** code references standard directory names
-- **THEN** it SHALL reference `ProjectPaths` from `constants.py`
-
-#### Scenario: Retry configuration constants
-
-- **WHEN** code requires retry parameters
-- **THEN** it SHALL reference `RetryConfig` from `constants.py`
+#### Scenario: Project paths are standardized
+- **WHEN** code needs to reference standard directory names
+- **THEN** constants from `ProjectPaths` SHALL be used
 
 ### Requirement: Exception Hierarchy
+The system SHALL provide a structured exception hierarchy for clear error categorization and handling.
 
-The codebase SHALL define a consistent exception hierarchy in `src/movie_generator/exceptions.py`.
+#### Scenario: Base exception is available
+- **WHEN** raising Movie Generator-specific errors
+- **THEN** exceptions SHALL inherit from `MovieGeneratorError` base class
 
-#### Scenario: Base exception usage
-
-- **WHEN** raising application-specific errors
-- **THEN** they SHALL inherit from `MovieGeneratorError`
-
-#### Scenario: Configuration errors
-
+#### Scenario: Configuration errors are distinct
 - **WHEN** configuration-related errors occur
-- **THEN** the system SHALL raise `ConfigurationError`
+- **THEN** `ConfigurationError` SHALL be raised
 
-#### Scenario: Rendering errors
-
+#### Scenario: Rendering errors are distinct
 - **WHEN** rendering operations fail
-- **THEN** the system SHALL raise `RenderingError`
+- **THEN** `RenderingError` SHALL be raised
 
-#### Scenario: MCP communication errors
+### Requirement: Function Decomposition
+The system SHALL decompose overly long functions into smaller, focused functions with single responsibilities.
 
-- **WHEN** MCP communication fails
-- **THEN** the system SHALL raise `MCPError`
+#### Scenario: CLI generate function is decomposed
+- **WHEN** the generate command is executed
+- **THEN** implementation SHALL use multiple focused functions instead of a single 400+ line function
 
-### Requirement: Function Modularity
-
-Functions SHALL be kept concise and focused on a single responsibility, with complex functions split into smaller components.
-
-#### Scenario: CLI function size
-
-- **WHEN** reviewing CLI functions
-- **THEN** no single function SHALL exceed 100 lines of code
-
-#### Scenario: Scene range parsing modularity
-
-- **WHEN** parsing scene ranges
-- **THEN** the logic SHALL be split into focused sub-functions
+#### Scenario: Scene range parsing is decomposed
+- **WHEN** scene range arguments are parsed
+- **THEN** implementation SHALL use sub-functions for different range formats
 
 ### Requirement: Type Safety
+The system SHALL use proper type annotations and reduce type checking suppressions.
 
-The codebase SHALL use Python type annotations and TypedDict where appropriate to ensure type safety.
+#### Scenario: TypedDict is used for structured data
+- **WHEN** passing composition or phrase data
+- **THEN** TypedDict types SHALL be used instead of plain dict
 
-#### Scenario: Composition data typing
+#### Scenario: Type ignore annotations are minimized
+- **WHEN** code requires type hints
+- **THEN** proper types SHALL be defined instead of using `type: ignore`
 
-- **WHEN** working with composition data structures
-- **THEN** the code SHALL use `CompositionData` TypedDict
+### Requirement: Docker Compose Environment Variable Uniqueness
+The system SHALL maintain unique environment variable definitions in `web/docker-compose.yml` and eliminate duplicate keys.
 
-#### Scenario: Phrase data typing
+#### Scenario: PocketBase environment variables have no duplicates
+- **WHEN** `docker-compose config` is executed
+- **THEN** PocketBase environment variables SHALL have no duplicate keys
 
-- **WHEN** working with phrase data structures
-- **THEN** the code SHALL use `PhraseDict` TypedDict
+### Requirement: Web API Utility Consolidation
+The system SHALL consolidate common request utilities (IP retrieval) and datetime processing utilities used in Web API routes into reusable modules, improving maintainability without changing response content.
 
-#### Scenario: Type ignore minimization
+#### Scenario: Same utilities used across routes
+- **WHEN** `api_routes.py` and `web_routes.py` perform request processing
+- **THEN** IP retrieval and datetime processing SHALL use common utilities
+- **AND** response content SHALL remain unchanged
 
-- **WHEN** adding new code
-- **THEN** developers SHALL avoid using `type: ignore` annotations unless absolutely necessary
+### Requirement: Pydantic v2 Validation Maintenance
+The system SHALL maintain empty string to `None` conversion for datetime fields in `JobResponse` using Pydantic v2 validator API.
 
-### Requirement: Code Reusability
+#### Scenario: Empty datetime normalized to None
+- **WHEN** `JobResponse` receives empty string datetime fields
+- **THEN** those fields SHALL be converted to `None`
 
-The codebase SHALL eliminate code duplication by extracting common patterns into reusable utilities.
+### Requirement: Web Worker Module Separation
+The system SHALL separate web worker configuration, PocketBase client, generation wrapper, and worker loop into dedicated modules while maintaining existing startup paths and behavior.
 
-#### Scenario: Duplicate pattern elimination
-
-- **WHEN** identical logic appears in multiple locations
-- **THEN** it SHALL be extracted into a shared utility function
-
-#### Scenario: Consistent API patterns
-
-- **WHEN** similar operations are performed across modules
-- **THEN** they SHALL use the same utility function with a consistent interface
-
-### Requirement: Webワーカーの責務分割
-システムは、Webワーカーの設定・PocketBaseクライアント・生成ラッパー・ワーカーループを専用モジュールに分割し、起動経路と挙動を維持しなければならない（SHALL）。
-
-#### Scenario: 既存の起動方法を維持する
-- **WHEN** `python web/worker/main.py` を実行する
-- **THEN** 既存と同じ環境変数名で設定が読み込まれる
-- **AND** ワーカーが起動してジョブポーリングを開始する
+#### Scenario: Existing startup method is maintained
+- **WHEN** `python web/worker/main.py` is executed
+- **THEN** configuration SHALL be loaded using the same environment variable names as before
+- **AND** the worker SHALL start and begin job polling
 
