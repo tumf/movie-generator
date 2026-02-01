@@ -103,15 +103,16 @@ async def generate_script_from_url(
     if progress_callback:
         progress_callback(40, 100, "Generating script with LLM...")
 
-    # Prepare images metadata for script generation
+    # Prepare images metadata for script generation (filter to candidates only)
     images_metadata = None
     if parsed.images:
+        candidate_images = [img for img in parsed.images if img.is_candidate]
         images_metadata = [
             img.model_dump(
                 include={"src", "alt", "title", "aria_describedby"},
                 exclude_none=True,
             )
-            for img in parsed.images
+            for img in candidate_images
         ]
 
     # Prepare personas if defined (enables multi-speaker mode for 2+ personas)
