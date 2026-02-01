@@ -14,6 +14,7 @@ import yaml
 from rich.console import Console
 
 from .config import Config
+from .constants import ProjectPaths
 from .script.phrases import Phrase
 
 console = Console()
@@ -224,10 +225,10 @@ class Project:
 
         Args:
             source_root: Root directory containing assets/ folder.
-                        Defaults to current working directory.
+                        Defaults to project root (respects DOCKER_ENV/PROJECT_ROOT).
         """
         if source_root is None:
-            source_root = Path.cwd()
+            source_root = ProjectPaths.get_project_root()
 
         source_characters = source_root / "assets" / "characters"
         if not source_characters.exists():
@@ -276,7 +277,7 @@ class Project:
             shutil.copy2(self.phrases_file, remotion_public / "metadata.json")
 
     def _initialize_remotion_project(self, remotion_dir: Path) -> None:
-        """Initialize Remotion project with package.json and dependencies.
+        """Initialize Remotion project using official pnpm create command.
 
         Args:
             remotion_dir: Target Remotion project directory.
@@ -286,28 +287,37 @@ class Project:
         """
         stage = "Remotion initialization"
         try:
-            # Import here to avoid circular dependency
-            from . import video
+            # Use pnpm create @remotion/video to generate minimal project
+            console.print("[cyan]Creating Remotion project with pnpm create...[/cyan]")
 
-            # Create remotion directory
-            remotion_dir.mkdir(parents=True, exist_ok=True)
-
-            # Create package.json
-            console.print("[cyan]Creating package.json...[/cyan]")
-            package_json_path = remotion_dir / "package.json"
-            package_data = video.templates.get_package_json(self.name)
-            with package_json_path.open("w", encoding="utf-8") as f:
-                json.dump(package_data, f, indent=2)
-
-            # Install Remotion packages
-            console.print("[cyan]Installing Remotion packages...[/cyan]")
+            # Run pnpm create @remotion/video with blank template
+            # This creates the remotion directory and initializes it
             subprocess.run(
-                ["pnpm", "install"],
-                cwd=remotion_dir,
+                [
+                    "pnpm",
+                    "create",
+                    "@remotion/video@latest",
+                    remotion_dir.name,
+                    "--template",
+                    "blank",
+                ],
+                cwd=remotion_dir.parent,
                 check=True,
                 capture_output=True,
                 text=True,
             )
+
+            # Update package.json with project-specific name
+            console.print("[cyan]Updating package.json...[/cyan]")
+            package_json_path = remotion_dir / "package.json"
+            if package_json_path.exists():
+                with package_json_path.open("r", encoding="utf-8") as f:
+                    package_data = json.load(f)
+                # Update name to @projects/<name>
+                package_data["name"] = f"@projects/{self.name}"
+                with package_json_path.open("w", encoding="utf-8") as f:
+                    json.dump(package_data, f, indent=2)
+
             console.print("[green]✓ Remotion project initialized[/green]")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"{stage} failed: {e.stderr if e.stderr else str(e)}") from e
@@ -435,7 +445,11 @@ class Project:
             raise RuntimeError(f"{stage} failed: {str(e)}") from e
 
     def _create_composition_file(self, remotion_dir: Path) -> None:
-        """Create placeholder composition.json file.
+        """Create composition.json file.
+
+        This creates composition.json and populates it with phrase metadata if available.
+        If phrases.json exists, it will be loaded and reflected in composition.json.
+        Otherwise, an empty phrases array is created.
 
         Args:
             remotion_dir: Remotion project directory.
@@ -464,15 +478,63 @@ class Project:
 
             console.print("[cyan]Creating composition file...[/cyan]")
 
-            # Create placeholder composition.json
-            composition_data = {
-                "title": self.name,
-                "fps": fps,
-                "width": resolution[0],
-                "height": resolution[1],
-                "phrases": [],
-                "transition": transition_config,
-            }
+            # Check if phrases data exists
+            if self.phrases_file.exists():
+                # Load phrases and populate composition.json
+                try:
+                    phrases = self.load_phrases()
+                    console.print(
+                        f"[cyan]Loading {len(phrases)} phrases from phrases.json...[/cyan]"
+                    )
+
+                    # Build phrases data for composition.json
+                    phrases_data = []
+                    for phrase in phrases:
+                        phrase_data = {
+                            "text": phrase.get_subtitle_text(),
+                            "audioFile": f"audio/{ProjectPaths.PHRASE_FILENAME_FORMAT.format(index=phrase.original_index)}",
+                            "duration": phrase.duration,
+                            "start_time": phrase.start_time,
+                        }
+
+                        # Add slide file if section_index is available
+                        if phrase.section_index is not None:
+                            slide_filename = f"slide_section_{phrase.section_index}.png"
+                            phrase_data["slideFile"] = f"slides/{slide_filename}"
+
+                        phrases_data.append(phrase_data)
+
+                    composition_data = {
+                        "title": self.name,
+                        "fps": fps,
+                        "width": resolution[0],
+                        "height": resolution[1],
+                        "phrases": phrases_data,
+                        "transition": transition_config,
+                    }
+                except Exception as e:
+                    console.print(
+                        f"[yellow]Warning: Failed to load phrases: {e}. Creating empty composition.[/yellow]"
+                    )
+                    composition_data = {
+                        "title": self.name,
+                        "fps": fps,
+                        "width": resolution[0],
+                        "height": resolution[1],
+                        "phrases": [],
+                        "transition": transition_config,
+                    }
+            else:
+                # Create placeholder composition.json with empty phrases
+                composition_data = {
+                    "title": self.name,
+                    "fps": fps,
+                    "width": resolution[0],
+                    "height": resolution[1],
+                    "phrases": [],
+                    "transition": transition_config,
+                }
+
             composition_path = remotion_dir / "composition.json"
             with composition_path.open("w", encoding="utf-8") as f:
                 json.dump(composition_data, f, indent=2)
@@ -551,10 +613,14 @@ class Project:
                     )
                     console.print("[green]✓ Dependencies installed with npm[/green]")
 
+            # Always update/create composition.json (even for existing projects)
+            self._create_composition_file(remotion_dir)
+
             console.print("[green]✓ Templates updated[/green]")
             return remotion_dir
 
-        # Verify pnpm is available
+        # Verify Node.js and pnpm are available
+        _ensure_nodejs_available()
         _ensure_pnpm_available()
 
         console.print(f"[cyan]Creating Remotion project for {self.name}...[/cyan]")

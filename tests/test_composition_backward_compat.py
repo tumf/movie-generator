@@ -144,3 +144,63 @@ def test_composition_mixed_personas_and_none():
         # Second phrase should NOT have persona fields
         assert "personaId" not in data["phrases"][1]
         assert "subtitleColor" not in data["phrases"][1]
+
+
+def test_composition_without_background_and_bgm():
+    """Test that composition.json can be generated without background and BGM.
+
+    This verifies the spec requirement:
+    'The system SHALL work with composition.json files that lack background and BGM information.'
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        remotion_root = Path(tmpdir)
+        (remotion_root / "public" / "audio").mkdir(parents=True)
+
+        # Create simple phrases
+        phrases = [
+            Phrase(text="Test phrase 1", duration=1.5),
+            Phrase(text="Test phrase 2", duration=1.5),
+        ]
+        for i, p in enumerate(phrases):
+            p.original_index = i
+
+        audio_paths = [
+            remotion_root / "public" / "audio" / "phrase_0000.wav",
+            remotion_root / "public" / "audio" / "phrase_0001.wav",
+        ]
+        for path in audio_paths:
+            path.touch()
+
+        # Generate composition.json without background or BGM
+        update_composition_json(
+            remotion_root=remotion_root,
+            phrases=phrases,
+            audio_paths=audio_paths,
+            slide_paths=None,
+            project_name="test",
+            background=None,  # No background provided
+            bgm=None,  # No BGM provided
+        )
+
+        # Read and verify composition.json
+        composition_path = remotion_root / "composition.json"
+        with composition_path.open() as f:
+            data = json.load(f)
+
+        # Verify basic structure exists
+        assert "title" in data
+        assert "fps" in data
+        assert "width" in data
+        assert "height" in data
+        assert "phrases" in data
+        assert len(data["phrases"]) == 2
+
+        # Verify that background and BGM fields are absent (backward compatibility)
+        assert "background" not in data, "background field should not be present when None"
+        assert "bgm" not in data, "bgm field should not be present when None"
+
+        # Verify phrases are valid
+        for phrase in data["phrases"]:
+            assert "text" in phrase
+            assert "duration" in phrase
+            assert "audioFile" in phrase
