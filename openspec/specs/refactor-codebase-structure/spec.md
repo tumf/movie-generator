@@ -1,75 +1,133 @@
-# Change: Codebase Structure Refactoring
+# Codebase Structure Refactoring
 
-<!-- Original Japanese proposal: openspec-archive/changes/refactor-codebase-structure/proposal.md -->
+## Purpose
 
-## Why
+Maintain a well-structured, modular codebase that minimizes duplication, promotes reusability, and ensures type safety for the movie generator application.
+## Requirements
+### Requirement: Utility Module Organization
 
-Analysis of the entire codebase identified the following issues:
+The codebase SHALL organize common utility functions into dedicated modules under `src/movie_generator/utils/`.
 
-1. **Code Duplication** - File existence checks, retry logic, and subprocess execution patterns are duplicated across multiple locations
-2. **Overly Long Functions** - `cli.py::generate()` is 409 lines with excessive responsibilities
-3. **Inconsistent Error Handling** - Bare except clauses, mixed exception types
-4. **Magic Numbers/Strings** - FPS value 30, directory names, etc. are hardcoded
-5. **Lack of Type Safety** - 9 instances of `type: ignore`, absence of TypedDict
+#### Scenario: File operations utility
 
-These issues impact maintainability, testability, and code reusability.
+- **WHEN** developers need to perform file existence checks or path operations
+- **THEN** they SHALL use functions from `utils/filesystem.py`
 
-## What Changes
+#### Scenario: Retry logic utility
 
-### Phase 1: Create Utility Modules
-- New `src/movie_generator/utils/` package
-  - `filesystem.py` - File existence checks, path operations
-  - `retry.py` - Retry logic with exponential backoff
-  - `subprocess.py` - Subprocess execution helpers
-  - `text.py` - Text processing utilities
+- **WHEN** developers need retry logic with exponential backoff
+- **THEN** they SHALL use functions from `utils/retry.py`
 
-### Phase 2: Consolidate Constants
-- New `src/movie_generator/constants.py`
-  - `VideoConstants` - FPS, resolution
-  - `FileExtensions` - Supported file extensions
-  - `ProjectPaths` - Standard directory names
-  - `RetryConfig` - Retry parameters
+#### Scenario: Subprocess execution utility
 
-### Phase 3: Organize Exception Hierarchy
-- New `src/movie_generator/exceptions.py`
-  - `MovieGeneratorError` - Base exception
-  - `ConfigurationError` - Configuration-related errors
-  - `RenderingError` - Rendering errors
-  - `MCPError` - MCP communication errors
+- **WHEN** developers need to execute subprocesses
+- **THEN** they SHALL use helpers from `utils/subprocess.py`
 
-### Phase 4: Split CLI Functions
-- Split `cli.py::generate()` into smaller functions
-- Split `cli.py::parse_scene_range()` into sub-functions
+#### Scenario: Text processing utility
 
-### Phase 5: Remove Dead Code
-- Remove unreachable code in `video/remotion_renderer.py:109-122`
-- Remove unused functions or add warnings
+- **WHEN** developers need text processing operations
+- **THEN** they SHALL use functions from `utils/text.py`
 
-### Phase 6: Improve Type Safety
-- Introduce TypedDict (CompositionData, PhraseDict)
-- Reduce `type: ignore` annotations
+### Requirement: Centralized Constants
 
-## Impact
+The codebase SHALL consolidate all magic numbers and configuration values into `src/movie_generator/constants.py`.
 
-- Affected specs: None (internal refactoring only)
-- Affected code:
-  - `src/movie_generator/cli.py`
-  - `src/movie_generator/slides/generator.py`
-  - `src/movie_generator/audio/voicevox.py`
-  - `src/movie_generator/video/remotion_renderer.py`
-  - `src/movie_generator/project.py`
-  - `src/movie_generator/assets/downloader.py`
-  - `src/movie_generator/mcp/client.py`
+#### Scenario: Video configuration constants
 
-## Risk
+- **WHEN** code requires video-related configuration (FPS, resolution)
+- **THEN** it SHALL reference `VideoConstants` from `constants.py`
 
-- **Low Risk**: Maintains backward compatibility
-- All changes can be implemented incrementally
-- Validation via test suite execution after each phase
+#### Scenario: File extension constants
 
-## Success Criteria
+- **WHEN** code needs to validate or work with file extensions
+- **THEN** it SHALL reference `FileExtensions` from `constants.py`
 
-- `uv run pytest` all tests pass
-- `uv run mypy src/` no errors
-- `uv run ruff check .` no warnings
-- Code coverage maintained or improved
+#### Scenario: Project path constants
+
+- **WHEN** code references standard directory names
+- **THEN** it SHALL reference `ProjectPaths` from `constants.py`
+
+#### Scenario: Retry configuration constants
+
+- **WHEN** code requires retry parameters
+- **THEN** it SHALL reference `RetryConfig` from `constants.py`
+
+### Requirement: Exception Hierarchy
+
+The codebase SHALL define a consistent exception hierarchy in `src/movie_generator/exceptions.py`.
+
+#### Scenario: Base exception usage
+
+- **WHEN** raising application-specific errors
+- **THEN** they SHALL inherit from `MovieGeneratorError`
+
+#### Scenario: Configuration errors
+
+- **WHEN** configuration-related errors occur
+- **THEN** the system SHALL raise `ConfigurationError`
+
+#### Scenario: Rendering errors
+
+- **WHEN** rendering operations fail
+- **THEN** the system SHALL raise `RenderingError`
+
+#### Scenario: MCP communication errors
+
+- **WHEN** MCP communication fails
+- **THEN** the system SHALL raise `MCPError`
+
+### Requirement: Function Modularity
+
+Functions SHALL be kept concise and focused on a single responsibility, with complex functions split into smaller components.
+
+#### Scenario: CLI function size
+
+- **WHEN** reviewing CLI functions
+- **THEN** no single function SHALL exceed 100 lines of code
+
+#### Scenario: Scene range parsing modularity
+
+- **WHEN** parsing scene ranges
+- **THEN** the logic SHALL be split into focused sub-functions
+
+### Requirement: Type Safety
+
+The codebase SHALL use Python type annotations and TypedDict where appropriate to ensure type safety.
+
+#### Scenario: Composition data typing
+
+- **WHEN** working with composition data structures
+- **THEN** the code SHALL use `CompositionData` TypedDict
+
+#### Scenario: Phrase data typing
+
+- **WHEN** working with phrase data structures
+- **THEN** the code SHALL use `PhraseDict` TypedDict
+
+#### Scenario: Type ignore minimization
+
+- **WHEN** adding new code
+- **THEN** developers SHALL avoid using `type: ignore` annotations unless absolutely necessary
+
+### Requirement: Code Reusability
+
+The codebase SHALL eliminate code duplication by extracting common patterns into reusable utilities.
+
+#### Scenario: Duplicate pattern elimination
+
+- **WHEN** identical logic appears in multiple locations
+- **THEN** it SHALL be extracted into a shared utility function
+
+#### Scenario: Consistent API patterns
+
+- **WHEN** similar operations are performed across modules
+- **THEN** they SHALL use the same utility function with a consistent interface
+
+### Requirement: Webワーカーの責務分割
+システムは、Webワーカーの設定・PocketBaseクライアント・生成ラッパー・ワーカーループを専用モジュールに分割し、起動経路と挙動を維持しなければならない（SHALL）。
+
+#### Scenario: 既存の起動方法を維持する
+- **WHEN** `python web/worker/main.py` を実行する
+- **THEN** 既存と同じ環境変数名で設定が読み込まれる
+- **AND** ワーカーが起動してジョブポーリングを開始する
+
