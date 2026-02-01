@@ -165,6 +165,8 @@ The system SHALL use Remotion to compose slide images, audio, and subtitles into
 
 The system SHALL dynamically generate Remotion projects using official tooling and Python-generated TypeScript code.
 
+The implementation SHALL split setup into well-named steps so failures are easier to diagnose while preserving behavior.
+
 #### Scenario: Remotion Project Initialization
 - **WHEN** `Project.setup_remotion_project()` is called
 - **THEN** `pnpm create @remotion/video` is executed with `--template blank`
