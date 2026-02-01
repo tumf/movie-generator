@@ -760,6 +760,8 @@ The system SHALL allow specification of LLM base URL in configuration.
 
 The system SHALL retrieve slide generation retry count, delay, and backoff factor from common constants.
 
+The implementation SHALL provide a reusable retry utility so slide generation does not reimplement retry logic.
+
 #### Scenario: Refer to Retry Constants
 
 - **WHEN** performing retry processing in slide generation
