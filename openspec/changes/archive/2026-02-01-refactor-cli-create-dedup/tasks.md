@@ -6,3 +6,6 @@
 
 ## 3. Verification
 - [x] 3.1 全テストが通る（検証: `uv run pytest`）
+
+## Acceptance #1 Failure Follow-up
+- [x] src/movie_generator/cli.py: create() uses Path.cwd() and help text says default current directory; update default output to ./output per openspec/changes/refactor-cli-create-dedup/specs/cli-interface/spec.md

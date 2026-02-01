@@ -911,7 +911,7 @@ def script() -> None:
     "--output",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for script.yaml (default: current directory)",
+    help="Output directory for script.yaml (default: ./output)",
 )
 @click.option(
     "--config",
@@ -984,7 +984,7 @@ def create(
     if model:
         cfg.content.llm.model = model
 
-    output_dir = Path(output) if output else Path.cwd()
+    output_dir = Path(output) if output else Path("output")
     script_path = output_dir / "script.yaml"
 
     # Check for existing script file
