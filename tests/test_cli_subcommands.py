@@ -3,10 +3,9 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
 from click.testing import CliRunner
 
-from movie_generator.cli import audio, config, script, slides, video
+from movie_generator.cli import audio, script, slides, video
 
 
 class TestScriptCreate:
@@ -38,6 +37,49 @@ class TestScriptCreate:
         result = runner.invoke(script, ["create", "https://example.com", "--quiet", "--verbose"])
         assert result.exit_code != 0
         assert "mutually exclusive" in result.output
+
+    def test_skip_existing_script(self) -> None:
+        """Test that script create skips if script.yaml exists without --force."""
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            # Create output directory and existing script file
+            output_dir = Path("output")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            script_path = output_dir / "script.yaml"
+            script_path.write_text("existing: content")
+
+            result = runner.invoke(script, ["create", "https://example.com"])
+            assert result.exit_code != 0
+            assert "already exists" in result.output
+            assert "Use --force to overwrite" in result.output
+
+    @patch("movie_generator.cli._fetch_and_generate_script")
+    def test_uses_common_function(self, mock_fetch: Mock) -> None:
+        """Test that script create uses the common _fetch_and_generate_script function."""
+        from movie_generator.script.generator import Narration, ScriptSection, VideoScript
+
+        # Mock the common function to return a simple script
+        mock_script = VideoScript(
+            title="Test Script",
+            description="Test Description",
+            sections=[
+                ScriptSection(
+                    title="Section 1",
+                    narrations=[Narration(text="Hello", reading="ハロー")],
+                )
+            ],
+        )
+        mock_fetch.return_value = mock_script
+
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            result = runner.invoke(script, ["create", "https://example.com"])
+            assert result.exit_code == 0
+            # Verify the common function was called
+            mock_fetch.assert_called_once()
+            # Verify script was saved (default output dir is ./output)
+            script_path = Path("output/script.yaml")
+            assert script_path.exists()
 
 
 class TestAudioGenerate:

@@ -4,11 +4,13 @@ import tempfile
 from pathlib import Path
 
 import pytest
+
 from movie_generator.script.phrases import Phrase
 from movie_generator.video.remotion_renderer import (
     create_remotion_input,
     render_video_with_remotion,
 )
+from movie_generator.video.renderer import CompositionConfig, RenderConfig
 
 
 def test_create_remotion_input():
@@ -86,12 +88,18 @@ def test_render_video_with_remotion_e2e():
 
         # This will fail if Remotion is not set up, but shows the intended usage
         try:
-            render_video_with_remotion(
+            composition_config = CompositionConfig(
                 phrases=phrases,
                 audio_paths=audio_paths,
                 slide_paths=slide_paths,
+            )
+            render_config = RenderConfig(
                 output_path=output_path,
                 remotion_root=remotion_root,
+            )
+            render_video_with_remotion(
+                composition_config=composition_config,
+                render_config=render_config,
             )
 
             # Verify output was created
