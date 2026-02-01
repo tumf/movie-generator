@@ -30,6 +30,7 @@ class ImageInfo(BaseModel):
     aria_describedby: str | None = None
     width: int | None = None
     height: int | None = None
+    is_candidate: bool = True  # Whether image is a candidate for slides
 
 
 class ParsedContent(BaseModel):
@@ -38,7 +39,7 @@ class ParsedContent(BaseModel):
     metadata: ContentMetadata
     content: str
     markdown: str
-    images: list[ImageInfo] | None = None
+    images: list[ImageInfo] | None = None  # All extracted images (candidates and non-candidates)
 
 
 def parse_html(html: str, base_url: str | None = None) -> ParsedContent:
@@ -194,12 +195,15 @@ def _has_meaningful_description(
 def _extract_images(soup: BeautifulSoup, base_url: str | None = None) -> list[ImageInfo]:
     """Extract image information from HTML content.
 
+    Extracts ALL <img> elements, marking each as a candidate or non-candidate
+    based on whether it has meaningful description.
+
     Args:
         soup: BeautifulSoup object of the HTML content.
         base_url: Base URL for resolving relative URLs.
 
     Returns:
-        List of extracted image information.
+        List of all extracted image information (both candidates and non-candidates).
     """
     images = []
 
@@ -216,17 +220,20 @@ def _extract_images(soup: BeautifulSoup, base_url: str | None = None) -> list[Im
         # Step 3: Resolve aria-describedby reference
         aria_describedby = _resolve_aria_describedby(attrs["aria_describedby_id"], soup)
 
-        # Step 4: Filter by meaningful description
-        if _has_meaningful_description(attrs["alt"], attrs["title"], aria_describedby):
-            images.append(
-                ImageInfo(
-                    src=src,
-                    alt=attrs["alt"],
-                    title=attrs["title"],
-                    aria_describedby=aria_describedby,
-                    width=attrs["width"],
-                    height=attrs["height"],
-                )
+        # Step 4: Determine if image is a candidate for slides
+        is_candidate = _has_meaningful_description(attrs["alt"], attrs["title"], aria_describedby)
+
+        # Add all images to the list, marking candidate status
+        images.append(
+            ImageInfo(
+                src=src,
+                alt=attrs["alt"],
+                title=attrs["title"],
+                aria_describedby=aria_describedby,
+                width=attrs["width"],
+                height=attrs["height"],
+                is_candidate=is_candidate,
             )
+        )
 
     return images

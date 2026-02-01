@@ -264,17 +264,21 @@ def stage_script_resolution(
         # Fetch content
         parsed = _fetch_content_from_url(url, params.mcp_config, progress, console)
 
-        # Prepare images metadata
+        # Prepare images metadata (filter to candidates only)
         images_metadata = None
         if parsed.images:
+            candidate_images = [img for img in parsed.images if img.is_candidate]
             images_metadata = [
                 img.model_dump(
                     include={"src", "alt", "title", "aria_describedby"},
                     exclude_none=True,
                 )
-                for img in parsed.images
+                for img in candidate_images
             ]
-            console.print(f"  Found {len(parsed.images)} usable images in content")
+            console.print(
+                f"  Found {len(candidate_images)} candidate images "
+                f"({len(parsed.images)} total) in content"
+            )
 
         # Generate script
         task = progress.add_task("Generating script...", total=None)
