@@ -1,6 +1,6 @@
 """Movie Generator - YouTube slide video generator from blog URLs."""
 
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 # Export custom exceptions for convenience
 from .exceptions import (
