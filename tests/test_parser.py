@@ -38,9 +38,14 @@ def test_extract_images_with_meaningful_alt():
     """
     parsed = parse_html(html, base_url="https://example.com")
     assert parsed.images is not None
-    assert len(parsed.images) == 1
+    # All 3 images should be extracted
+    assert len(parsed.images) == 3
+    # Only first image has meaningful description
     assert parsed.images[0].src == "https://example.com/image1.jpg"
     assert parsed.images[0].alt == "A meaningful description"
+    assert parsed.images[0].is_candidate
+    assert not parsed.images[1].is_candidate
+    assert not parsed.images[2].is_candidate
 
 
 def test_extract_images_with_title():
@@ -55,9 +60,12 @@ def test_extract_images_with_title():
     """
     parsed = parse_html(html, base_url="https://example.com/blog/")
     assert parsed.images is not None
-    assert len(parsed.images) == 1
+    # Both images should be extracted
+    assert len(parsed.images) == 2
     assert parsed.images[0].src == "https://example.com/blog/image1.jpg"
     assert parsed.images[0].title == "Image Title"
+    assert parsed.images[0].is_candidate  # Has title
+    assert not parsed.images[1].is_candidate  # Short alt only
 
 
 def test_extract_images_with_aria_describedby():
@@ -73,9 +81,12 @@ def test_extract_images_with_aria_describedby():
     """
     parsed = parse_html(html, base_url="https://example.com")
     assert parsed.images is not None
-    assert len(parsed.images) == 1
+    # Both images should be extracted
+    assert len(parsed.images) == 2
     assert parsed.images[0].src == "https://example.com/diagram.png"
     assert parsed.images[0].aria_describedby == "This is a detailed diagram description"
+    assert parsed.images[0].is_candidate  # Has aria-describedby
+    assert not parsed.images[1].is_candidate  # aria-describedby reference not found
 
 
 def test_extract_images_relative_url_resolution():
@@ -117,7 +128,7 @@ def test_extract_images_with_dimensions():
 
 
 def test_extract_images_no_meaningful_description():
-    """Test that images without meaningful description are excluded."""
+    """Test that all images are extracted with appropriate is_candidate flags."""
     html = """
     <html>
         <body>
@@ -130,8 +141,14 @@ def test_extract_images_no_meaningful_description():
     """
     parsed = parse_html(html, base_url="https://example.com")
     assert parsed.images is not None
-    assert len(parsed.images) == 1
-    assert parsed.images[0].src == "https://example.com/test4.jpg"
+    # All 4 images should be extracted
+    assert len(parsed.images) == 4
+    # Only the last image should be marked as candidate
+    assert not parsed.images[0].is_candidate  # No alt
+    assert not parsed.images[1].is_candidate  # Empty alt
+    assert not parsed.images[2].is_candidate  # Short alt (< 10 chars)
+    assert parsed.images[3].is_candidate  # Meaningful alt
+    assert parsed.images[3].src == "https://example.com/test4.jpg"
 
 
 def test_extract_images_without_base_url():
@@ -149,7 +166,9 @@ def test_extract_images_without_base_url():
     # Both images should be extracted, but relative URL won't be resolved
     assert len(parsed.images) == 2
     assert parsed.images[0].src == "https://example.com/absolute.jpg"
+    assert parsed.images[0].is_candidate  # Has meaningful alt
     assert parsed.images[1].src == "relative.jpg"
+    assert parsed.images[1].is_candidate  # Has meaningful alt
 
 
 def test_extract_images_empty_html():
@@ -173,10 +192,14 @@ def test_aria_describedby_missing_reference():
     """
     parsed = parse_html(html, base_url="https://example.com")
     assert parsed.images is not None
-    # Only the second image with valid aria-describedby should be included
-    assert len(parsed.images) == 1
-    assert parsed.images[0].src == "https://example.com/diagram.png"
-    assert parsed.images[0].aria_describedby == "Valid description text"
+    # Both images should be extracted
+    assert len(parsed.images) == 2
+    # First image: missing aria-describedby reference, short alt -> not a candidate
+    assert not parsed.images[0].is_candidate
+    # Second image: valid aria-describedby -> is a candidate
+    assert parsed.images[1].src == "https://example.com/diagram.png"
+    assert parsed.images[1].aria_describedby == "Valid description text"
+    assert parsed.images[1].is_candidate
 
 
 def test_aria_describedby_empty_string():
@@ -192,6 +215,7 @@ def test_aria_describedby_empty_string():
     assert parsed.images is not None
     assert len(parsed.images) == 1
     assert parsed.images[0].aria_describedby is None
+    assert parsed.images[0].is_candidate  # Has meaningful alt
 
 
 def test_aria_describedby_whitespace_only():
@@ -206,5 +230,8 @@ def test_aria_describedby_whitespace_only():
     """
     parsed = parse_html(html, base_url="https://example.com")
     assert parsed.images is not None
-    # Empty/whitespace-only aria-describedby text is not meaningful
-    assert len(parsed.images) == 0
+    # Image is still extracted but not marked as candidate
+    assert len(parsed.images) == 1
+    assert not parsed.images[
+        0
+    ].is_candidate  # Empty/whitespace-only aria-describedby text is not meaningful

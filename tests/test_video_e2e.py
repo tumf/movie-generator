@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+
 from movie_generator.script.phrases import Phrase
 from movie_generator.video.remotion_renderer import (
     create_remotion_input,

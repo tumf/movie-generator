@@ -2,6 +2,7 @@
 """Inspect PSD file structure to understand layer organization."""
 
 import sys
+
 from psd_tools import PSDImage
 
 

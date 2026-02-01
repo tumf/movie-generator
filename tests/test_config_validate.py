@@ -3,8 +3,6 @@
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
-
 from movie_generator.config import validate_config
 
 
