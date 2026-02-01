@@ -38,7 +38,9 @@ from .script.generator import generate_script, validate_script
 from .script.phrases import Phrase, calculate_phrase_timings
 from .slides.generator import generate_slides_for_sections
 from .utils.filesystem import is_valid_file  # type: ignore[import]
+from .utils.scene_range import parse_scene_range
 from .video.remotion_renderer import render_video_with_remotion
+from .video.renderer import CompositionConfig, RenderConfig
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -135,17 +137,21 @@ def _fetch_and_generate_script(
         progress.update(task, completed=True)
         console.print(f"✓ Fetched: {parsed.metadata.title}")
 
-    # Prepare images metadata
+    # Prepare images metadata (filter to candidates only)
     images_metadata = None
     if parsed.images:
+        candidate_images = [img for img in parsed.images if img.is_candidate]
         images_metadata = [
             img.model_dump(
                 include={"src", "alt", "title", "aria_describedby"},
                 exclude_none=True,
             )
-            for img in parsed.images
+            for img in candidate_images
         ]
-        console.print(f"  Found {len(parsed.images)} usable images in content")
+        console.print(
+            f"  Found {len(candidate_images)} candidate images "
+            f"({len(parsed.images)} total) in content"
+        )
 
     task = progress.add_task("Generating script...", total=None)
 
@@ -185,86 +191,6 @@ def _fetch_and_generate_script(
     console.print(f"  Sections: {len(script.sections)}")
 
     return script
-
-
-def parse_scene_range(scenes_arg: str) -> tuple[int | None, int | None]:
-    """Parse scene range argument.
-
-    Args:
-        scenes_arg: Scene range string (e.g., "1-3", "6-" for 6 onwards, "-3" for up to 3, or "2").
-
-    Returns:
-        Tuple of (start_index, end_index) (0-based, inclusive).
-        start_index can be None to indicate "from the beginning".
-        end_index can be None to indicate "to the end".
-
-    Raises:
-        ValueError: If the format is invalid or range is invalid.
-    """
-    if "-" in scenes_arg:
-        parts = scenes_arg.split("-")
-        if len(parts) != 2:
-            raise ValueError(
-                f"Invalid scene range format: '{scenes_arg}'. "
-                "Expected format: '1-3', '6-', '-3', or '2'"
-            )
-
-        # Handle "-3" format (from beginning to scene 3)
-        if parts[0] == "":
-            if parts[1] == "":
-                raise ValueError(
-                    f"Invalid scene range format: '{scenes_arg}'. Cannot use '-' alone."
-                )
-
-            try:
-                end = int(parts[1])
-            except ValueError:
-                raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
-
-            if end < 1:
-                raise ValueError(f"Scene number must be >= 1, got: {end}")
-
-            # "-3" format - from beginning to scene 3
-            return (None, end - 1)
-
-        # Parse start
-        try:
-            start = int(parts[0])
-        except ValueError:
-            raise ValueError(f"Invalid start scene number: '{parts[0]}'. Must be an integer.")
-
-        if start < 1:
-            raise ValueError(f"Scene number must be >= 1, got: {start}")
-
-        # Parse end (can be empty for "N-" format)
-        if parts[1] == "":
-            # "6-" format - from scene 6 to the end
-            return (start - 1, None)
-
-        try:
-            end = int(parts[1])
-        except ValueError:
-            raise ValueError(f"Invalid end scene number: '{parts[1]}'. Must be an integer.")
-
-        if end < 1:
-            raise ValueError(f"Scene numbers must be >= 1, got: {scenes_arg}")
-        if start > end:
-            raise ValueError(
-                f"Invalid scene range: {scenes_arg}. Start must be <= end. "
-                f"Example: '1-3' for scenes 1 through 3."
-            )
-        # Convert to 0-based indexing
-        return (start - 1, end - 1)
-    else:
-        try:
-            scene_num = int(scenes_arg)
-        except ValueError:
-            raise ValueError(f"Invalid scene number: '{scenes_arg}'. Must be an integer.")
-
-        if scene_num < 1:
-            raise ValueError(f"Scene number must be >= 1, got: {scene_num}")
-        # Convert to 0-based indexing
-        return (scene_num - 1, scene_num - 1)
 
 
 @click.group()
@@ -470,7 +396,7 @@ def script() -> None:
     "--output",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for script.yaml (default: current directory)",
+    help="Output directory for script.yaml (default: ./output)",
 )
 @click.option(
     "--config",
@@ -543,7 +469,7 @@ def create(
     if model:
         cfg.content.llm.model = model
 
-    output_dir = Path(output) if output else Path.cwd()
+    output_dir = Path(output) if output else Path("output")
     script_path = output_dir / "script.yaml"
 
     # Check for existing script file
@@ -1578,24 +1504,32 @@ def render_video_cmd(
                 for p in cfg.personas
             ]
 
-        render_video_with_remotion(
+        composition_config = CompositionConfig(
             phrases=all_phrases,
             audio_paths=audio_paths,
             slide_paths=slide_paths,
-            output_path=video_path,
-            remotion_root=remotion_dir,
             project_name=project_name,
-            show_progress=show_progress,
+            fps=cfg.style.fps,
+            resolution=cfg.style.resolution,
             transition=transition_config,
             personas=personas_for_render,
             background=background_config,
             bgm=bgm_config,
             section_backgrounds=section_backgrounds,
+        )
+
+        render_config = RenderConfig(
+            output_path=video_path,
+            remotion_root=remotion_dir,
+            show_progress=show_progress,
             crf=cfg.style.crf,
             render_concurrency=cfg.video.render_concurrency,
             render_timeout_seconds=cfg.video.render_timeout_seconds,
-            fps=cfg.style.fps,
-            resolution=cfg.style.resolution,
+        )
+
+        render_video_with_remotion(
+            composition_config=composition_config,
+            render_config=render_config,
         )
         progress.update(task, completed=True)
         console.print(f"✓ Video ready: {video_path}")

@@ -44,6 +44,8 @@ The command SHALL accept the following options:
 - `--speaker-id <id>`: VOICEVOX speaker ID
 - `--allow-placeholder`: Generate placeholder audio without VOICEVOX
 
+Scene range parsing and validation SHALL be shared across commands and report consistent errors.
+
 #### Scenario: Generate audio from script
 - **GIVEN** a valid `script.yaml` file
 - **WHEN** user runs `movie-generator audio generate ./output/script.yaml`
@@ -63,7 +65,11 @@ The command SHALL accept the following options:
 - **THEN** the system displays an error message
 - **AND** exits with non-zero status
 
----
+#### Scenario: Invalid scene range
+- **GIVEN** the user specifies an invalid scene range (e.g., `--scenes 0`, `--scenes 3-2`, `--scenes a-b`)
+- **WHEN** user runs `movie-generator audio generate <script.yaml> --scenes <range>`
+- **THEN** the system displays a consistent validation error message
+- **AND** exits with non-zero status
 
 ### Requirement: Slides Generation Command
 
