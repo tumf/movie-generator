@@ -93,6 +93,8 @@ The composition.json SHALL reserve an avatarImage field, but it is not used in t
 
 The system SHALL work with composition.json files that lack speaker information.
 
+The implementation SHALL centralize defaulting and schema mapping in a dedicated composition builder to reduce duplication.
+
 #### Scenario: composition.json Without Speaker Information
 - **GIVEN** composition.json does not include `personaId` or `subtitleColor`
 - **WHEN** it is loaded by Remotion
