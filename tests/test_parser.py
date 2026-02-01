@@ -158,3 +158,53 @@ def test_extract_images_empty_html():
     parsed = parse_html(html)
     assert parsed.images is not None
     assert len(parsed.images) == 0
+
+
+def test_aria_describedby_missing_reference():
+    """Test that aria-describedby with missing reference is handled gracefully."""
+    html = """
+    <html>
+        <body>
+            <img src="chart.png" aria-describedby="missing-id" alt="Short">
+            <img src="diagram.png" aria-describedby="valid-id">
+            <p id="valid-id">Valid description text</p>
+        </body>
+    </html>
+    """
+    parsed = parse_html(html, base_url="https://example.com")
+    assert parsed.images is not None
+    # Only the second image with valid aria-describedby should be included
+    assert len(parsed.images) == 1
+    assert parsed.images[0].src == "https://example.com/diagram.png"
+    assert parsed.images[0].aria_describedby == "Valid description text"
+
+
+def test_aria_describedby_empty_string():
+    """Test that empty aria-describedby attribute is ignored."""
+    html = """
+    <html>
+        <body>
+            <img src="test.png" aria-describedby="" alt="Meaningful description">
+        </body>
+    </html>
+    """
+    parsed = parse_html(html, base_url="https://example.com")
+    assert parsed.images is not None
+    assert len(parsed.images) == 1
+    assert parsed.images[0].aria_describedby is None
+
+
+def test_aria_describedby_whitespace_only():
+    """Test that aria-describedby with whitespace-only text is not considered meaningful."""
+    html = """
+    <html>
+        <body>
+            <img src="test.png" aria-describedby="whitespace-id">
+            <p id="whitespace-id">   </p>
+        </body>
+    </html>
+    """
+    parsed = parse_html(html, base_url="https://example.com")
+    assert parsed.images is not None
+    # Empty/whitespace-only aria-describedby text is not meaningful
+    assert len(parsed.images) == 0

@@ -8,7 +8,7 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from movie_generator.cli import parse_scene_range
+from movie_generator.utils.scene_range import parse_scene_range
 
 
 class TestSceneRangeParsing:

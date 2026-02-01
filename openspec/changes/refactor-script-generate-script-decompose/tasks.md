@@ -1,9 +1,12 @@
 ## 1. Implementation
-- [ ] 1.1 `generate_script()` を段階別の小関数に分割する（検証: 各段階が個別関数として切り出されていることを確認）
-- [ ] 1.2 レスポンス検証/パースを純粋関数化し、I/O から分離する（検証: ユニットテストで LLM 呼び出しなしにパースを検証できる）
+- [x] 1.1 `generate_script()` を段階別の小関数に分割する（検証: 各段階が個別関数として切り出されていることを確認）
+- [x] 1.2 レスポンス検証/パースを純粋関数化し、I/O から分離する（検証: ユニットテストで LLM 呼び出しなしにパースを検証できる）
 
 ## 2. Tests
-- [ ] 2.1 単一話者モードのパースをフィクスチャ JSON で検証するテストを追加する（検証: `uv run pytest -k single_speaker -v`）
+- [x] 2.1 単一話者モードのパースをフィクスチャ JSON で検証するテストを追加する（検証: `uv run pytest -k single_speaker -v`）
 
 ## 3. Verification
-- [ ] 3.1 全テストが通る（検証: `uv run pytest`）
+- [x] 3.1 全テストが通る（検証: `uv run pytest`）
+
+## Acceptance #1 Failure Follow-up
+- [x] Remove duplicate `background` field in ScriptSection class (src/movie_generator/script/generator.py:30-31)

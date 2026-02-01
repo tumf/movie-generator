@@ -22,6 +22,8 @@ The system SHALL load and validate YAML configuration files.
 
 The system SHALL provide default configuration and merge it with user configuration, including language settings.
 
+Default values and validation bounds SHALL be expressed as named constants to avoid scattered magic numbers.
+
 #### Scenario: Apply Default Configuration
 - **WHEN** user configuration specifies only some fields
 - **THEN** unspecified fields use default values
@@ -818,6 +820,8 @@ The system SHALL define filename formats for generated assets as common constant
 ### Requirement: Centralized Minimum Resolution and Project Root
 
 The system SHALL manage minimum resolution standards and Docker environment project root as common values.
+
+The implementation SHALL centralize environment checks and project root resolution so modules do not duplicate the logic.
 
 #### Scenario: Apply Minimum Resolution and Project Root
 
