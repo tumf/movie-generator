@@ -42,6 +42,8 @@ The command SHALL accept the following options:
 - `--speaker-id <id>`: VOICEVOX speaker ID
 - `--allow-placeholder`: Generate placeholder audio without VOICEVOX
 
+The implementation SHALL reuse the same script loading and phrase preparation logic as `generate` to avoid drift.
+
 #### Scenario: Generate audio from script
 - **GIVEN** a valid `script.yaml` file
 - **WHEN** user runs `movie-generator audio generate ./output/script.yaml`
