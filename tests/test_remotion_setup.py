@@ -28,47 +28,51 @@ class TestRemotionSetupStages:
         project.characters_dir.mkdir(exist_ok=True)
         return project
 
-    @patch("movie_generator.video.templates")
     @patch("movie_generator.project.subprocess.run")
-    def test_initialize_remotion_project_success(self, mock_run, mock_templates, mock_project):
-        """Test successful Remotion project initialization."""
+    def test_initialize_remotion_project_success(self, mock_run, mock_project):
+        """Test successful Remotion project initialization using pnpm create."""
         remotion_dir = mock_project.project_dir / "remotion"
 
-        # Mock templates
-        mock_templates.get_package_json.return_value = {
-            "name": "@projects/test-project",
-            "version": "1.0.0",
-        }
+        # Mock successful pnpm create command
+        def mock_pnpm_create(*args, **kwargs):
+            # Create the directory structure that pnpm create would create
+            remotion_dir.mkdir(parents=True, exist_ok=True)
+            (remotion_dir / "package.json").write_text(
+                json.dumps({"name": "remotion-blank", "version": "1.0.0"}), encoding="utf-8"
+            )
+            return Mock(returncode=0, stderr="")
 
-        # Mock successful pnpm install
-        mock_run.return_value = Mock(returncode=0, stderr="")
+        mock_run.side_effect = mock_pnpm_create
 
         # Execute initialization
         mock_project._initialize_remotion_project(remotion_dir)
 
-        # Verify package.json was created
-        assert (remotion_dir / "package.json").exists()
-
-        # Verify pnpm install was called
+        # Verify pnpm create was called
         mock_run.assert_called_once()
         call_args = mock_run.call_args
-        assert call_args[0][0] == ["pnpm", "install"]
-        assert call_args[1]["cwd"] == remotion_dir
+        assert call_args[0][0] == [
+            "pnpm",
+            "create",
+            "@remotion/video@latest",
+            "remotion",
+            "--template",
+            "blank",
+        ]
+        assert call_args[1]["cwd"] == remotion_dir.parent
 
-    @patch("movie_generator.video.templates")
+        # Verify package.json was created and updated
+        assert (remotion_dir / "package.json").exists()
+        with (remotion_dir / "package.json").open("r", encoding="utf-8") as f:
+            pkg_data = json.load(f)
+            assert pkg_data["name"] == "@projects/test-project"
+
     @patch("movie_generator.project.subprocess.run")
-    def test_initialize_remotion_project_pnpm_failure(self, mock_run, mock_templates, mock_project):
+    def test_initialize_remotion_project_pnpm_failure(self, mock_run, mock_project):
         """Test initialization failure with pnpm error includes stage name."""
         remotion_dir = mock_project.project_dir / "remotion"
 
-        # Mock templates
-        mock_templates.get_package_json.return_value = {
-            "name": "@projects/test-project",
-            "version": "1.0.0",
-        }
-
-        # Mock pnpm install failure
-        mock_run.side_effect = CalledProcessError(1, ["pnpm", "install"], stderr="pnpm error")
+        # Mock pnpm create failure
+        mock_run.side_effect = CalledProcessError(1, ["pnpm", "create"], stderr="pnpm error")
 
         # Execute and verify error message includes stage name
         with pytest.raises(RuntimeError, match="Remotion initialization failed"):
@@ -283,26 +287,38 @@ class TestRemotionSetupStages:
             mock_project._update_workspace_configuration(remotion_dir)
 
     @patch("movie_generator.video.templates")
+    @patch("movie_generator.project._ensure_nodejs_available")
     @patch("movie_generator.project._ensure_pnpm_available")
     @patch("movie_generator.project.subprocess.run")
     @patch("movie_generator.project.Path.cwd")
     def test_setup_remotion_project_full_flow(
-        self, mock_cwd, mock_run, mock_pnpm_check, mock_templates, mock_project, tmp_path
+        self,
+        mock_cwd,
+        mock_run,
+        mock_pnpm_check,
+        mock_nodejs_check,
+        mock_templates,
+        mock_project,
+        tmp_path,
     ):
         """Test full setup_remotion_project flow with all stages."""
         # Mock templates
-        mock_templates.get_package_json.return_value = {
-            "name": "@projects/test-project",
-            "version": "1.0.0",
-        }
         mock_templates.get_video_generator_tsx.return_value = "// VideoGenerator.tsx"
         mock_templates.get_root_tsx.return_value = "// Root.tsx"
         mock_templates.get_index_ts.return_value = "// index.ts"
         mock_templates.get_remotion_config_ts.return_value = "// remotion.config.ts"
         mock_templates.get_tsconfig_json.return_value = {"compilerOptions": {}}
 
-        # Mock pnpm install success
-        mock_run.return_value = Mock(returncode=0, stderr="")
+        # Mock pnpm create success - create the directory structure
+        def mock_pnpm_create(*args, **kwargs):
+            remotion_dir = mock_project.project_dir / "remotion"
+            remotion_dir.mkdir(parents=True, exist_ok=True)
+            (remotion_dir / "package.json").write_text(
+                json.dumps({"name": "remotion-blank", "version": "1.0.0"}), encoding="utf-8"
+            )
+            return Mock(returncode=0, stderr="")
+
+        mock_run.side_effect = mock_pnpm_create
 
         # Create workspace file for workspace update stage
         workspace_dir = tmp_path / "workspace"
@@ -338,21 +354,15 @@ class TestRemotionSetupStages:
             workspace_config = yaml.safe_load(f)
         assert "projects/*/remotion" in workspace_config["packages"]
 
-    @patch("movie_generator.video.templates")
+    @patch("movie_generator.project._ensure_nodejs_available")
     @patch("movie_generator.project._ensure_pnpm_available")
     @patch("movie_generator.project.subprocess.run")
     def test_setup_remotion_project_initialization_stage_failure(
-        self, mock_run, mock_pnpm_check, mock_templates, mock_project
+        self, mock_run, mock_pnpm_check, mock_nodejs_check, mock_project
     ):
         """Test setup failure at initialization stage."""
-        # Mock templates
-        mock_templates.get_package_json.return_value = {
-            "name": "@projects/test-project",
-            "version": "1.0.0",
-        }
-
-        # Mock pnpm install failure
-        mock_run.side_effect = CalledProcessError(1, ["pnpm", "install"], stderr="pnpm error")
+        # Mock pnpm create failure
+        mock_run.side_effect = CalledProcessError(1, ["pnpm", "create"], stderr="pnpm error")
 
         # Execute and verify error message includes stage information
         with pytest.raises(RuntimeError, match="Remotion initialization failed"):
