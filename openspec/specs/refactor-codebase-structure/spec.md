@@ -89,3 +89,11 @@ The system SHALL maintain empty string to `None` conversion for datetime fields 
 - **WHEN** `JobResponse` receives empty string datetime fields
 - **THEN** those fields SHALL be converted to `None`
 
+### Requirement: Web Worker Module Separation
+The system SHALL separate web worker configuration, PocketBase client, generation wrapper, and worker loop into dedicated modules while maintaining existing startup paths and behavior.
+
+#### Scenario: Existing startup method is maintained
+- **WHEN** `python web/worker/main.py` is executed
+- **THEN** configuration SHALL be loaded using the same environment variable names as before
+- **AND** the worker SHALL start and begin job polling
+
